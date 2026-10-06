@@ -13,9 +13,11 @@ builder.Host.UseSerilog((ctx, config) => config
 builder.Services.AddControllers(options => options.Filters.Add<EnvelopeResultFilter>())
     .ConfigureApiBehaviorOptions(options =>
         options.InvalidModelStateResponseFactory = ValidationErrorResponse.Create);
+builder.Services.AddExceptionHandler<EnvelopeExceptionHandler>();
 
 var app = builder.Build();
 
+app.UseExceptionHandler(_ => { });
 app.UseMiddleware<CorrelationIdMiddleware>();
 app.UseSerilogRequestLogging();
 
