@@ -1,6 +1,7 @@
 using EventTicketing.Api.Filters;
 using EventTicketing.Api.Middleware;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Microsoft.OpenApi;
 using Serilog;
 using Serilog.Formatting.Compact;
 
@@ -16,12 +17,26 @@ builder.Services.AddControllers(options => options.Filters.Add<EnvelopeResultFil
         options.InvalidModelStateResponseFactory = ValidationErrorResponse.Create);
 builder.Services.AddExceptionHandler<EnvelopeExceptionHandler>();
 builder.Services.AddHealthChecks();
+builder.Services.AddSwaggerGen(options =>
+    options.SwaggerDoc("v1", new OpenApiInfo
+    {
+        Title = "Event Ticketing API",
+        Version = "v1",
+        Description = "REST API for browsing events, booking tickets, and managing event listings."
+    }));
 
 var app = builder.Build();
 
 app.UseExceptionHandler(_ => { });
 app.UseMiddleware<CorrelationIdMiddleware>();
 app.UseSerilogRequestLogging();
+
+app.UseSwagger();
+app.UseSwaggerUI(options =>
+{
+    options.SwaggerEndpoint("/swagger/v1/swagger.json", "Event Ticketing API v1");
+    options.RoutePrefix = "swagger";
+});
 
 app.MapControllers();
 app.MapHealthChecks("/health");
