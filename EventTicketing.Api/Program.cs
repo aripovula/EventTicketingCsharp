@@ -14,6 +14,7 @@ builder.Services.AddControllers(options => options.Filters.Add<EnvelopeResultFil
     .ConfigureApiBehaviorOptions(options =>
         options.InvalidModelStateResponseFactory = ValidationErrorResponse.Create);
 builder.Services.AddExceptionHandler<EnvelopeExceptionHandler>();
+builder.Services.AddHealthChecks();
 
 var app = builder.Build();
 
@@ -22,5 +23,6 @@ app.UseMiddleware<CorrelationIdMiddleware>();
 app.UseSerilogRequestLogging();
 
 app.MapControllers();
+app.MapHealthChecks("/health");
 
 app.Run();
