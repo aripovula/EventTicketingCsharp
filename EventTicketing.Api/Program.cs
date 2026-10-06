@@ -1,3 +1,4 @@
+using EventTicketing.Api.Filters;
 using EventTicketing.Api.Middleware;
 using Serilog;
 using Serilog.Formatting.Compact;
@@ -9,7 +10,7 @@ builder.Host.UseSerilog((ctx, config) => config
     .Enrich.FromLogContext()
     .WriteTo.Console(new CompactJsonFormatter()));
 
-builder.Services.AddControllers();
+builder.Services.AddControllers(options => options.Filters.Add<EnvelopeResultFilter>());
 
 var app = builder.Build();
 
