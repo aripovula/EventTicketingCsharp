@@ -29,3 +29,32 @@ jobs:
 
       - name: Backend unit tests
         run: dotnet test --project EventTicketing.Tests -- --filter-not-trait "Category=Integration"
+
+  integration-tests:
+    name: Integration Tests
+    needs: lint
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      PGUSER: postgres
+      PGPASSWORD: postgres
+    steps:
+      - uses: actions/checkout@v4.2.2
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Backend integration tests
+        run: dotnet test --project EventTicketing.Tests -- --filter-trait "Category=Integration"
