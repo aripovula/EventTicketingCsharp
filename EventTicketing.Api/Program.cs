@@ -1,6 +1,8 @@
+using EventTicketing.Api.Data;
 using EventTicketing.Api.Filters;
 using EventTicketing.Api.Middleware;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi;
 using Serilog;
 using Serilog.Formatting.Compact;
@@ -16,6 +18,8 @@ builder.Services.AddControllers(options => options.Filters.Add<EnvelopeResultFil
     .ConfigureApiBehaviorOptions(options =>
         options.InvalidModelStateResponseFactory = ValidationErrorResponse.Create);
 builder.Services.AddExceptionHandler<EnvelopeExceptionHandler>();
+builder.Services.AddDbContext<AppDbContext>(options =>
+    options.UseNpgsql(builder.Configuration.GetConnectionString("Default")));
 builder.Services.AddHealthChecks();
 builder.Services.AddSwaggerGen(options =>
     options.SwaggerDoc("v1", new OpenApiInfo
