@@ -16,6 +16,18 @@ jobs:
       - name: Backend format check
         run: dotnet format --verify-no-changes EventTicketing.sln
 
+      - uses: actions/setup-node@v4.4.0
+        with:
+          node-version-file: .tool-versions
+
+      - name: Install frontend deps
+        run: npm ci
+        working-directory: event-ticketing-ui
+
+      - name: Frontend lint
+        run: npm run lint
+        working-directory: event-ticketing-ui
+
   unit-tests:
     name: Unit Tests
     needs: lint
