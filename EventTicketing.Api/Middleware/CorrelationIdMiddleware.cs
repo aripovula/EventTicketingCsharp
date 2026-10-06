@@ -1,3 +1,5 @@
+using Serilog.Context;
+
 namespace EventTicketing.Api.Middleware;
 
 public class CorrelationIdMiddleware(RequestDelegate next)
@@ -11,6 +13,9 @@ public class CorrelationIdMiddleware(RequestDelegate next)
 
         context.Response.Headers[HeaderName] = correlationId;
 
-        await next(context);
+        using (LogContext.PushProperty("CorrelationId", correlationId))
+        {
+            await next(context);
+        }
     }
 }

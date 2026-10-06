@@ -1,5 +1,8 @@
 using EventTicketing.Api.Middleware;
+using EventTicketing.Tests.Fakes;
 using Microsoft.AspNetCore.Http;
+using Serilog;
+using Serilog.Events;
 
 namespace EventTicketing.Tests.Middleware;
 
@@ -63,6 +66,21 @@ public class CorrelationIdMiddlewareTests
         var id2 = ctx2.Response.Headers[HeaderName].ToString();
 
         Assert.NotEqual(id1, id2);
+    }
+
+    [Fact]
+    public async Task AddsCorrelationIdToLogsWrittenDuringRequest()
+    {
+        var sink = new CollectingSink();
+        var logger = new LoggerConfiguration().Enrich.FromLogContext().WriteTo.Sink(sink).CreateLogger();
+        var middleware = Build(_ => { logger.Information("inside request"); return Task.CompletedTask; });
+        var context = new DefaultHttpContext();
+        context.Request.Headers[HeaderName] = "log-trace-id";
+
+        await middleware.InvokeAsync(context);
+
+        var property = Assert.Single(sink.Events).Properties["CorrelationId"];
+        Assert.Equal("log-trace-id", ((ScalarValue)property).Value);
     }
 
     [Fact]
