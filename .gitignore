@@ -1,0 +1,44 @@
+# Local Claude instructions — never committed
+CLAUDE.md
+
+# .NET build output (project-level only; root bin/ holds dev scripts)
+/*/bin/
+/*/obj/
+TestResults/
+
+# .NET user-specific files
+*.user
+*.suo
+.vs/
+
+# ASP.NET Core secrets
+appsettings.*.json
+!appsettings.json
+!appsettings.Development.json
+
+# Node
+node_modules/
+dist/
+dist-ssr/
+*.local
+
+# Playwright
+playwright-report/
+test-results/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# OS
+.DS_Store
+
+# Editor
+.idea/
+*.ntvs*
+*.njsproj
+*.sw?
