@@ -1,4 +1,5 @@
 using System.Net;
+using Microsoft.AspNetCore.Hosting;
 
 namespace EventTicketing.Tests.Integration;
 
@@ -23,5 +24,17 @@ public class HealthCheckIntegrationTests(IntegrationTestFactory factory) : IClas
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Equal("Healthy", await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
+    }
+
+    [Fact]
+    public async Task Readiness_ReturnsUnhealthyWhenDatabaseUnreachable()
+    {
+        var client = factory.WithWebHostBuilder(builder =>
+                builder.UseSetting("ConnectionStrings:Default", "Host=localhost;Port=1;Database=unreachable;Timeout=1"))
+            .CreateClient();
+
+        var response = await client.GetAsync("/health/ready", TestContext.Current.CancellationToken);
+
+        Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
     }
 }
