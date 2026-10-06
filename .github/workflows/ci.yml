@@ -42,6 +42,18 @@ jobs:
       - name: Backend unit tests
         run: dotnet test --project EventTicketing.Tests -- --filter-not-trait "Category=Integration"
 
+      - uses: actions/setup-node@v4.4.0
+        with:
+          node-version-file: .tool-versions
+
+      - name: Install frontend deps
+        run: npm ci
+        working-directory: event-ticketing-ui
+
+      - name: Frontend unit tests
+        run: npm test
+        working-directory: event-ticketing-ui
+
   integration-tests:
     name: Integration Tests
     needs: lint
