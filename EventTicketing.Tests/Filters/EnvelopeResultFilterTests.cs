@@ -1,3 +1,4 @@
+using EventTicketing.Api.Contracts;
 using EventTicketing.Api.Filters;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -31,5 +32,38 @@ public class EnvelopeResultFilterTests
         });
 
         Assert.True(nextCalled);
+    }
+
+    [Fact]
+    public async Task WrapsSuccessfulObjectResultInEnvelope()
+    {
+        var context = BuildContext(new OkObjectResult("payload"));
+
+        await new EnvelopeResultFilter().OnResultExecutionAsync(context, () => Next(context));
+
+        var envelope = Assert.IsType<ApiEnvelope>(((ObjectResult)context.Result).Value);
+        Assert.Equal("payload", envelope.Data);
+        Assert.Empty(envelope.Errors);
+    }
+
+    [Fact]
+    public async Task DoesNotWrapExistingEnvelope()
+    {
+        var existing = new ApiEnvelope("payload", []);
+        var context = BuildContext(new OkObjectResult(existing));
+
+        await new EnvelopeResultFilter().OnResultExecutionAsync(context, () => Next(context));
+
+        Assert.Same(existing, ((ObjectResult)context.Result).Value);
+    }
+
+    [Fact]
+    public async Task DoesNotWrapErrorResult()
+    {
+        var context = BuildContext(new BadRequestObjectResult("bad"));
+
+        await new EnvelopeResultFilter().OnResultExecutionAsync(context, () => Next(context));
+
+        Assert.Equal("bad", ((ObjectResult)context.Result).Value);
     }
 }
