@@ -10,7 +10,9 @@ builder.Host.UseSerilog((ctx, config) => config
     .Enrich.FromLogContext()
     .WriteTo.Console(new CompactJsonFormatter()));
 
-builder.Services.AddControllers(options => options.Filters.Add<EnvelopeResultFilter>());
+builder.Services.AddControllers(options => options.Filters.Add<EnvelopeResultFilter>())
+    .ConfigureApiBehaviorOptions(options =>
+        options.InvalidModelStateResponseFactory = ValidationErrorResponse.Create);
 
 var app = builder.Build();
 
