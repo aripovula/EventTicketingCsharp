@@ -19,7 +19,8 @@ builder.Services.AddControllers(options => options.Filters.Add<EnvelopeResultFil
         options.InvalidModelStateResponseFactory = ValidationErrorResponse.Create);
 builder.Services.AddExceptionHandler<EnvelopeExceptionHandler>();
 builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("Default")));
+    options.UseNpgsql(builder.Configuration.GetConnectionString("Default"))
+        .UseSnakeCaseNamingConvention());
 builder.Services.AddHealthChecks();
 builder.Services.AddSwaggerGen(options =>
     options.SwaggerDoc("v1", new OpenApiInfo
