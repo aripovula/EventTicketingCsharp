@@ -6,10 +6,10 @@ public class CorrelationIdMiddleware(RequestDelegate next)
 
     public async Task InvokeAsync(HttpContext context)
     {
-        var correlationId = context.Request.Headers[HeaderName].FirstOrDefault();
+        var correlationId = context.Request.Headers[HeaderName].FirstOrDefault()
+            ?? Guid.NewGuid().ToString();
 
-        if (correlationId is not null)
-            context.Response.Headers[HeaderName] = correlationId;
+        context.Response.Headers[HeaderName] = correlationId;
 
         await next(context);
     }

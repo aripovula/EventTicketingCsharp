@@ -26,6 +26,46 @@ public class CorrelationIdMiddlewareTests
     }
 
     [Fact]
+    public async Task GeneratesCorrelationIdWhenHeaderAbsent()
+    {
+        var middleware = Build();
+        var context = new DefaultHttpContext();
+
+        await middleware.InvokeAsync(context);
+
+        Assert.False(string.IsNullOrEmpty(context.Response.Headers[HeaderName].ToString()));
+    }
+
+    [Fact]
+    public async Task GeneratedCorrelationIdIsValidGuid()
+    {
+        var middleware = Build();
+        var context = new DefaultHttpContext();
+
+        await middleware.InvokeAsync(context);
+
+        var id = context.Response.Headers[HeaderName].ToString();
+        Assert.True(Guid.TryParse(id, out _));
+    }
+
+    [Fact]
+    public async Task EachRequestGetsUniqueGeneratedId()
+    {
+        var middleware = Build();
+
+        var ctx1 = new DefaultHttpContext();
+        var ctx2 = new DefaultHttpContext();
+
+        await middleware.InvokeAsync(ctx1);
+        await middleware.InvokeAsync(ctx2);
+
+        var id1 = ctx1.Response.Headers[HeaderName].ToString();
+        var id2 = ctx2.Response.Headers[HeaderName].ToString();
+
+        Assert.NotEqual(id1, id2);
+    }
+
+    [Fact]
     public async Task CallsNextMiddleware()
     {
         var nextCalled = false;
