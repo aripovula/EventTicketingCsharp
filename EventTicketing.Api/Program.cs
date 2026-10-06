@@ -1,3 +1,4 @@
+using EventTicketing.Api.Middleware;
 using Serilog;
 using Serilog.Formatting.Compact;
 
@@ -12,6 +13,7 @@ builder.Services.AddControllers();
 
 var app = builder.Build();
 
+app.UseMiddleware<CorrelationIdMiddleware>();
 app.UseSerilogRequestLogging();
 
 app.MapControllers();
