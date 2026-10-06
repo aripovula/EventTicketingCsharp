@@ -15,4 +15,13 @@ public class HealthCheckIntegrationTests(IntegrationTestFactory factory) : IClas
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Equal("Healthy", await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
     }
+
+    [Fact]
+    public async Task Readiness_ReturnsHealthy()
+    {
+        var response = await _client.GetAsync("/health/ready", TestContext.Current.CancellationToken);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal("Healthy", await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
+    }
 }

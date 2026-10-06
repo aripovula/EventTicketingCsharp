@@ -1,5 +1,6 @@
 using EventTicketing.Api.Filters;
 using EventTicketing.Api.Middleware;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Serilog;
 using Serilog.Formatting.Compact;
 
@@ -24,5 +25,9 @@ app.UseSerilogRequestLogging();
 
 app.MapControllers();
 app.MapHealthChecks("/health");
+app.MapHealthChecks("/health/ready", new HealthCheckOptions
+{
+    Predicate = check => check.Tags.Contains("ready")
+});
 
 app.Run();
