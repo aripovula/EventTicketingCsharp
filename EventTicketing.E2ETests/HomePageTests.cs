@@ -1,12 +1,7 @@
-using Microsoft.Playwright.NUnit;
-
 namespace EventTicketing.E2ETests;
 
-public class HomePageTests : PageTest
+public class HomePageTests : E2ETestBase
 {
-    private static string BaseUrl =>
-        Environment.GetEnvironmentVariable("E2E_BASE_URL") ?? "http://localhost:5173";
-
     [Test]
     public async Task HomepageLoads()
     {
