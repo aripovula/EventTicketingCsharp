@@ -6,11 +6,12 @@ import { useAuth } from './useAuth'
 const jane = { userId: 2, name: 'Jane Doer', email: 'jane@example.com', role: 'user' as const }
 
 function Probe() {
-  const { user, signIn } = useAuth()
+  const { user, signIn, signOut } = useAuth()
   return (
     <>
       <p>{user ? `Signed in as ${user.name}` : 'Signed out'}</p>
       <button onClick={() => signIn(jane)}>sign in</button>
+      <button onClick={() => signOut().catch(() => {})}>sign out</button>
     </>
   )
 }
@@ -59,5 +60,30 @@ describe('AuthProvider', () => {
     vi.spyOn(console, 'error').mockImplementation(() => {})
 
     expect(() => render(<Probe />)).toThrow('useAuth must be used inside an AuthProvider')
+  })
+
+  it('signOut calls the logout endpoint and clears the user', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ data: jane, errors: [] })))
+    vi.stubGlobal('fetch', fetchMock)
+    render(<AuthProvider><Probe /></AuthProvider>)
+    await screen.findByText('Signed in as Jane Doer')
+
+    await userEvent.click(screen.getByRole('button', { name: 'sign out' }))
+
+    expect(screen.getByText('Signed out')).toBeInTheDocument()
+    expect(fetchMock).toHaveBeenCalledWith('/api/v1/auth/logout', { method: 'POST', credentials: 'include' })
+  })
+
+  it('signOut clears the user even when the logout request fails', async () => {
+    vi.stubGlobal('fetch', vi.fn((url: string) =>
+      url === '/api/v1/auth/me'
+        ? Promise.resolve(new Response(JSON.stringify({ data: jane, errors: [] })))
+        : Promise.reject(new TypeError('Failed to fetch'))))
+    render(<AuthProvider><Probe /></AuthProvider>)
+    await screen.findByText('Signed in as Jane Doer')
+
+    await userEvent.click(screen.getByRole('button', { name: 'sign out' }))
+
+    expect(await screen.findByText('Signed out')).toBeInTheDocument()
   })
 })

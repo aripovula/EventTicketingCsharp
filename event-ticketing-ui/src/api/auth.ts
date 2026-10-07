@@ -10,3 +10,7 @@ export function login(email: string, password: string) {
 export function fetchMe() {
   return fetch('/api/v1/auth/me', { credentials: 'include' })
 }
+
+export function logout() {
+  return fetch('/api/v1/auth/logout', { method: 'POST', credentials: 'include' })
+}

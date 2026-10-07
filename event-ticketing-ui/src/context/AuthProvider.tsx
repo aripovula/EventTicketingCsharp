@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react'
-import { fetchMe } from '../api/auth'
+import { fetchMe, logout } from '../api/auth'
 import { AuthContext, type User } from './authContext'
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -12,5 +12,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .catch(() => {})
   }, [])
 
-  return <AuthContext.Provider value={{ user, signIn: setUser }}>{children}</AuthContext.Provider>
+  async function signOut() {
+    try {
+      await logout()
+    } finally {
+      setUser(null)
+    }
+  }
+
+  return <AuthContext.Provider value={{ user, signIn: setUser, signOut }}>{children}</AuthContext.Provider>
 }
