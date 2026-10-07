@@ -35,6 +35,13 @@ public class AuthController(
         return Ok(user);
     }
 
+    [HttpPost("logout")]
+    public IActionResult Logout()
+    {
+        Response.Cookies.Delete(AccessTokenCookie);
+        return NoContent();
+    }
+
     [Authorize]
     [HttpGet("me")]
     public IActionResult Me()
