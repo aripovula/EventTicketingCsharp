@@ -1,6 +1,7 @@
 using EventTicketing.Api.Data;
 using EventTicketing.Api.Filters;
 using EventTicketing.Api.Middleware;
+using EventTicketing.Api.Services;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi;
@@ -21,6 +22,7 @@ builder.Services.AddExceptionHandler<EnvelopeExceptionHandler>();
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("Default"))
         .UseSnakeCaseNamingConvention());
+builder.Services.Configure<JwtOptions>(builder.Configuration.GetSection(JwtOptions.SectionName));
 builder.Services.AddHealthChecks()
     .AddDbContextCheck<AppDbContext>(name: "database", tags: ["ready"]);
 builder.Services.AddSwaggerGen(options =>

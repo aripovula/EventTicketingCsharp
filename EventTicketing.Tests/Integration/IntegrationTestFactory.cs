@@ -13,6 +13,7 @@ public class IntegrationTestFactory : WebApplicationFactory<Program>, IAsyncLife
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseSetting("ConnectionStrings:Default", _connectionString);
+        builder.UseSetting("Jwt:SigningKey", "integration-test-signing-key-at-least-32-bytes");
     }
 
     public ValueTask InitializeAsync()
