@@ -1,6 +1,6 @@
 using System.Security.Claims;
 using System.Text;
-using EventTicketing.Api.Models;
+using EventTicketing.Api.Contracts;
 using EventTicketing.Api.Services;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.JsonWebTokens;
@@ -18,13 +18,7 @@ public class TokenServiceTests
         AccessTokenMinutes = 15,
     };
 
-    private static readonly User John = new()
-    {
-        Id = 7,
-        Name = "John Doe",
-        Email = "john@example.com",
-        Role = "user",
-    };
+    private static readonly UserInfo John = new(7, "John Doe", "john@example.com", "user");
 
     private static string Generate() => new TokenService(Options.Create(Jwt)).GenerateAccessToken(John);
 

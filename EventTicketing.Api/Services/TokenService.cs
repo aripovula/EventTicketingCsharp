@@ -1,6 +1,6 @@
 using System.Security.Claims;
 using System.Text;
-using EventTicketing.Api.Models;
+using EventTicketing.Api.Contracts;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.JsonWebTokens;
 using Microsoft.IdentityModel.Tokens;
@@ -9,7 +9,7 @@ namespace EventTicketing.Api.Services;
 
 public class TokenService(IOptions<JwtOptions> options)
 {
-    public string GenerateAccessToken(User user)
+    public string GenerateAccessToken(UserInfo user)
     {
         var jwt = options.Value;
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwt.SigningKey));
@@ -22,7 +22,7 @@ public class TokenService(IOptions<JwtOptions> options)
             SigningCredentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256),
             Subject = new ClaimsIdentity(
             [
-                new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
+                new Claim(ClaimTypes.NameIdentifier, user.UserId.ToString()),
                 new Claim(ClaimTypes.Email, user.Email),
                 new Claim(ClaimTypes.Name, user.Name),
                 new Claim(ClaimTypes.Role, user.Role),
