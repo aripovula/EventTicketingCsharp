@@ -1,11 +1,17 @@
 using EventTicketing.Api.Contracts;
+using EventTicketing.Api.Data;
+using Microsoft.EntityFrameworkCore;
 
 namespace EventTicketing.Api.Services;
 
-public class AuthService
+public class AuthService(AppDbContext db)
 {
-    public Task<UserInfo?> LoginAsync(LoginRequest request, CancellationToken cancellationToken)
+    public async Task<UserInfo?> LoginAsync(LoginRequest request, CancellationToken cancellationToken)
     {
-        return Task.FromResult<UserInfo?>(null);
+        var user = await db.Users.SingleOrDefaultAsync(u => u.Email == request.Email, cancellationToken);
+        if (user is null)
+            return null;
+
+        return new UserInfo(user.Id, user.Name, user.Email, user.Role);
     }
 }
