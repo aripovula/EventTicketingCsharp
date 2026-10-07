@@ -42,3 +42,17 @@ test('a rejected sign-in shows the server error', async ({ page }) => {
   await expect(page.getByRole('alert')).toHaveText('Invalid email or password.')
   await expect(page).toHaveURL('/login')
 })
+
+test('signing in with a typed email and password goes to the home page', async ({ page }) => {
+  await page.route('**/api/v1/auth/login', route =>
+    route.fulfill({ json: { data: { userId: 9, name: 'New User', email: 'new.user@example.com', role: 'user' }, errors: [] } }),
+  )
+  await page.goto('/login')
+  const panel = page.locator('div', { has: page.getByRole('heading', { name: 'Sign in with your account' }) }).last()
+
+  await panel.getByLabel('Email').fill('new.user@example.com')
+  await panel.getByLabel('Password').fill('secret-password')
+  await panel.getByRole('button', { name: 'Sign in' }).click()
+
+  await expect(page).toHaveURL('/')
+})

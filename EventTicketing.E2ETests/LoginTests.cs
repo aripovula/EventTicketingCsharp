@@ -20,4 +20,30 @@ public class LoginTests : PageTest
         var cookie = (await Context.CookiesAsync()).Single(c => c.Name == "access_token");
         Assert.That(cookie.HttpOnly, Is.True);
     }
+
+    [Test]
+    public async Task AccountFormSignInWithSeededCredentialsGoesHome()
+    {
+        await Page.GotoAsync($"{BaseUrl}/login");
+        var panel = Page.Locator("div", new() { Has = Page.GetByRole(AriaRole.Heading, new() { Name = "Sign in with your account" }) }).Last;
+
+        await panel.GetByLabel("Email").FillAsync("jane@example.com");
+        await panel.GetByLabel("Password").FillAsync("Password");
+        await panel.GetByRole(AriaRole.Button, new() { Name = "Sign in" }).ClickAsync();
+
+        await Expect(Page).ToHaveURLAsync(new Regex("/$"));
+    }
+
+    [Test]
+    public async Task AccountFormSignInWithWrongPasswordShowsError()
+    {
+        await Page.GotoAsync($"{BaseUrl}/login");
+        var panel = Page.Locator("div", new() { Has = Page.GetByRole(AriaRole.Heading, new() { Name = "Sign in with your account" }) }).Last;
+
+        await panel.GetByLabel("Email").FillAsync("jane@example.com");
+        await panel.GetByLabel("Password").FillAsync("wrong-password");
+        await panel.GetByRole(AriaRole.Button, new() { Name = "Sign in" }).ClickAsync();
+
+        await Expect(panel.GetByRole(AriaRole.Alert)).ToHaveTextAsync("Invalid email or password.");
+    }
 }

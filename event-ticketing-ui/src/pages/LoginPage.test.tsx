@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import LoginPage from './LoginPage'
@@ -123,6 +123,33 @@ describe('LoginPage', () => {
     const busyButton = screen.getByRole('button', { name: 'Signing in…' })
     expect(busyButton).toBeDisabled()
     respond(new Response('{}', { status: 401 }))
-    await waitFor(() => expect(screen.getAllByRole('button', { name: 'Sign in' })).toHaveLength(2))
+    await waitFor(() => expect(screen.getAllByRole('button', { name: 'Sign in' })).toHaveLength(3))
+  })
+
+  it('signs in with a typed email and password', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response('{}', { status: 200 }))
+    vi.stubGlobal('fetch', fetchMock)
+    renderPage()
+    const panel = within(screen.getByRole('heading', { name: 'Sign in with your account' }).parentElement!)
+
+    await userEvent.type(panel.getByLabelText('Email'), 'new.user@example.com')
+    await userEvent.type(panel.getByLabelText('Password'), 'secret-password')
+    await userEvent.click(panel.getByRole('button', { name: 'Sign in' }))
+
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({ email: 'new.user@example.com', password: 'secret-password' })
+    expect(await screen.findByText('Home page')).toBeInTheDocument()
+  })
+
+  it('shows account sign-in errors inside the account panel', async () => {
+    const envelope = { data: null, errors: [{ code: 'invalid_credentials', detail: 'Invalid email or password.' }] }
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify(envelope), { status: 401 })))
+    renderPage()
+    const panel = within(screen.getByRole('heading', { name: 'Sign in with your account' }).parentElement!)
+
+    await userEvent.type(panel.getByLabelText('Email'), 'new.user@example.com')
+    await userEvent.type(panel.getByLabelText('Password'), 'wrong-password')
+    await userEvent.click(panel.getByRole('button', { name: 'Sign in' }))
+
+    expect(await panel.findByRole('alert')).toHaveTextContent('Invalid email or password.')
   })
 })

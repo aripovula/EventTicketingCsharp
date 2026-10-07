@@ -93,6 +93,59 @@ function DemoAccountPanel({ title, options, selectedEmail, onSelect, onSubmit, e
   )
 }
 
+interface AccountPanelProps {
+  onSubmit: (email: string, password: string) => void
+  error: string | null
+  submitting: boolean
+}
+
+function AccountSignInPanel({ onSubmit, error, submitting }: AccountPanelProps) {
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+
+  return (
+    <div className="rounded-xl border border-gray-200 bg-white p-8 flex flex-col gap-6">
+      <h2 className="text-lg font-semibold text-gray-900 m-0">Sign in with your account</h2>
+
+      <form onSubmit={e => { e.preventDefault(); onSubmit(email, password) }} className="flex flex-col gap-5">
+        <div>
+          <label htmlFor="email-account" className={labelClass}>Email</label>
+          <input
+            id="email-account"
+            type="email"
+            required
+            value={email}
+            onChange={e => setEmail(e.target.value)}
+            className={inputClass}
+          />
+        </div>
+
+        <div>
+          <label htmlFor="password-account" className={labelClass}>Password</label>
+          <input
+            id="password-account"
+            type="password"
+            required
+            value={password}
+            onChange={e => setPassword(e.target.value)}
+            className={inputClass}
+          />
+        </div>
+
+        {error && <p role="alert" className="text-sm text-red-500">{error}</p>}
+
+        <button
+          type="submit"
+          disabled={submitting}
+          className="bg-gray-800 hover:bg-gray-900 text-white px-5 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          {submitting ? 'Signing in…' : 'Sign in'}
+        </button>
+      </form>
+    </div>
+  )
+}
+
 export default function LoginPage() {
   const [userEmail, setUserEmail] = useState(USERS[0].email)
   const [adminEmail, setAdminEmail] = useState(ADMIN.email)
@@ -100,6 +153,8 @@ export default function LoginPage() {
   const [adminError, setAdminError] = useState<string | null>(null)
   const [userBusy, setUserBusy] = useState(false)
   const [adminBusy, setAdminBusy] = useState(false)
+  const [accountError, setAccountError] = useState<string | null>(null)
+  const [accountBusy, setAccountBusy] = useState(false)
   const navigate = useNavigate()
 
   async function handleLogin(
@@ -154,6 +209,11 @@ export default function LoginPage() {
           />
         </div>
       </div>
+      <AccountSignInPanel
+        onSubmit={(email, password) => handleLogin(email, password, setAccountError, setAccountBusy)}
+        error={accountError}
+        submitting={accountBusy}
+      />
     </div>
   )
 }
