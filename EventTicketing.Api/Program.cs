@@ -25,7 +25,11 @@ builder.Services.AddExceptionHandler<EnvelopeExceptionHandler>();
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("Default"))
         .UseSnakeCaseNamingConvention());
-builder.Services.Configure<JwtOptions>(builder.Configuration.GetSection(JwtOptions.SectionName));
+builder.Services.AddOptions<JwtOptions>()
+    .Bind(builder.Configuration.GetSection(JwtOptions.SectionName))
+    .Validate(jwt => Encoding.UTF8.GetByteCount(jwt.SigningKey) >= 32,
+        "Jwt:SigningKey must be at least 32 bytes (set it with dotnet user-secrets or the Jwt__SigningKey env var).")
+    .ValidateOnStart();
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
