@@ -1,5 +1,7 @@
+using System.Security.Claims;
 using EventTicketing.Api.Contracts;
 using EventTicketing.Api.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 
@@ -31,5 +33,20 @@ public class AuthController(
         });
 
         return Ok(user);
+    }
+
+    [Authorize]
+    [HttpGet("me")]
+    public IActionResult Me()
+    {
+        var id = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        var name = User.FindFirstValue(ClaimTypes.Name);
+        var email = User.FindFirstValue(ClaimTypes.Email);
+        var role = User.FindFirstValue(ClaimTypes.Role);
+
+        if (id is null || name is null || email is null || role is null)
+            return Unauthorized();
+
+        return Ok(new UserInfo(int.Parse(id), name, email, role));
     }
 }
