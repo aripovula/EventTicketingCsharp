@@ -15,10 +15,11 @@ public class IntegrationTestFactory : WebApplicationFactory<Program>, IAsyncLife
         builder.UseSetting("ConnectionStrings:Default", _connectionString);
     }
 
-    public async ValueTask InitializeAsync()
+    public ValueTask InitializeAsync()
     {
-        using var scope = Services.CreateScope();
-        await scope.ServiceProvider.GetRequiredService<AppDbContext>().Database.EnsureCreatedAsync();
+        // Starting the host applies migrations, which creates the throwaway database.
+        _ = Services;
+        return ValueTask.CompletedTask;
     }
 
     public override async ValueTask DisposeAsync()

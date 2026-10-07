@@ -33,6 +33,11 @@ builder.Services.AddSwaggerGen(options =>
 
 var app = builder.Build();
 
+using (var scope = app.Services.CreateScope())
+{
+    scope.ServiceProvider.GetRequiredService<AppDbContext>().Database.Migrate();
+}
+
 app.UseExceptionHandler(_ => { });
 app.UseMiddleware<CorrelationIdMiddleware>();
 app.UseSerilogRequestLogging();
