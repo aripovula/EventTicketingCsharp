@@ -12,6 +12,9 @@ public class AuthController(AuthService authService) : ControllerBase
     public async Task<IActionResult> Login(LoginRequest request, CancellationToken cancellationToken)
     {
         var user = await authService.LoginAsync(request, cancellationToken);
+        if (user is null)
+            return Unauthorized(new ApiEnvelope(null, [new ApiError("invalid_credentials", "Invalid email or password.")]));
+
         return Ok(user);
     }
 }
