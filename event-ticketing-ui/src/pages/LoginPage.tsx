@@ -104,13 +104,14 @@ export default function LoginPage() {
 
   async function handleLogin(
     email: string,
+    password: string,
     setError: (error: string | null) => void,
     setBusy: (busy: boolean) => void,
   ) {
     setError(null)
     setBusy(true)
     try {
-      const res = await login(email, PASSWORD)
+      const res = await login(email, password)
       if (res.ok) {
         navigate('/')
         return
@@ -134,7 +135,7 @@ export default function LoginPage() {
             options={USERS}
             selectedEmail={userEmail}
             onSelect={setUserEmail}
-            onSubmit={() => handleLogin(userEmail, setUserError, setUserBusy)}
+            onSubmit={() => handleLogin(userEmail, PASSWORD, setUserError, setUserBusy)}
             error={userError}
             submitting={userBusy}
             accent="gray"
@@ -146,7 +147,7 @@ export default function LoginPage() {
             options={[ADMIN]}
             selectedEmail={adminEmail}
             onSelect={setAdminEmail}
-            onSubmit={() => handleLogin(adminEmail, setAdminError, setAdminBusy)}
+            onSubmit={() => handleLogin(adminEmail, PASSWORD, setAdminError, setAdminBusy)}
             error={adminError}
             submitting={adminBusy}
             accent="cyan"
