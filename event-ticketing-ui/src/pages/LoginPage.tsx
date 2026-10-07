@@ -1,4 +1,6 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { login } from '../api/auth'
 
 const USERS = [
   { label: 'John Doe',     email: 'john@example.com' },
@@ -18,10 +20,11 @@ interface PanelProps {
   options: { label: string; email: string }[]
   selectedEmail: string
   onSelect: (email: string) => void
+  onSubmit: () => void
   accent: 'gray' | 'cyan'
 }
 
-function DemoAccountPanel({ title, options, selectedEmail, onSelect, accent }: PanelProps) {
+function DemoAccountPanel({ title, options, selectedEmail, onSelect, onSubmit, accent }: PanelProps) {
   const borderClass = accent === 'cyan'
     ? 'border-cyan-200 bg-cyan-50'
     : 'border-gray-200 bg-white'
@@ -33,7 +36,7 @@ function DemoAccountPanel({ title, options, selectedEmail, onSelect, accent }: P
     <div className={`rounded-xl border p-8 flex flex-col gap-6 ${borderClass}`}>
       <h2 className="text-lg font-semibold text-gray-900 m-0">{title}</h2>
 
-      <form onSubmit={e => e.preventDefault()} className="flex flex-col gap-5">
+      <form onSubmit={e => { e.preventDefault(); onSubmit() }} className="flex flex-col gap-5">
         <fieldset className="flex flex-col gap-2 border-0 p-0 m-0">
           <legend className={labelClass}>Select account</legend>
           {options.map(opt => (
@@ -88,6 +91,13 @@ function DemoAccountPanel({ title, options, selectedEmail, onSelect, accent }: P
 export default function LoginPage() {
   const [userEmail, setUserEmail] = useState(USERS[0].email)
   const [adminEmail, setAdminEmail] = useState(ADMIN.email)
+  const navigate = useNavigate()
+
+  async function handleLogin(email: string) {
+    const res = await login(email, PASSWORD)
+    if (res.ok)
+      navigate('/')
+  }
 
   return (
     <div className="flex flex-col gap-6">
@@ -99,6 +109,7 @@ export default function LoginPage() {
             options={USERS}
             selectedEmail={userEmail}
             onSelect={setUserEmail}
+            onSubmit={() => handleLogin(userEmail)}
             accent="gray"
           />
         </div>
@@ -108,6 +119,7 @@ export default function LoginPage() {
             options={[ADMIN]}
             selectedEmail={adminEmail}
             onSelect={setAdminEmail}
+            onSubmit={() => handleLogin(adminEmail)}
             accent="cyan"
           />
         </div>
