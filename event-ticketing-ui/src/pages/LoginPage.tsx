@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { login } from '../api/auth'
+import { useAuth } from '../context/useAuth'
 
 const USERS = [
   { label: 'John Doe',     email: 'john@example.com' },
@@ -156,6 +157,7 @@ export default function LoginPage() {
   const [accountError, setAccountError] = useState<string | null>(null)
   const [accountBusy, setAccountBusy] = useState(false)
   const navigate = useNavigate()
+  const { signIn } = useAuth()
 
   async function handleLogin(
     email: string,
@@ -167,11 +169,12 @@ export default function LoginPage() {
     setBusy(true)
     try {
       const res = await login(email, password)
+      const body = await res.json().catch(() => null)
       if (res.ok) {
+        signIn(body.data)
         navigate('/')
         return
       }
-      const body = await res.json().catch(() => null)
       setError(body?.errors?.[0]?.detail ?? 'Login failed. Please try again.')
     } catch {
       setError('Network error. Is the server running?')
