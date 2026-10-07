@@ -82,3 +82,26 @@ jobs:
 
       - name: Backend integration tests
         run: dotnet test --project EventTicketing.Tests -- --filter-trait "Category=Integration"
+
+  e2e-ui:
+    name: E2E Tests (UI)
+    needs: lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4.2.2
+
+      - uses: actions/setup-node@v4.4.0
+        with:
+          node-version-file: .tool-versions
+
+      - name: Install frontend deps
+        run: npm ci
+        working-directory: event-ticketing-ui
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+        working-directory: event-ticketing-ui
+
+      - name: UI E2E tests
+        run: npm run test:e2e
+        working-directory: event-ticketing-ui
