@@ -1,4 +1,4 @@
-import { login } from './auth'
+import { fetchMe, login } from './auth'
 
 describe('login', () => {
   afterEach(() => vi.unstubAllGlobals())
@@ -15,5 +15,18 @@ describe('login', () => {
       credentials: 'include',
       body: JSON.stringify({ email: 'john@example.com', password: 'Password' }),
     })
+  })
+})
+
+describe('fetchMe', () => {
+  afterEach(() => vi.unstubAllGlobals())
+
+  it('gets the current user with cookies included', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response('{}'))
+    vi.stubGlobal('fetch', fetchMock)
+
+    await fetchMe()
+
+    expect(fetchMock).toHaveBeenCalledWith('/api/v1/auth/me', { credentials: 'include' })
   })
 })

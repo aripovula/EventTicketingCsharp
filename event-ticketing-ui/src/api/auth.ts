@@ -6,3 +6,7 @@ export function login(email: string, password: string) {
     body: JSON.stringify({ email, password }),
   })
 }
+
+export function fetchMe() {
+  return fetch('/api/v1/auth/me', { credentials: 'include' })
+}
