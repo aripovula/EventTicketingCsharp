@@ -27,3 +27,18 @@ test('signing in as a demo user goes to the home page', async ({ page }) => {
 
   await expect(page).toHaveURL('/')
 })
+
+test('a rejected sign-in shows the server error', async ({ page }) => {
+  await page.route('**/api/v1/auth/login', route =>
+    route.fulfill({
+      status: 401,
+      json: { data: null, errors: [{ code: 'invalid_credentials', detail: 'Invalid email or password.' }] },
+    }),
+  )
+  await page.goto('/login')
+
+  await page.getByRole('button', { name: 'Sign in' }).first().click()
+
+  await expect(page.getByRole('alert')).toHaveText('Invalid email or password.')
+  await expect(page).toHaveURL('/login')
+})

@@ -84,4 +84,32 @@ describe('LoginPage', () => {
     expect(screen.queryByText('Home page')).not.toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Sign in' })).toBeInTheDocument()
   })
+
+  it('shows the error detail from the response envelope', async () => {
+    const envelope = { data: null, errors: [{ code: 'invalid_credentials', detail: 'Invalid email or password.' }] }
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify(envelope), { status: 401 })))
+    renderPage()
+
+    await userEvent.click(screen.getAllByRole('button', { name: 'Sign in' })[0])
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Invalid email or password.')
+  })
+
+  it('falls back to a generic message when the body has no error detail', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('oops', { status: 500 })))
+    renderPage()
+
+    await userEvent.click(screen.getAllByRole('button', { name: 'Sign in' })[0])
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Login failed. Please try again.')
+  })
+
+  it('shows a network error when the request fails', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('Failed to fetch')))
+    renderPage()
+
+    await userEvent.click(screen.getAllByRole('button', { name: 'Sign in' })[1])
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Network error. Is the server running?')
+  })
 })

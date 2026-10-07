@@ -21,10 +21,11 @@ interface PanelProps {
   selectedEmail: string
   onSelect: (email: string) => void
   onSubmit: () => void
+  error: string | null
   accent: 'gray' | 'cyan'
 }
 
-function DemoAccountPanel({ title, options, selectedEmail, onSelect, onSubmit, accent }: PanelProps) {
+function DemoAccountPanel({ title, options, selectedEmail, onSelect, onSubmit, error, accent }: PanelProps) {
   const borderClass = accent === 'cyan'
     ? 'border-cyan-200 bg-cyan-50'
     : 'border-gray-200 bg-white'
@@ -77,6 +78,8 @@ function DemoAccountPanel({ title, options, selectedEmail, onSelect, onSubmit, a
           />
         </div>
 
+        {error && <p role="alert" className="text-sm text-red-500">{error}</p>}
+
         <button
           type="submit"
           className={`${buttonClass} px-5 py-2 rounded-lg text-sm font-medium transition-colors`}
@@ -91,12 +94,23 @@ function DemoAccountPanel({ title, options, selectedEmail, onSelect, onSubmit, a
 export default function LoginPage() {
   const [userEmail, setUserEmail] = useState(USERS[0].email)
   const [adminEmail, setAdminEmail] = useState(ADMIN.email)
+  const [userError, setUserError] = useState<string | null>(null)
+  const [adminError, setAdminError] = useState<string | null>(null)
   const navigate = useNavigate()
 
-  async function handleLogin(email: string) {
-    const res = await login(email, PASSWORD)
-    if (res.ok)
-      navigate('/')
+  async function handleLogin(email: string, setError: (error: string | null) => void) {
+    setError(null)
+    try {
+      const res = await login(email, PASSWORD)
+      if (res.ok) {
+        navigate('/')
+        return
+      }
+      const body = await res.json().catch(() => null)
+      setError(body?.errors?.[0]?.detail ?? 'Login failed. Please try again.')
+    } catch {
+      setError('Network error. Is the server running?')
+    }
   }
 
   return (
@@ -109,7 +123,8 @@ export default function LoginPage() {
             options={USERS}
             selectedEmail={userEmail}
             onSelect={setUserEmail}
-            onSubmit={() => handleLogin(userEmail)}
+            onSubmit={() => handleLogin(userEmail, setUserError)}
+            error={userError}
             accent="gray"
           />
         </div>
@@ -119,7 +134,8 @@ export default function LoginPage() {
             options={[ADMIN]}
             selectedEmail={adminEmail}
             onSelect={setAdminEmail}
-            onSubmit={() => handleLogin(adminEmail)}
+            onSubmit={() => handleLogin(adminEmail, setAdminError)}
+            error={adminError}
             accent="cyan"
           />
         </div>
