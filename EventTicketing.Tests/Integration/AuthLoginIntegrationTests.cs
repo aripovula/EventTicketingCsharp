@@ -44,4 +44,28 @@ public class AuthLoginIntegrationTests(IntegrationTestFactory factory) : IClassF
         var body = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
         Assert.Contains("\"code\":\"invalid_credentials\"", body);
     }
+
+    [Fact]
+    public async Task Login_WithValidCredentials_SetsHttpOnlyStrictAccessTokenCookie()
+    {
+        var response = await _client.PostAsJsonAsync(
+            "/api/v1/auth/login",
+            new { email = "john@example.com", password = "Password" },
+            TestContext.Current.CancellationToken);
+
+        var cookie = Assert.Single(response.Headers.GetValues("Set-Cookie"), c => c.StartsWith("access_token="));
+        Assert.Contains("httponly", cookie);
+        Assert.Contains("samesite=strict", cookie);
+    }
+
+    [Fact]
+    public async Task Login_WithBadCredentials_DoesNotSetCookie()
+    {
+        var response = await _client.PostAsJsonAsync(
+            "/api/v1/auth/login",
+            new { email = "john@example.com", password = "wrong-password" },
+            TestContext.Current.CancellationToken);
+
+        Assert.False(response.Headers.Contains("Set-Cookie"));
+    }
 }
