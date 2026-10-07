@@ -30,4 +30,13 @@ public class AuthServiceTests(IntegrationTestFactory factory) : IClassFixture<In
 
         Assert.Null(user);
     }
+
+    [Fact]
+    public async Task LoginAsync_ReturnsNullForWrongPassword()
+    {
+        var user = await CreateService().LoginAsync(
+            new LoginRequest("john@example.com", "wrong-password"), TestContext.Current.CancellationToken);
+
+        Assert.Null(user);
+    }
 }
