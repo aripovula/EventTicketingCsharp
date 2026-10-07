@@ -22,10 +22,11 @@ interface PanelProps {
   onSelect: (email: string) => void
   onSubmit: () => void
   error: string | null
+  submitting: boolean
   accent: 'gray' | 'cyan'
 }
 
-function DemoAccountPanel({ title, options, selectedEmail, onSelect, onSubmit, error, accent }: PanelProps) {
+function DemoAccountPanel({ title, options, selectedEmail, onSelect, onSubmit, error, submitting, accent }: PanelProps) {
   const borderClass = accent === 'cyan'
     ? 'border-cyan-200 bg-cyan-50'
     : 'border-gray-200 bg-white'
@@ -82,9 +83,10 @@ function DemoAccountPanel({ title, options, selectedEmail, onSelect, onSubmit, e
 
         <button
           type="submit"
-          className={`${buttonClass} px-5 py-2 rounded-lg text-sm font-medium transition-colors`}
+          disabled={submitting}
+          className={`${buttonClass} px-5 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed`}
         >
-          Sign in
+          {submitting ? 'Signing in…' : 'Sign in'}
         </button>
       </form>
     </div>
@@ -96,10 +98,17 @@ export default function LoginPage() {
   const [adminEmail, setAdminEmail] = useState(ADMIN.email)
   const [userError, setUserError] = useState<string | null>(null)
   const [adminError, setAdminError] = useState<string | null>(null)
+  const [userBusy, setUserBusy] = useState(false)
+  const [adminBusy, setAdminBusy] = useState(false)
   const navigate = useNavigate()
 
-  async function handleLogin(email: string, setError: (error: string | null) => void) {
+  async function handleLogin(
+    email: string,
+    setError: (error: string | null) => void,
+    setBusy: (busy: boolean) => void,
+  ) {
     setError(null)
+    setBusy(true)
     try {
       const res = await login(email, PASSWORD)
       if (res.ok) {
@@ -110,6 +119,8 @@ export default function LoginPage() {
       setError(body?.errors?.[0]?.detail ?? 'Login failed. Please try again.')
     } catch {
       setError('Network error. Is the server running?')
+    } finally {
+      setBusy(false)
     }
   }
 
@@ -123,8 +134,9 @@ export default function LoginPage() {
             options={USERS}
             selectedEmail={userEmail}
             onSelect={setUserEmail}
-            onSubmit={() => handleLogin(userEmail, setUserError)}
+            onSubmit={() => handleLogin(userEmail, setUserError, setUserBusy)}
             error={userError}
+            submitting={userBusy}
             accent="gray"
           />
         </div>
@@ -134,8 +146,9 @@ export default function LoginPage() {
             options={[ADMIN]}
             selectedEmail={adminEmail}
             onSelect={setAdminEmail}
-            onSubmit={() => handleLogin(adminEmail, setAdminError)}
+            onSubmit={() => handleLogin(adminEmail, setAdminError, setAdminBusy)}
             error={adminError}
+            submitting={adminBusy}
             accent="cyan"
           />
         </div>

@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import LoginPage from './LoginPage'
@@ -111,5 +111,18 @@ describe('LoginPage', () => {
     await userEvent.click(screen.getAllByRole('button', { name: 'Sign in' })[1])
 
     expect(await screen.findByRole('alert')).toHaveTextContent('Network error. Is the server running?')
+  })
+
+  it('disables the button and shows progress while signing in', async () => {
+    let respond: (response: Response) => void = () => {}
+    vi.stubGlobal('fetch', vi.fn().mockReturnValue(new Promise<Response>(resolve => { respond = resolve })))
+    renderPage()
+
+    await userEvent.click(screen.getAllByRole('button', { name: 'Sign in' })[0])
+
+    const busyButton = screen.getByRole('button', { name: 'Signing in…' })
+    expect(busyButton).toBeDisabled()
+    respond(new Response('{}', { status: 401 }))
+    await waitFor(() => expect(screen.getAllByRole('button', { name: 'Sign in' })).toHaveLength(2))
   })
 })
