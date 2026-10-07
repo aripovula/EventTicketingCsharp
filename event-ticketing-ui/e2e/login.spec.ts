@@ -6,5 +6,13 @@ test('Sign in link opens the login page', async ({ page }) => {
   await page.getByRole('link', { name: 'Sign in' }).click()
 
   await expect(page).toHaveURL('/login')
-  await expect(page.getByRole('heading', { name: 'Sign in' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Sign in', exact: true })).toBeVisible()
+})
+
+test('login page offers the demo-account panels', async ({ page }) => {
+  await page.goto('/login')
+
+  await expect(page.getByRole('heading', { name: 'Sign in as a regular user' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Sign in as admin' })).toBeVisible()
+  await expect(page.getByRole('radio', { name: /john doe/i })).toBeChecked()
 })
