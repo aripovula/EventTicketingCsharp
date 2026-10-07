@@ -2,7 +2,7 @@ using System.ComponentModel.DataAnnotations;
 
 namespace EventTicketing.Api.Models;
 
-public class User
+public class User : ITimestamped
 {
     public int Id { get; set; }
 
