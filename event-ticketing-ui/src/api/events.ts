@@ -14,3 +14,7 @@ export function fetchEvents({ q, sort, after }: EventListParams = {}) {
   const query = params.toString()
   return fetch(query ? `/api/v1/events?${query}` : '/api/v1/events')
 }
+
+export function fetchEvent(id: number) {
+  return fetch(`/api/v1/events/${id}`)
+}

@@ -1,4 +1,4 @@
-import { fetchEvents } from './events'
+import { fetchEvent, fetchEvents } from './events'
 
 describe('fetchEvents', () => {
   afterEach(() => vi.unstubAllGlobals())
@@ -31,5 +31,18 @@ describe('fetchEvents', () => {
     await fetchEvents({ q: '', sort: 'date', after: null })
 
     expect(fetchMock).toHaveBeenCalledWith('/api/v1/events?sort=date')
+  })
+})
+
+describe('fetchEvent', () => {
+  afterEach(() => vi.unstubAllGlobals())
+
+  it('gets a single event by id', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response('{}'))
+    vi.stubGlobal('fetch', fetchMock)
+
+    await fetchEvent(7)
+
+    expect(fetchMock).toHaveBeenCalledWith('/api/v1/events/7')
   })
 })

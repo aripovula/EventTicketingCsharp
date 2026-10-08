@@ -17,4 +17,11 @@ public class EventsController(EventsService eventsService) : ControllerBase
 
         return Ok(new ApiEnvelope(page.Items, [], new { nextCursor = page.NextCursor }));
     }
+
+    [HttpGet("{id:int}")]
+    public async Task<IActionResult> Get(int id, CancellationToken cancellationToken)
+    {
+        var ev = await eventsService.GetAsync(id, cancellationToken);
+        return Ok(ev);
+    }
 }

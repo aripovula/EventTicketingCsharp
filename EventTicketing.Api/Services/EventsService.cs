@@ -43,6 +43,11 @@ public class EventsService(AppDbContext db)
         return new EventPage(items, nextCursor);
     }
 
+    public Task<EventResponse?> GetAsync(int id, CancellationToken cancellationToken)
+    {
+        return Task.FromResult<EventResponse?>(null);
+    }
+
     private static IQueryable<Event> Ordered(IQueryable<Event> events, string sort) => sort switch
     {
         "date" => events.OrderBy(e => e.StartTime).ThenBy(e => e.Id),
