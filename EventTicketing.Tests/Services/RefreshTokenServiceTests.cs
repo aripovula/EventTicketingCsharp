@@ -142,4 +142,30 @@ public class RefreshTokenServiceTests(IntegrationTestFactory factory) : IClassFi
         Assert.Equal(old.FamilyId, replacement.FamilyId);
         Assert.Null(replacement.RevokedAt);
     }
+
+    [Fact]
+    public async Task RotateAsync_ReusingARotatedTokenRevokesTheWholeFamily()
+    {
+        var rawToken = await IssueForJohnAsync();
+        var rotation = await CreateService(CreateDb()).RotateAsync(rawToken, TestContext.Current.CancellationToken);
+
+        var reuse = await CreateService(CreateDb()).RotateAsync(rawToken, TestContext.Current.CancellationToken);
+        var afterReuse = await CreateService(CreateDb()).RotateAsync(rotation!.Token, TestContext.Current.CancellationToken);
+
+        Assert.Null(reuse);
+        Assert.Null(afterReuse);
+    }
+
+    [Fact]
+    public async Task RotateAsync_ReuseLeavesOtherFamiliesUntouched()
+    {
+        var stolen = await IssueForJohnAsync();
+        var otherSession = await IssueForJohnAsync();
+        await CreateService(CreateDb()).RotateAsync(stolen, TestContext.Current.CancellationToken);
+
+        await CreateService(CreateDb()).RotateAsync(stolen, TestContext.Current.CancellationToken);
+        var other = await CreateService(CreateDb()).RotateAsync(otherSession, TestContext.Current.CancellationToken);
+
+        Assert.NotNull(other);
+    }
 }

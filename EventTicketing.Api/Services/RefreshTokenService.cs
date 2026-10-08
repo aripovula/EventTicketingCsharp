@@ -26,8 +26,18 @@ public class RefreshTokenService(AppDbContext db, IOptions<JwtOptions> options)
             .Include(t => t.User)
             .SingleOrDefaultAsync(t => t.TokenHash == tokenHash, cancellationToken);
 
-        if (token is null || token.RevokedAt is not null || token.ExpiresAt <= DateTime.UtcNow)
+        if (token is null || token.ExpiresAt <= DateTime.UtcNow)
             return null;
+
+        // A revoked token being presented again means it was stolen or replayed:
+        // revoke the whole family so neither the thief nor the victim can continue.
+        if (token.RevokedAt is not null)
+        {
+            await db.RefreshTokens
+                .Where(t => t.FamilyId == token.FamilyId && t.RevokedAt == null)
+                .ExecuteUpdateAsync(s => s.SetProperty(t => t.RevokedAt, DateTime.UtcNow), cancellationToken);
+            return null;
+        }
 
         token.RevokedAt = DateTime.UtcNow;
         var (next, nextRawToken) = AddToken(token.UserId, token.FamilyId);
