@@ -24,4 +24,17 @@ public class RegisterTests : E2ETestBase
 
         await Expect(Page).ToHaveURLAsync(new Regex("/$"));
     }
+
+    [Test]
+    public async Task RegisteringATakenEmailShowsTheErrorUnderTheEmailField()
+    {
+        await Page.GotoAsync($"{BaseUrl}/register");
+        await Page.GetByLabel("Name").FillAsync("Another John");
+        await Page.GetByLabel("Email").FillAsync("john@example.com");
+        await Page.GetByLabel("Password").FillAsync("e2e-password");
+        await Page.GetByRole(AriaRole.Button, new() { Name = "Create account" }).ClickAsync();
+
+        await Expect(Page.GetByText("An account with this email already exists.")).ToBeVisibleAsync();
+        await Expect(Page.GetByLabel("Email")).ToHaveAttributeAsync("aria-invalid", "true");
+    }
 }
