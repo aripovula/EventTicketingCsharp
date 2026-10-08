@@ -23,6 +23,9 @@ public class AuthService(AppDbContext db)
 
     public async Task<UserInfo?> RegisterAsync(RegisterRequest request, CancellationToken cancellationToken)
     {
+        if (await db.Users.AnyAsync(u => u.Email == request.Email, cancellationToken))
+            return null;
+
         var user = new User { Name = request.Name, Email = request.Email, Role = "user" };
         user.PasswordHash = new PasswordHasher<User>().HashPassword(user, request.Password);
 

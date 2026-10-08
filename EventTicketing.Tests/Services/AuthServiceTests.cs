@@ -53,4 +53,13 @@ public class AuthServiceTests(IntegrationTestFactory factory) : IClassFixture<In
         Assert.Equal("user", registered.Role);
         Assert.Equal(registered, signedIn);
     }
+
+    [Fact]
+    public async Task RegisterAsync_ReturnsNullForAnAlreadyRegisteredEmail()
+    {
+        var registered = await CreateService().RegisterAsync(
+            new RegisterRequest("Another John", "john@example.com", "long-enough-password"), TestContext.Current.CancellationToken);
+
+        Assert.Null(registered);
+    }
 }
