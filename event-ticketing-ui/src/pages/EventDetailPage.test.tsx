@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import type { EventItem } from '../api/events'
 import EventDetailPage from './EventDetailPage'
@@ -59,6 +59,7 @@ describe('EventDetailPage', () => {
     renderPage()
 
     await screen.findByRole('heading', { name: 'Jazz Night' })
-    expect(document.title).toBe('Jazz Night | Ticketing')
+    // The title is set in an effect, which can run just after the heading renders.
+    await waitFor(() => expect(document.title).toBe('Jazz Night | Ticketing'))
   })
 })
