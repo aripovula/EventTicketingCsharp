@@ -51,7 +51,10 @@ public class AuthController(
         return StatusCode(StatusCodes.Status201Created, user);
     }
 
+    /// <summary>Rotates the refresh token cookie and issues a new access token cookie. Reusing a rotated token revokes its whole family.</summary>
     [HttpPost("refresh")]
+    [ProducesResponseType(typeof(ApiEnvelope<UserInfo>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> Refresh(CancellationToken cancellationToken)
     {
         var rawToken = Request.Cookies[RefreshTokenCookie];
