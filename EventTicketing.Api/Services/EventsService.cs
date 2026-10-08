@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Linq.Expressions;
 using EventTicketing.Api.Contracts;
 using EventTicketing.Api.Data;
 using EventTicketing.Api.Models;
@@ -8,6 +9,11 @@ namespace EventTicketing.Api.Services;
 
 public class EventsService(AppDbContext db)
 {
+    // An expression (not a method) so EF Core translates it into the SELECT list.
+    private static readonly Expression<Func<Event, EventResponse>> ToResponse = e => new EventResponse(
+        e.Id, e.Title, e.Description, e.StartTime, e.EndTime, e.Venue, e.EventType,
+        e.TotalSeats, e.AvailableSeats, e.PriceCents, e.ImageUrl);
+
     /// <returns>The page, or null when the cursor is malformed.</returns>
     public async Task<EventPage?> ListAsync(EventListQuery query, CancellationToken cancellationToken)
     {
@@ -31,9 +37,7 @@ public class EventsService(AppDbContext db)
         // One extra row tells us whether another page exists.
         var rows = await Ordered(events, query.Sort)
             .Take(query.Limit + 1)
-            .Select(e => new EventResponse(
-                e.Id, e.Title, e.Description, e.StartTime, e.EndTime, e.Venue, e.EventType,
-                e.TotalSeats, e.AvailableSeats, e.PriceCents, e.ImageUrl))
+            .Select(ToResponse)
             .ToListAsync(cancellationToken);
 
         var items = rows.Take(query.Limit).ToList();
