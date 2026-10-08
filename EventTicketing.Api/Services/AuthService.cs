@@ -3,6 +3,7 @@ using EventTicketing.Api.Data;
 using EventTicketing.Api.Models;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 
 namespace EventTicketing.Api.Services;
 
@@ -30,7 +31,15 @@ public class AuthService(AppDbContext db)
         user.PasswordHash = new PasswordHasher<User>().HashPassword(user, request.Password);
 
         db.Users.Add(user);
-        await db.SaveChangesAsync(cancellationToken);
+        try
+        {
+            await db.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException e) when (e.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation })
+        {
+            // A concurrent registration took the email between the check above and this insert.
+            return null;
+        }
 
         return new UserInfo(user.Id, user.Name, user.Email, user.Role);
     }

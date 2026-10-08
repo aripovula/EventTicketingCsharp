@@ -56,4 +56,19 @@ public class AuthRegisterIntegrationTests(IntegrationTestFactory factory) : ICla
         Assert.Equal("email_taken", error.GetProperty("code").GetString());
         Assert.Equal("email", error.GetProperty("field").GetString());
     }
+
+    [Fact]
+    public async Task Register_ConcurrentlyWithTheSameEmail_CreatesExactlyOneAccount()
+    {
+        var attempts = Enumerable.Range(0, 10).Select(i =>
+            factory.CreateClient().PostAsJsonAsync(
+                "/api/v1/auth/register",
+                new { name = $"Racer {i}", email = "race@example.com", password = "long-enough" },
+                TestContext.Current.CancellationToken));
+
+        var statuses = (await Task.WhenAll(attempts)).Select(r => r.StatusCode).ToList();
+
+        Assert.Equal(1, statuses.Count(s => s == HttpStatusCode.Created));
+        Assert.Equal(9, statuses.Count(s => s == HttpStatusCode.Conflict));
+    }
 }
