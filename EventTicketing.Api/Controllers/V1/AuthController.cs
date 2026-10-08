@@ -41,6 +41,8 @@ public class AuthController(
         if (rotation is null)
             return Unauthorized();
 
+        AppendAccessTokenCookie(rotation.User);
+        AppendRefreshTokenCookie(rotation.Token);
         return Ok(rotation.User);
     }
 
