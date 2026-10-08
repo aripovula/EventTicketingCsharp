@@ -117,4 +117,33 @@ public class EventsListIntegrationTests(IntegrationTestFactory factory) : IClass
         Assert.Equal("invalid_cursor", error.GetProperty("code").GetString());
         Assert.Equal("after", error.GetProperty("field").GetString());
     }
+
+    [Fact]
+    public async Task List_SearchMatchesTitlesCaseInsensitively()
+    {
+        var titles = await AllTitlesAsync("q=JAZZ");
+
+        Assert.Contains("Jazz Night", titles);
+        Assert.All(titles, t => Assert.Contains("jazz", t, StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public async Task List_SearchAndPagingWorkTogether()
+    {
+        var titles = await AllTitlesAsync("q=e&limit=3");
+
+        Assert.Equal(titles.Distinct().Count(), titles.Count);
+        Assert.All(titles, t => Assert.Contains("e", t, StringComparison.OrdinalIgnoreCase));
+        Assert.True(titles.Count > 3);
+    }
+
+    [Theory]
+    [InlineData("%25")]
+    [InlineData("_")]
+    public async Task List_SearchTreatsLikeWildcardsLiterally(string q)
+    {
+        var titles = await AllTitlesAsync($"q={q}");
+
+        Assert.Empty(titles);
+    }
 }

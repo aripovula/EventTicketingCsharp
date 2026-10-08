@@ -10,6 +10,12 @@ public class EventsService(AppDbContext db)
     public async Task<EventPage?> ListAsync(EventListQuery query, CancellationToken cancellationToken)
     {
         var events = db.Events.AsQueryable();
+        if (!string.IsNullOrWhiteSpace(query.Q))
+        {
+            var pattern = "%" + EscapeLike(query.Q.Trim()) + "%";
+            events = events.Where(e => EF.Functions.ILike(e.Title, pattern));
+        }
+
         if (query.After is not null)
         {
             if (!EventCursor.TryDecode(query.After, out var key, out var id))
@@ -30,4 +36,8 @@ public class EventsService(AppDbContext db)
         var nextCursor = rows.Count > query.Limit ? EventCursor.Encode(items[^1].Title, items[^1].Id) : null;
         return new EventPage(items, nextCursor);
     }
+
+    // Treat the search text literally: LIKE wildcards in user input must not act as wildcards.
+    private static string EscapeLike(string text) =>
+        text.Replace(@"\", @"\\").Replace("%", @"\%").Replace("_", @"\_");
 }
