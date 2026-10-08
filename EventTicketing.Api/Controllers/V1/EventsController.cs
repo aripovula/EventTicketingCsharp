@@ -8,7 +8,10 @@ namespace EventTicketing.Api.Controllers.V1;
 [Route("api/v1/events")]
 public class EventsController(EventsService eventsService) : ControllerBase
 {
+    /// <summary>Lists events with title search, sorting and keyset cursor pagination (meta.nextCursor).</summary>
     [HttpGet]
+    [ProducesResponseType(typeof(ApiEnvelope<IReadOnlyList<EventResponse>>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiEnvelope<object>), StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> List([FromQuery] EventListQuery query, CancellationToken cancellationToken)
     {
         var page = await eventsService.ListAsync(query, cancellationToken);

@@ -103,4 +103,15 @@ public class SwaggerIntegrationTests(IntegrationTestFactory factory) : IClassFix
         Assert.Equal(["200", "401"], StatusCodes(op));
         Assert.Contains("UserInfo", SuccessSchemaRef(op, "200"));
     }
+
+    [Fact]
+    public async Task EventsList_DocumentsItsResponsesAndQueryParameters()
+    {
+        var op = await OperationAsync("/api/v1/events", "get");
+
+        Assert.Equal(["200", "400"], StatusCodes(op));
+        Assert.Contains("EventResponse", SuccessSchemaRef(op, "200"));
+        var parameters = op.GetProperty("parameters").EnumerateArray().Select(p => p.GetProperty("name").GetString()).ToArray();
+        Assert.Equal(["q", "sort", "after", "limit"], parameters);
+    }
 }
