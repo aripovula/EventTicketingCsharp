@@ -20,6 +20,7 @@ public class AuthController(
     public const string RefreshTokenCookie = "refresh_token";
     public const string RefreshTokenPath = "/api/v1/auth";
 
+    /// <summary>Signs in with email and password and sets the HttpOnly access and refresh token cookies.</summary>
     [HttpPost("login")]
     public async Task<IActionResult> Login(LoginRequest request, CancellationToken cancellationToken)
     {

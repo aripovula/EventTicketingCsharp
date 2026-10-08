@@ -25,4 +25,13 @@ public class SwaggerIntegrationTests(IntegrationTestFactory factory) : IClassFix
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
+
+    [Fact]
+    public async Task SwaggerJson_IncludesXmlDocSummaries()
+    {
+        var json = await _client.GetStringAsync("/swagger/v1/swagger.json", TestContext.Current.CancellationToken);
+
+        var login = JsonDocument.Parse(json).RootElement.GetProperty("paths").GetProperty("/api/v1/auth/login").GetProperty("post");
+        Assert.StartsWith("Signs in with email and password", login.GetProperty("summary").GetString());
+    }
 }
