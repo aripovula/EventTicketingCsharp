@@ -1,3 +1,17 @@
+export interface EventItem {
+  id: number
+  title: string
+  description: string
+  startTime: string
+  endTime: string
+  venue: string
+  eventType: string
+  totalSeats: number
+  availableSeats: number
+  priceCents: number
+  imageUrl?: string | null
+}
+
 export type EventSort = 'name' | 'date' | 'price'
 
 export interface EventListParams {

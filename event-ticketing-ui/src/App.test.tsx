@@ -62,9 +62,9 @@ describe('App', () => {
     expect(screen.getByRole('link', { name: 'Sign in' })).toBeInTheDocument()
   })
 
-  it('shows the events list on the home page', () => {
+  it('shows the events list on the home page', async () => {
     renderApp()
 
-    expect(screen.getByRole('list', { name: 'events' })).toBeInTheDocument()
+    expect(await screen.findByRole('list', { name: 'events' })).toBeInTheDocument()
   })
 })
