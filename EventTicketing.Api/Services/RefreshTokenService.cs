@@ -13,17 +13,7 @@ public class RefreshTokenService(AppDbContext db, IOptions<JwtOptions> options)
 {
     public async Task<string> IssueAsync(int userId, Guid familyId, CancellationToken cancellationToken)
     {
-        var rawToken = Base64Url.EncodeToString(RandomNumberGenerator.GetBytes(64));
-        var now = DateTime.UtcNow;
-
-        db.RefreshTokens.Add(new RefreshToken
-        {
-            UserId = userId,
-            TokenHash = Hash(rawToken),
-            FamilyId = familyId,
-            CreatedAt = now,
-            ExpiresAt = now.AddDays(options.Value.RefreshTokenDays),
-        });
+        var (_, rawToken) = AddToken(userId, familyId);
         await db.SaveChangesAsync(cancellationToken);
 
         return rawToken;
@@ -41,6 +31,23 @@ public class RefreshTokenService(AppDbContext db, IOptions<JwtOptions> options)
 
         var user = token.User;
         return new RefreshTokenRotation(new UserInfo(user.Id, user.Name, user.Email, user.Role), rawToken);
+    }
+
+    private (RefreshToken Token, string RawToken) AddToken(int userId, Guid familyId)
+    {
+        var rawToken = Base64Url.EncodeToString(RandomNumberGenerator.GetBytes(64));
+        var now = DateTime.UtcNow;
+        var token = new RefreshToken
+        {
+            UserId = userId,
+            TokenHash = Hash(rawToken),
+            FamilyId = familyId,
+            CreatedAt = now,
+            ExpiresAt = now.AddDays(options.Value.RefreshTokenDays),
+        };
+
+        db.RefreshTokens.Add(token);
+        return (token, rawToken);
     }
 
     public static string Hash(string rawToken) =>
