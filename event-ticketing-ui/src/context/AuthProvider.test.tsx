@@ -86,4 +86,32 @@ describe('AuthProvider', () => {
 
     expect(await screen.findByText('Signed out')).toBeInTheDocument()
   })
+
+  it('refreshes the session once when /me returns 401, then retries /me', async () => {
+    let meCalls = 0
+    const fetchMock = vi.fn((url: string) => {
+      if (url === '/api/v1/auth/me')
+        return Promise.resolve(++meCalls === 1
+          ? new Response(null, { status: 401 })
+          : new Response(JSON.stringify({ data: jane, errors: [] })))
+      return Promise.resolve(new Response(JSON.stringify({ data: jane, errors: [] })))
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(<AuthProvider><Probe /></AuthProvider>)
+
+    expect(await screen.findByText('Signed in as Jane Doer')).toBeInTheDocument()
+    expect(fetchMock).toHaveBeenCalledWith('/api/v1/auth/refresh', { method: 'POST', credentials: 'include' })
+  })
+
+  it('stays signed out when the refresh also fails', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(null, { status: 401 }))
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(<AuthProvider><Probe /></AuthProvider>)
+    await act(async () => {})
+
+    expect(screen.getByText('Signed out')).toBeInTheDocument()
+    expect(fetchMock.mock.calls.filter(([url]) => url === '/api/v1/auth/me')).toHaveLength(1)
+  })
 })

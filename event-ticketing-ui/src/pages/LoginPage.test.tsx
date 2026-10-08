@@ -25,12 +25,12 @@ function renderPage() {
   )
 }
 
-// /me (called by AuthProvider on mount) answers 401; login answers with the given response.
+// /me and /refresh (called by AuthProvider on mount) answer 401; login answers with the given response.
 function stubFetch(loginResponse: Response | Promise<Response> | Error) {
   const loginMock = vi.fn<(url: string, init?: RequestInit) => Promise<Response>>(() =>
     loginResponse instanceof Error ? Promise.reject(loginResponse) : Promise.resolve(loginResponse))
   vi.stubGlobal('fetch', vi.fn((url: string, init?: RequestInit) =>
-    url === '/api/v1/auth/me' ? Promise.resolve(new Response(null, { status: 401 })) : loginMock(url, init)))
+    url === '/api/v1/auth/login' ? loginMock(url, init) : Promise.resolve(new Response(null, { status: 401 }))))
   return loginMock
 }
 
