@@ -27,23 +27,8 @@ public class AuthController(
         if (user is null)
             return Unauthorized(new ApiEnvelope(null, [new ApiError("invalid_credentials", "Invalid email or password.")]));
 
-        Response.Cookies.Append(AccessTokenCookie, tokenService.GenerateAccessToken(user), new CookieOptions
-        {
-            HttpOnly = true,
-            Secure = !env.IsDevelopment(),
-            SameSite = SameSiteMode.Strict,
-            Expires = DateTimeOffset.UtcNow.AddMinutes(jwtOptions.Value.AccessTokenMinutes),
-        });
-
-        var refreshToken = await refreshTokens.IssueAsync(user.UserId, Guid.NewGuid(), cancellationToken);
-        Response.Cookies.Append(RefreshTokenCookie, refreshToken, new CookieOptions
-        {
-            HttpOnly = true,
-            Secure = !env.IsDevelopment(),
-            SameSite = SameSiteMode.Strict,
-            Path = RefreshTokenPath,
-            Expires = DateTimeOffset.UtcNow.AddDays(jwtOptions.Value.RefreshTokenDays),
-        });
+        AppendAccessTokenCookie(user);
+        AppendRefreshTokenCookie(await refreshTokens.IssueAsync(user.UserId, Guid.NewGuid(), cancellationToken));
 
         return Ok(user);
     }
@@ -79,5 +64,28 @@ public class AuthController(
             return Unauthorized();
 
         return Ok(new UserInfo(int.Parse(id), name, email, role));
+    }
+
+    private void AppendAccessTokenCookie(UserInfo user)
+    {
+        Response.Cookies.Append(AccessTokenCookie, tokenService.GenerateAccessToken(user), new CookieOptions
+        {
+            HttpOnly = true,
+            Secure = !env.IsDevelopment(),
+            SameSite = SameSiteMode.Strict,
+            Expires = DateTimeOffset.UtcNow.AddMinutes(jwtOptions.Value.AccessTokenMinutes),
+        });
+    }
+
+    private void AppendRefreshTokenCookie(string refreshToken)
+    {
+        Response.Cookies.Append(RefreshTokenCookie, refreshToken, new CookieOptions
+        {
+            HttpOnly = true,
+            Secure = !env.IsDevelopment(),
+            SameSite = SameSiteMode.Strict,
+            Path = RefreshTokenPath,
+            Expires = DateTimeOffset.UtcNow.AddDays(jwtOptions.Value.RefreshTokenDays),
+        });
     }
 }
