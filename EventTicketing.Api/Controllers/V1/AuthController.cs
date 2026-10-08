@@ -67,7 +67,9 @@ public class AuthController(
         return Ok(rotation.User);
     }
 
+    /// <summary>Revokes the refresh token family and clears both auth cookies.</summary>
     [HttpPost("logout")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
     public async Task<IActionResult> Logout(CancellationToken cancellationToken)
     {
         var rawToken = Request.Cookies[RefreshTokenCookie];
