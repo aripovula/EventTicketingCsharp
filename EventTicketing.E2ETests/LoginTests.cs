@@ -56,4 +56,16 @@ public class LoginTests : E2ETestBase
         await Expect(Page.GetByRole(AriaRole.Banner).GetByRole(AriaRole.Link, new() { Name = "Sign in" })).ToBeVisibleAsync();
         Assert.That((await Context.CookiesAsync()).Any(c => c.Name == "access_token"), Is.False);
     }
+
+    [Test]
+    public async Task SignedInUserStaysSignedInAfterReload()
+    {
+        await Page.GotoAsync($"{BaseUrl}/login");
+        await Page.GetByRole(AriaRole.Button, new() { Name = "Sign in" }).First.ClickAsync();
+        await Expect(Page).ToHaveURLAsync(new Regex("/$"));
+
+        await Page.ReloadAsync();
+
+        await Expect(Page.GetByRole(AriaRole.Button, new() { Name = "Sign out" })).ToBeVisibleAsync();
+    }
 }
