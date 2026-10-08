@@ -83,6 +83,7 @@ test('View on an event card opens its detail page', async ({ page }) => {
   await page.route('**/api/v1/events?sort=name', route =>
     route.fulfill({ json: { data: [jazz], errors: [], meta: { nextCursor: null } } }),
   )
+  await page.route('**/api/v1/events/1', route => route.fulfill({ json: { data: jazz, errors: [] } }))
   await page.goto('/')
 
   await page.getByRole('link', { name: 'View Jazz Night' }).click()
@@ -98,4 +99,13 @@ test('the detail page shows the event from the API', async ({ page }) => {
   await expect(page.getByRole('heading', { name: 'Jazz Night' })).toBeVisible()
   await expect(page.getByText('48 of 120 seats available')).toBeVisible()
   await expect(page).toHaveTitle('Jazz Night | Ticketing')
+})
+
+test('an unknown event shows not found', async ({ page }) => {
+  await page.route('**/api/v1/events/999', route =>
+    route.fulfill({ status: 404, json: { data: null, errors: [{ code: 'not_found', detail: 'Event not found.' }] } }),
+  )
+  await page.goto('/events/999')
+
+  await expect(page.getByText('Event not found.')).toBeVisible()
 })

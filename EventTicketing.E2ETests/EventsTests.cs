@@ -65,4 +65,12 @@ public class EventsTests : E2ETestBase
         await Expect(Page.GetByText("48 of 120 seats available")).ToBeVisibleAsync();
         await Expect(Page.GetByText("$25.00")).ToBeVisibleAsync();
     }
+
+    [Test]
+    public async Task UnknownEventShowsNotFound()
+    {
+        await Page.GotoAsync($"{BaseUrl}/events/999999");
+
+        await Expect(Page.GetByText("Event not found.")).ToBeVisibleAsync();
+    }
 }

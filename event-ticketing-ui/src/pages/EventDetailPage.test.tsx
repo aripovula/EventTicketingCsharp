@@ -62,4 +62,25 @@ describe('EventDetailPage', () => {
     // The title is set in an effect, which can run just after the heading renders.
     await waitFor(() => expect(document.title).toBe('Jazz Night | Ticketing'))
   })
+
+  it('says the event was not found on a 404', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('{}', { status: 404 })))
+    renderPage(999)
+
+    expect(await screen.findByText('Event not found.')).toBeInTheDocument()
+  })
+
+  it('shows a generic error for other failures', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('{}', { status: 500 })))
+    renderPage()
+
+    expect(await screen.findByText('Something went wrong. Please try again.')).toBeInTheDocument()
+  })
+
+  it('shows a generic error when the request fails', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('Failed to fetch')))
+    renderPage()
+
+    expect(await screen.findByText('Something went wrong. Please try again.')).toBeInTheDocument()
+  })
 })
