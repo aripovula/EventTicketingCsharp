@@ -32,6 +32,10 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             .ToTable(t => t.HasCheckConstraint(
                 "ck_events_available_seats", "available_seats >= 0 AND available_seats <= total_seats"));
 
+        // "C" collation makes title order identical on every OS (glibc, musl/Alpine CI)
+        // and matches .NET ordinal comparison, so keyset cursors compare the same way.
+        modelBuilder.Entity<Event>().Property(e => e.Title).UseCollation("C");
+
         // One index per list sort key, with id as the keyset-pagination tiebreaker.
         modelBuilder.Entity<Event>().HasIndex(e => new { e.Title, e.Id });
         modelBuilder.Entity<Event>().HasIndex(e => new { e.StartTime, e.Id });
