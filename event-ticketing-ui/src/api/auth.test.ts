@@ -1,4 +1,4 @@
-import { fetchMe, login, logout, refreshSession } from './auth'
+import { fetchMe, login, logout, refreshSession, register } from './auth'
 
 describe('login', () => {
   afterEach(() => vi.unstubAllGlobals())
@@ -54,5 +54,23 @@ describe('refreshSession', () => {
     await refreshSession()
 
     expect(fetchMock).toHaveBeenCalledWith('/api/v1/auth/refresh', { method: 'POST', credentials: 'include' })
+  })
+})
+
+describe('register', () => {
+  afterEach(() => vi.unstubAllGlobals())
+
+  it('posts the new account as JSON to the register endpoint', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response('{}', { status: 201 }))
+    vi.stubGlobal('fetch', fetchMock)
+
+    await register('New User', 'new.user@example.com', 'secret-password')
+
+    expect(fetchMock).toHaveBeenCalledWith('/api/v1/auth/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ name: 'New User', email: 'new.user@example.com', password: 'secret-password' }),
+    })
   })
 })

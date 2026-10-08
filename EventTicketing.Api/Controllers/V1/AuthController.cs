@@ -33,6 +33,13 @@ public class AuthController(
         return Ok(user);
     }
 
+    [HttpPost("register")]
+    public async Task<IActionResult> Register(RegisterRequest request, CancellationToken cancellationToken)
+    {
+        var user = await authService.RegisterAsync(request, cancellationToken);
+        return StatusCode(StatusCodes.Status201Created, user);
+    }
+
     [HttpPost("refresh")]
     public async Task<IActionResult> Refresh(CancellationToken cancellationToken)
     {

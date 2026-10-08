@@ -20,4 +20,9 @@ public class AuthService(AppDbContext db)
 
         return new UserInfo(user.Id, user.Name, user.Email, user.Role);
     }
+
+    public Task<UserInfo?> RegisterAsync(RegisterRequest request, CancellationToken cancellationToken)
+    {
+        return Task.FromResult<UserInfo?>(null);
+    }
 }
