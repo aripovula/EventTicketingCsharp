@@ -103,4 +103,18 @@ public class EventsListIntegrationTests(IntegrationTestFactory factory) : IClass
 
         Assert.Equal(JsonValueKind.Null, body.GetProperty("meta").GetProperty("nextCursor").ValueKind);
     }
+
+    [Theory]
+    [InlineData("not-base64!!")]
+    [InlineData("e30")]
+    [InlineData("bm90LWpzb24")]
+    public async Task List_WithMalformedCursor_Returns400InvalidCursor(string cursor)
+    {
+        var (status, body) = await GetAsync($"/api/v1/events?after={cursor}");
+
+        Assert.Equal(HttpStatusCode.BadRequest, status);
+        var error = body.GetProperty("errors")[0];
+        Assert.Equal("invalid_cursor", error.GetProperty("code").GetString());
+        Assert.Equal("after", error.GetProperty("field").GetString());
+    }
 }

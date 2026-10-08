@@ -6,12 +6,14 @@ namespace EventTicketing.Api.Services;
 
 public class EventsService(AppDbContext db)
 {
-    public async Task<EventPage> ListAsync(EventListQuery query, CancellationToken cancellationToken)
+    /// <returns>The page, or null when the cursor is malformed.</returns>
+    public async Task<EventPage?> ListAsync(EventListQuery query, CancellationToken cancellationToken)
     {
         var events = db.Events.AsQueryable();
         if (query.After is not null)
         {
-            var (key, id) = EventCursor.Decode(query.After);
+            if (!EventCursor.TryDecode(query.After, out var key, out var id))
+                return null;
             events = events.Where(e => string.Compare(e.Title, key) > 0 || (e.Title == key && e.Id > id));
         }
 

@@ -11,9 +11,19 @@ public static class EventCursor
     public static string Encode(string key, int id) =>
         Base64Url.EncodeToString(JsonSerializer.SerializeToUtf8Bytes(new Payload(key, id)));
 
-    public static (string Key, int Id) Decode(string cursor)
+    public static bool TryDecode(string cursor, out string key, out int id)
     {
-        var payload = JsonSerializer.Deserialize<Payload>(Base64Url.DecodeFromChars(cursor))!;
-        return (payload.Key, payload.Id);
+        (key, id) = (string.Empty, 0);
+        try
+        {
+            var payload = JsonSerializer.Deserialize<Payload>(Base64Url.DecodeFromChars(cursor));
+            if (payload?.Key is null) return false;
+            (key, id) = (payload.Key, payload.Id);
+            return true;
+        }
+        catch (Exception e) when (e is FormatException or JsonException)
+        {
+            return false;
+        }
     }
 }
