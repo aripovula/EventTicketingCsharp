@@ -112,4 +112,34 @@ public class RefreshTokenServiceTests(IntegrationTestFactory factory) : IClassFi
 
         Assert.Null(rotation);
     }
+
+    [Fact]
+    public async Task RotateAsync_ReturnsANewTokenThatCanItselfBeRotated()
+    {
+        var rawToken = await IssueForJohnAsync();
+
+        var rotation = await CreateService(CreateDb()).RotateAsync(rawToken, TestContext.Current.CancellationToken);
+        var next = await CreateService(CreateDb()).RotateAsync(rotation!.Token, TestContext.Current.CancellationToken);
+
+        Assert.NotEqual(rawToken, rotation.Token);
+        Assert.NotNull(next);
+    }
+
+    [Fact]
+    public async Task RotateAsync_RevokesTheOldTokenAndLinksItToItsReplacementInTheSameFamily()
+    {
+        var rawToken = await IssueForJohnAsync();
+
+        var rotation = await CreateService(CreateDb()).RotateAsync(rawToken, TestContext.Current.CancellationToken);
+
+        var db = CreateDb();
+        var oldHash = RefreshTokenService.Hash(rawToken);
+        var newHash = RefreshTokenService.Hash(rotation!.Token);
+        var old = await db.RefreshTokens.SingleAsync(t => t.TokenHash == oldHash, TestContext.Current.CancellationToken);
+        var replacement = await db.RefreshTokens.SingleAsync(t => t.TokenHash == newHash, TestContext.Current.CancellationToken);
+        Assert.NotNull(old.RevokedAt);
+        Assert.Equal(replacement.Id, old.ReplacedById);
+        Assert.Equal(old.FamilyId, replacement.FamilyId);
+        Assert.Null(replacement.RevokedAt);
+    }
 }

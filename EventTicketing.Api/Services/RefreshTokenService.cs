@@ -29,8 +29,14 @@ public class RefreshTokenService(AppDbContext db, IOptions<JwtOptions> options)
         if (token is null || token.RevokedAt is not null || token.ExpiresAt <= DateTime.UtcNow)
             return null;
 
+        token.RevokedAt = DateTime.UtcNow;
+        var (next, nextRawToken) = AddToken(token.UserId, token.FamilyId);
+        await db.SaveChangesAsync(cancellationToken);
+        token.ReplacedById = next.Id;
+        await db.SaveChangesAsync(cancellationToken);
+
         var user = token.User;
-        return new RefreshTokenRotation(new UserInfo(user.Id, user.Name, user.Email, user.Role), rawToken);
+        return new RefreshTokenRotation(new UserInfo(user.Id, user.Name, user.Email, user.Role), nextRawToken);
     }
 
     private (RefreshToken Token, string RawToken) AddToken(int userId, Guid familyId)
