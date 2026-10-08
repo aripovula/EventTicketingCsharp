@@ -47,6 +47,18 @@ public class RefreshTokenService(AppDbContext db, IOptions<JwtOptions> options)
         return new RefreshTokenRotation(new UserInfo(user.Id, user.Name, user.Email, user.Role), nextRawToken);
     }
 
+    public async Task RevokeAsync(string rawToken, CancellationToken cancellationToken)
+    {
+        var tokenHash = Hash(rawToken);
+        var familyId = await db.RefreshTokens
+            .Where(t => t.TokenHash == tokenHash)
+            .Select(t => (Guid?)t.FamilyId)
+            .SingleOrDefaultAsync(cancellationToken);
+
+        if (familyId is not null)
+            await RevokeFamilyAsync(familyId.Value, cancellationToken);
+    }
+
     private Task RevokeFamilyAsync(Guid familyId, CancellationToken cancellationToken) =>
         db.RefreshTokens
             .Where(t => t.FamilyId == familyId && t.RevokedAt == null)

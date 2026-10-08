@@ -47,9 +47,14 @@ public class AuthController(
     }
 
     [HttpPost("logout")]
-    public IActionResult Logout()
+    public async Task<IActionResult> Logout(CancellationToken cancellationToken)
     {
+        var rawToken = Request.Cookies[RefreshTokenCookie];
+        if (rawToken is not null)
+            await refreshTokens.RevokeAsync(rawToken, cancellationToken);
+
         Response.Cookies.Delete(AccessTokenCookie);
+        Response.Cookies.Delete(RefreshTokenCookie, new CookieOptions { Path = RefreshTokenPath });
         return NoContent();
     }
 
