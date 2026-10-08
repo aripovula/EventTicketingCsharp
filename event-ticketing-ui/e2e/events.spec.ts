@@ -78,3 +78,15 @@ test('a search with no matches says so', async ({ page }) => {
 
   await expect(page.getByText('No events match your search.')).toBeVisible()
 })
+
+test('View on an event card opens its detail page', async ({ page }) => {
+  await page.route('**/api/v1/events?sort=name', route =>
+    route.fulfill({ json: { data: [jazz], errors: [], meta: { nextCursor: null } } }),
+  )
+  await page.goto('/')
+
+  await page.getByRole('link', { name: 'View Jazz Night' }).click()
+
+  await expect(page).toHaveURL('/events/1')
+  await expect(page.getByRole('link', { name: '← Back to events' })).toBeVisible()
+})

@@ -1,5 +1,6 @@
 import { BrowserRouter, Link, Route, Routes, useNavigate } from 'react-router-dom'
 import { useAuth } from './context/useAuth'
+import EventDetailPage from './pages/EventDetailPage'
 import EventListPage from './pages/EventListPage'
 import LoginPage from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage'
@@ -44,6 +45,7 @@ function App() {
         <main className="max-w-4xl mx-auto px-4 py-8">
           <Routes>
             <Route path="/" element={<EventListPage />} />
+            <Route path="/events/:id" element={<EventDetailPage />} />
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />
           </Routes>
