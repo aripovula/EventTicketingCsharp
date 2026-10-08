@@ -139,6 +139,9 @@ export default function EventListPage() {
           </li>
         ))}
       </ul>
+      {events.length === 0 && (
+        <p className="text-center text-gray-400 py-12">No events match your search.</p>
+      )}
       <div ref={sentinelRef} data-testid="events-sentinel" className="h-1" />
       {loadingMore && <p className="text-gray-500 text-center py-6">Loading more events...</p>}
     </div>

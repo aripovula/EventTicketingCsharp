@@ -66,3 +66,15 @@ test('scrolling to the bottom loads the next page of events', async ({ page }) =
   await expect(items).toHaveCount(21)
   await expect(page.getByRole('link', { name: 'Event 21', exact: true })).toBeVisible()
 })
+
+test('a search with no matches says so', async ({ page }) => {
+  await page.route('**/api/v1/events**', route => {
+    const q = new URL(route.request().url()).searchParams.get('q')
+    return route.fulfill({ json: { data: q ? [] : [jazz], errors: [], meta: { nextCursor: null } } })
+  })
+  await page.goto('/')
+
+  await page.getByRole('textbox', { name: 'Search events' }).fill('zzz')
+
+  await expect(page.getByText('No events match your search.')).toBeVisible()
+})

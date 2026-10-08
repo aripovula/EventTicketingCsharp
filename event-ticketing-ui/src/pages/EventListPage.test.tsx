@@ -169,4 +169,19 @@ describe('EventListPage', () => {
 
     await waitFor(() => expect(screen.getAllByRole('listitem')).toHaveLength(1))
   })
+
+  it('says so when no events match', async () => {
+    stubEvents([])
+    renderPage()
+
+    expect(await screen.findByText('No events match your search.')).toBeInTheDocument()
+  })
+
+  it('shows no empty message when events exist', async () => {
+    stubEvents([makeEvent()])
+    renderPage()
+    await screen.findByRole('link', { name: 'Jazz Night' })
+
+    expect(screen.queryByText('No events match your search.')).not.toBeInTheDocument()
+  })
 })
