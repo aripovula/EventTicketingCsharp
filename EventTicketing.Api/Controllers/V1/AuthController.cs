@@ -12,10 +12,13 @@ namespace EventTicketing.Api.Controllers.V1;
 public class AuthController(
     AuthService authService,
     TokenService tokenService,
+    RefreshTokenService refreshTokens,
     IOptions<JwtOptions> jwtOptions,
     IWebHostEnvironment env) : ControllerBase
 {
     public const string AccessTokenCookie = "access_token";
+    public const string RefreshTokenCookie = "refresh_token";
+    public const string RefreshTokenPath = "/api/v1/auth";
 
     [HttpPost("login")]
     public async Task<IActionResult> Login(LoginRequest request, CancellationToken cancellationToken)
@@ -30,6 +33,16 @@ public class AuthController(
             Secure = !env.IsDevelopment(),
             SameSite = SameSiteMode.Strict,
             Expires = DateTimeOffset.UtcNow.AddMinutes(jwtOptions.Value.AccessTokenMinutes),
+        });
+
+        var refreshToken = await refreshTokens.IssueAsync(user.UserId, Guid.NewGuid(), cancellationToken);
+        Response.Cookies.Append(RefreshTokenCookie, refreshToken, new CookieOptions
+        {
+            HttpOnly = true,
+            Secure = !env.IsDevelopment(),
+            SameSite = SameSiteMode.Strict,
+            Path = RefreshTokenPath,
+            Expires = DateTimeOffset.UtcNow.AddDays(jwtOptions.Value.RefreshTokenDays),
         });
 
         return Ok(user);

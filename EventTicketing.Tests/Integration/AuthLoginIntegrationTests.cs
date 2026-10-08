@@ -1,5 +1,9 @@
 using System.Net;
 using System.Net.Http.Json;
+using EventTicketing.Api.Data;
+using EventTicketing.Api.Services;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace EventTicketing.Tests.Integration;
 
@@ -67,5 +71,35 @@ public class AuthLoginIntegrationTests(IntegrationTestFactory factory) : IClassF
             TestContext.Current.CancellationToken);
 
         Assert.False(response.Headers.Contains("Set-Cookie"));
+    }
+
+    [Fact]
+    public async Task Login_WithValidCredentials_SetsRefreshTokenCookieScopedToAuthEndpoints()
+    {
+        var response = await _client.PostAsJsonAsync(
+            "/api/v1/auth/login",
+            new { email = "john@example.com", password = "Password" },
+            TestContext.Current.CancellationToken);
+
+        var cookie = Assert.Single(response.Headers.GetValues("Set-Cookie"), c => c.StartsWith("refresh_token="));
+        Assert.Contains("path=/api/v1/auth", cookie);
+        Assert.Contains("httponly", cookie);
+        Assert.Contains("samesite=strict", cookie);
+    }
+
+    [Fact]
+    public async Task Login_WithValidCredentials_StoresRefreshTokenHash()
+    {
+        var response = await _client.PostAsJsonAsync(
+            "/api/v1/auth/login",
+            new { email = "alex@example.com", password = "Password" },
+            TestContext.Current.CancellationToken);
+
+        var rawToken = response.Headers.GetValues("Set-Cookie").Single(c => c.StartsWith("refresh_token="))
+            .Split(';')[0]["refresh_token=".Length..];
+        using var scope = factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        Assert.True(await db.RefreshTokens.AnyAsync(
+            t => t.TokenHash == RefreshTokenService.Hash(rawToken), TestContext.Current.CancellationToken));
     }
 }
