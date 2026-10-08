@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
+using System.Text.Json;
 
 namespace EventTicketing.Tests.Integration;
 
@@ -30,5 +31,17 @@ public class AuthRegisterIntegrationTests(IntegrationTestFactory factory) : ICla
         var response = await RegisterAsync("New User", "new.user@example.com", "long-enough");
 
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Register_ReturnsTheNewUserWithoutAnyPasswordData()
+    {
+        var response = await RegisterAsync("Body Check", "body.check@example.com", "long-enough");
+
+        var body = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        var data = JsonDocument.Parse(body).RootElement.GetProperty("data");
+        Assert.Equal("Body Check", data.GetProperty("name").GetString());
+        Assert.Equal("user", data.GetProperty("role").GetString());
+        Assert.DoesNotContain("password", body, StringComparison.OrdinalIgnoreCase);
     }
 }

@@ -39,4 +39,18 @@ public class AuthServiceTests(IntegrationTestFactory factory) : IClassFixture<In
 
         Assert.Null(user);
     }
+
+    [Fact]
+    public async Task RegisterAsync_CreatesARegularUserWhoCanThenSignIn()
+    {
+        var registered = await CreateService().RegisterAsync(
+            new RegisterRequest("New User", "registered@example.com", "long-enough-password"), TestContext.Current.CancellationToken);
+
+        var signedIn = await CreateService().LoginAsync(
+            new LoginRequest("registered@example.com", "long-enough-password"), TestContext.Current.CancellationToken);
+
+        Assert.NotNull(registered);
+        Assert.Equal("user", registered.Role);
+        Assert.Equal(registered, signedIn);
+    }
 }

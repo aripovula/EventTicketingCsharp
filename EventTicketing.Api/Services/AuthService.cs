@@ -21,8 +21,14 @@ public class AuthService(AppDbContext db)
         return new UserInfo(user.Id, user.Name, user.Email, user.Role);
     }
 
-    public Task<UserInfo?> RegisterAsync(RegisterRequest request, CancellationToken cancellationToken)
+    public async Task<UserInfo?> RegisterAsync(RegisterRequest request, CancellationToken cancellationToken)
     {
-        return Task.FromResult<UserInfo?>(null);
+        var user = new User { Name = request.Name, Email = request.Email, Role = "user" };
+        user.PasswordHash = new PasswordHasher<User>().HashPassword(user, request.Password);
+
+        db.Users.Add(user);
+        await db.SaveChangesAsync(cancellationToken);
+
+        return new UserInfo(user.Id, user.Name, user.Email, user.Role);
     }
 }
