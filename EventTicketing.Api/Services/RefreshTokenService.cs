@@ -33,9 +33,7 @@ public class RefreshTokenService(AppDbContext db, IOptions<JwtOptions> options)
         // revoke the whole family so neither the thief nor the victim can continue.
         if (token.RevokedAt is not null)
         {
-            await db.RefreshTokens
-                .Where(t => t.FamilyId == token.FamilyId && t.RevokedAt == null)
-                .ExecuteUpdateAsync(s => s.SetProperty(t => t.RevokedAt, DateTime.UtcNow), cancellationToken);
+            await RevokeFamilyAsync(token.FamilyId, cancellationToken);
             return null;
         }
 
@@ -48,6 +46,11 @@ public class RefreshTokenService(AppDbContext db, IOptions<JwtOptions> options)
         var user = token.User;
         return new RefreshTokenRotation(new UserInfo(user.Id, user.Name, user.Email, user.Role), nextRawToken);
     }
+
+    private Task RevokeFamilyAsync(Guid familyId, CancellationToken cancellationToken) =>
+        db.RefreshTokens
+            .Where(t => t.FamilyId == familyId && t.RevokedAt == null)
+            .ExecuteUpdateAsync(s => s.SetProperty(t => t.RevokedAt, DateTime.UtcNow), cancellationToken);
 
     private (RefreshToken Token, string RawToken) AddToken(int userId, Guid familyId)
     {
