@@ -56,3 +56,16 @@ test('signing in with a typed email and password goes to the home page', async (
 
   await expect(page).toHaveURL('/')
 })
+
+test('a signed-in user can sign out from the header', async ({ page }) => {
+  await page.route('**/api/v1/auth/me', route =>
+    route.fulfill({ json: { data: { userId: 1, name: 'John Doe', email: 'john@example.com', role: 'user' }, errors: [] } }),
+  )
+  await page.route('**/api/v1/auth/logout', route => route.fulfill({ status: 204 }))
+  await page.goto('/')
+
+  await page.getByRole('button', { name: 'Sign out' }).click()
+
+  await expect(page).toHaveURL('/login')
+  await expect(page.getByRole('banner').getByRole('link', { name: 'Sign in' })).toBeVisible()
+})
