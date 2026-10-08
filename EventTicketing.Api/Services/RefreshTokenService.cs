@@ -1,8 +1,10 @@
 using System.Buffers.Text;
 using System.Security.Cryptography;
 using System.Text;
+using EventTicketing.Api.Contracts;
 using EventTicketing.Api.Data;
 using EventTicketing.Api.Models;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 
 namespace EventTicketing.Api.Services;
@@ -27,9 +29,18 @@ public class RefreshTokenService(AppDbContext db, IOptions<JwtOptions> options)
         return rawToken;
     }
 
-    public Task<RefreshTokenRotation?> RotateAsync(string rawToken, CancellationToken cancellationToken)
+    public async Task<RefreshTokenRotation?> RotateAsync(string rawToken, CancellationToken cancellationToken)
     {
-        return Task.FromResult<RefreshTokenRotation?>(null);
+        var tokenHash = Hash(rawToken);
+        var token = await db.RefreshTokens
+            .Include(t => t.User)
+            .SingleOrDefaultAsync(t => t.TokenHash == tokenHash, cancellationToken);
+
+        if (token is null || token.RevokedAt is not null || token.ExpiresAt <= DateTime.UtcNow)
+            return null;
+
+        var user = token.User;
+        return new RefreshTokenRotation(new UserInfo(user.Id, user.Name, user.Email, user.Role), rawToken);
     }
 
     public static string Hash(string rawToken) =>

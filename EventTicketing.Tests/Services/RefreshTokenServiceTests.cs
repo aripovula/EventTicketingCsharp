@@ -59,4 +59,57 @@ public class RefreshTokenServiceTests(IntegrationTestFactory factory) : IClassFi
         Assert.DoesNotContain('+', first + second);
         Assert.DoesNotContain('/', first + second);
     }
+
+    private async Task<string> IssueForJohnAsync(Action<Api.Models.RefreshToken>? tamper = null)
+    {
+        var db = CreateDb();
+        var familyId = Guid.NewGuid();
+        var rawToken = await CreateService(db).IssueAsync(await JohnIdAsync(db), familyId, TestContext.Current.CancellationToken);
+        if (tamper is not null)
+        {
+            var stored = await db.RefreshTokens.SingleAsync(t => t.FamilyId == familyId, TestContext.Current.CancellationToken);
+            tamper(stored);
+            await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+        }
+        return rawToken;
+    }
+
+    [Fact]
+    public async Task RotateAsync_ReturnsTheTokensUserForAValidToken()
+    {
+        var rawToken = await IssueForJohnAsync();
+
+        var rotation = await CreateService(CreateDb()).RotateAsync(rawToken, TestContext.Current.CancellationToken);
+
+        Assert.NotNull(rotation);
+        Assert.Equal("john@example.com", rotation.User.Email);
+    }
+
+    [Fact]
+    public async Task RotateAsync_RejectsAnUnknownToken()
+    {
+        var rotation = await CreateService(CreateDb()).RotateAsync("not-a-real-token", TestContext.Current.CancellationToken);
+
+        Assert.Null(rotation);
+    }
+
+    [Fact]
+    public async Task RotateAsync_RejectsAnExpiredToken()
+    {
+        var rawToken = await IssueForJohnAsync(t => t.ExpiresAt = DateTime.UtcNow.AddMinutes(-1));
+
+        var rotation = await CreateService(CreateDb()).RotateAsync(rawToken, TestContext.Current.CancellationToken);
+
+        Assert.Null(rotation);
+    }
+
+    [Fact]
+    public async Task RotateAsync_RejectsARevokedToken()
+    {
+        var rawToken = await IssueForJohnAsync(t => t.RevokedAt = DateTime.UtcNow);
+
+        var rotation = await CreateService(CreateDb()).RotateAsync(rawToken, TestContext.Current.CancellationToken);
+
+        Assert.Null(rotation);
+    }
 }
