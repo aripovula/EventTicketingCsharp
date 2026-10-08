@@ -46,4 +46,26 @@ public class SwaggerIntegrationTests(IntegrationTestFactory factory) : IClassFix
         Assert.Equal("bearer", bearer.GetProperty("scheme").GetString());
         Assert.True(root.GetProperty("security")[0].TryGetProperty("Bearer", out _));
     }
+
+    private async Task<JsonElement> OperationAsync(string path, string method)
+    {
+        var json = await _client.GetStringAsync("/swagger/v1/swagger.json", TestContext.Current.CancellationToken);
+        return JsonDocument.Parse(json).RootElement.GetProperty("paths").GetProperty(path).GetProperty(method);
+    }
+
+    private static string[] StatusCodes(JsonElement operation) =>
+        operation.GetProperty("responses").EnumerateObject().Select(r => r.Name).Order().ToArray();
+
+    private static string SuccessSchemaRef(JsonElement operation, string status) =>
+        operation.GetProperty("responses").GetProperty(status).GetProperty("content")
+            .GetProperty("application/json").GetProperty("schema").GetProperty("$ref").GetString()!;
+
+    [Fact]
+    public async Task Login_DocumentsItsResponses()
+    {
+        var login = await OperationAsync("/api/v1/auth/login", "post");
+
+        Assert.Equal(["200", "400", "401"], StatusCodes(login));
+        Assert.Contains("UserInfo", SuccessSchemaRef(login, "200"));
+    }
 }

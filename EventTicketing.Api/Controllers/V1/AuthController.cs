@@ -22,6 +22,9 @@ public class AuthController(
 
     /// <summary>Signs in with email and password and sets the HttpOnly access and refresh token cookies.</summary>
     [HttpPost("login")]
+    [ProducesResponseType(typeof(ApiEnvelope<UserInfo>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiEnvelope<object>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ApiEnvelope<object>), StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> Login(LoginRequest request, CancellationToken cancellationToken)
     {
         var user = await authService.LoginAsync(request, cancellationToken);
