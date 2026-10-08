@@ -30,4 +30,15 @@ public class EventsDetailIntegrationTests(IntegrationTestFactory factory) : ICla
         Assert.Equal("Jazz Night", data.GetProperty("title").GetString());
         Assert.StartsWith("An intimate evening of live jazz", data.GetProperty("description").GetString());
     }
+
+    [Fact]
+    public async Task Get_WithUnknownId_Returns404NotFoundEnvelope()
+    {
+        var response = await _client.GetAsync("/api/v1/events/999999", TestContext.Current.CancellationToken);
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        var error = JsonDocument.Parse(await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken))
+            .RootElement.GetProperty("errors")[0];
+        Assert.Equal("not_found", error.GetProperty("code").GetString());
+    }
 }

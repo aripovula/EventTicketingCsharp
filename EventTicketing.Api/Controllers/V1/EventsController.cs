@@ -22,6 +22,9 @@ public class EventsController(EventsService eventsService) : ControllerBase
     public async Task<IActionResult> Get(int id, CancellationToken cancellationToken)
     {
         var ev = await eventsService.GetAsync(id, cancellationToken);
+        if (ev is null)
+            return NotFound(new ApiEnvelope(null, [new ApiError("not_found", "Event not found.")]));
+
         return Ok(ev);
     }
 }
