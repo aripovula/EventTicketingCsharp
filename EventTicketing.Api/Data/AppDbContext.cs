@@ -7,6 +7,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
 {
     public DbSet<User> Users => Set<User>();
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
+    public DbSet<Event> Events => Set<Event>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -26,6 +27,15 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             .WithMany()
             .HasForeignKey(t => t.UserId)
             .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<Event>()
+            .ToTable(t => t.HasCheckConstraint(
+                "ck_events_available_seats", "available_seats >= 0 AND available_seats <= total_seats"));
+
+        // One index per list sort key, with id as the keyset-pagination tiebreaker.
+        modelBuilder.Entity<Event>().HasIndex(e => new { e.Title, e.Id });
+        modelBuilder.Entity<Event>().HasIndex(e => new { e.StartTime, e.Id });
+        modelBuilder.Entity<Event>().HasIndex(e => new { e.PriceCents, e.Id });
     }
 
     public override int SaveChanges(bool acceptAllChangesOnSuccess)
