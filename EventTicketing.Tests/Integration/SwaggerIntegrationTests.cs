@@ -34,4 +34,16 @@ public class SwaggerIntegrationTests(IntegrationTestFactory factory) : IClassFix
         var login = JsonDocument.Parse(json).RootElement.GetProperty("paths").GetProperty("/api/v1/auth/login").GetProperty("post");
         Assert.StartsWith("Signs in with email and password", login.GetProperty("summary").GetString());
     }
+
+    [Fact]
+    public async Task SwaggerJson_DeclaresJwtBearerSecurity()
+    {
+        var json = await _client.GetStringAsync("/swagger/v1/swagger.json", TestContext.Current.CancellationToken);
+
+        var root = JsonDocument.Parse(json).RootElement;
+        var bearer = root.GetProperty("components").GetProperty("securitySchemes").GetProperty("Bearer");
+        Assert.Equal("http", bearer.GetProperty("type").GetString());
+        Assert.Equal("bearer", bearer.GetProperty("scheme").GetString());
+        Assert.True(root.GetProperty("security")[0].TryGetProperty("Bearer", out _));
+    }
 }
