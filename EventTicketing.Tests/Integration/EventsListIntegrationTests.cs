@@ -70,4 +70,37 @@ public class EventsListIntegrationTests(IntegrationTestFactory factory) : IClass
         Assert.Equal(120, jazz.GetProperty("totalSeats").GetInt32());
         Assert.Equal(48, jazz.GetProperty("availableSeats").GetInt32());
     }
+
+    private async Task<List<string>> AllTitlesAsync(string query)
+    {
+        var titles = new List<string>();
+        string? cursor = null;
+        do
+        {
+            var url = $"/api/v1/events?{query}" + (cursor is null ? "" : $"&after={Uri.EscapeDataString(cursor)}");
+            var (status, body) = await GetAsync(url);
+            Assert.Equal(HttpStatusCode.OK, status);
+            titles.AddRange(Titles(body));
+            var next = body.GetProperty("meta").GetProperty("nextCursor");
+            cursor = next.ValueKind == JsonValueKind.Null ? null : next.GetString();
+        } while (cursor is not null);
+        return titles;
+    }
+
+    [Fact]
+    public async Task List_PagingWithTheCursorWalksAllEventsInOrderWithoutRepeats()
+    {
+        var titles = await AllTitlesAsync("limit=7");
+
+        Assert.Equal(30, titles.Count);
+        Assert.Equal(titles.Order(StringComparer.Ordinal), titles);
+    }
+
+    [Fact]
+    public async Task List_LastPageHasNoNextCursor()
+    {
+        var (_, body) = await GetAsync("/api/v1/events?limit=50");
+
+        Assert.Equal(JsonValueKind.Null, body.GetProperty("meta").GetProperty("nextCursor").ValueKind);
+    }
 }
