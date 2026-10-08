@@ -37,7 +37,11 @@ public class AuthController(
         return Ok(user);
     }
 
+    /// <summary>Creates a regular user account. The new user is not signed in.</summary>
     [HttpPost("register")]
+    [ProducesResponseType(typeof(ApiEnvelope<UserInfo>), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(ApiEnvelope<object>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ApiEnvelope<object>), StatusCodes.Status409Conflict)]
     public async Task<IActionResult> Register(RegisterRequest request, CancellationToken cancellationToken)
     {
         var user = await authService.RegisterAsync(request, cancellationToken);
