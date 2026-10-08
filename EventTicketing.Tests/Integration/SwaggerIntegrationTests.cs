@@ -114,4 +114,13 @@ public class SwaggerIntegrationTests(IntegrationTestFactory factory) : IClassFix
         var parameters = op.GetProperty("parameters").EnumerateArray().Select(p => p.GetProperty("name").GetString()).ToArray();
         Assert.Equal(["q", "sort", "after", "limit"], parameters);
     }
+
+    [Fact]
+    public async Task EventDetail_DocumentsItsResponses()
+    {
+        var op = await OperationAsync("/api/v1/events/{id}", "get");
+
+        Assert.Equal(["200", "404"], StatusCodes(op));
+        Assert.Contains("EventResponse", SuccessSchemaRef(op, "200"));
+    }
 }

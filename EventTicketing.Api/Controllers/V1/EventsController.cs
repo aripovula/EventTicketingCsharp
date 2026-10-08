@@ -21,7 +21,10 @@ public class EventsController(EventsService eventsService) : ControllerBase
         return Ok(new ApiEnvelope(page.Items, [], new { nextCursor = page.NextCursor }));
     }
 
+    /// <summary>Returns a single event by id.</summary>
     [HttpGet("{id:int}")]
+    [ProducesResponseType(typeof(ApiEnvelope<EventResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiEnvelope<object>), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Get(int id, CancellationToken cancellationToken)
     {
         var ev = await eventsService.GetAsync(id, cancellationToken);
