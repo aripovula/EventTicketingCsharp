@@ -21,6 +21,7 @@ test('creating an account goes to the login page', async ({ page }) => {
   await page.getByRole('button', { name: 'Create account' }).click()
 
   await expect(page).toHaveURL('/login')
+  await expect(page.getByRole('status')).toHaveText('Account created — please sign in.')
 })
 
 test('a taken email is reported under the email field', async ({ page }) => {

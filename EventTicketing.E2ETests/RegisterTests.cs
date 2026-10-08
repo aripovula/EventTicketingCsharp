@@ -16,6 +16,7 @@ public class RegisterTests : E2ETestBase
         await Page.GetByLabel("Password").FillAsync("e2e-password");
         await Page.GetByRole(AriaRole.Button, new() { Name = "Create account" }).ClickAsync();
         await Expect(Page).ToHaveURLAsync(new Regex("/login$"));
+        await Expect(Page.GetByRole(AriaRole.Status)).ToHaveTextAsync("Account created — please sign in.");
 
         var panel = Page.Locator("div", new() { Has = Page.GetByRole(AriaRole.Heading, new() { Name = "Sign in with your account" }) }).Last;
         await panel.GetByLabel("Email").FillAsync(email);

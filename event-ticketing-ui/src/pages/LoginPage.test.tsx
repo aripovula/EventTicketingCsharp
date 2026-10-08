@@ -12,10 +12,10 @@ function HomeProbe() {
   return <p>Home page{user ? ` for ${user.name}` : ''}</p>
 }
 
-function renderPage() {
+function renderPage(state?: unknown) {
   render(
     <AuthProvider>
-      <MemoryRouter initialEntries={['/login']}>
+      <MemoryRouter initialEntries={[{ pathname: '/login', state }]}>
         <Routes>
           <Route path="/" element={<HomeProbe />} />
           <Route path="/login" element={<LoginPage />} />
@@ -191,5 +191,19 @@ describe('LoginPage', () => {
     await userEvent.click(screen.getByRole('link', { name: 'Create one' }))
 
     expect(screen.getByText('Register page')).toBeInTheDocument()
+  })
+
+  it('confirms the new account after registering', () => {
+    stubFetch(new Response(null, { status: 401 }))
+    renderPage({ registered: true })
+
+    expect(screen.getByRole('status')).toHaveTextContent('Account created — please sign in.')
+  })
+
+  it('shows no account notice on a normal visit', () => {
+    stubFetch(new Response(null, { status: 401 }))
+    renderPage()
+
+    expect(screen.queryByRole('status')).not.toBeInTheDocument()
   })
 })

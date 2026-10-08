@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { login } from '../api/auth'
 import { useAuth } from '../context/useAuth'
 
@@ -163,6 +163,7 @@ export default function LoginPage() {
   const [accountBusy, setAccountBusy] = useState(false)
   const navigate = useNavigate()
   const { signIn } = useAuth()
+  const justRegistered = useLocation().state?.registered === true
 
   async function handleLogin(
     email: string,
@@ -191,6 +192,11 @@ export default function LoginPage() {
   return (
     <div className="flex flex-col gap-6">
       <h1 className="text-2xl font-semibold text-gray-900">Sign in</h1>
+      {justRegistered && (
+        <p role="status" className="rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">
+          Account created — please sign in.
+        </p>
+      )}
       <div className="flex gap-6">
         <div className="w-[55%]">
           <DemoAccountPanel
