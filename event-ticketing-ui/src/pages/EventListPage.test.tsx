@@ -71,7 +71,7 @@ describe('EventListPage', () => {
 
     await userEvent.type(screen.getByRole('textbox', { name: 'Search events' }), 'jazz')
 
-    await waitFor(() => expect(fetchMock).toHaveBeenLastCalledWith('/api/v1/events?q=jazz'))
+    await waitFor(() => expect(fetchMock).toHaveBeenLastCalledWith('/api/v1/events?q=jazz&sort=name'))
     expect(fetchMock.mock.calls.filter(([url]) => String(url).includes('q='))).toHaveLength(1)
   })
 
@@ -85,5 +85,27 @@ describe('EventListPage', () => {
 
     await userEvent.tab()
     expect(input).toHaveStyle({ width: '200px', fontSize: '12px' })
+  })
+
+  it('asks the API for the chosen sort order', async () => {
+    const fetchMock = vi.fn<(url: string) => Promise<Response>>(() => Promise.resolve(
+      new Response(JSON.stringify({ data: [makeEvent()], errors: [], meta: { nextCursor: null } }))))
+    vi.stubGlobal('fetch', fetchMock)
+    renderPage()
+    await screen.findByRole('list', { name: 'events' })
+
+    await userEvent.selectOptions(screen.getByRole('combobox', { name: 'Sort events' }), 'price')
+
+    await waitFor(() => expect(fetchMock).toHaveBeenLastCalledWith('/api/v1/events?sort=price'))
+  })
+
+  it('sorts by name by default', async () => {
+    const fetchMock = vi.fn<(url: string) => Promise<Response>>(() => Promise.resolve(
+      new Response(JSON.stringify({ data: [makeEvent()], errors: [], meta: { nextCursor: null } }))))
+    vi.stubGlobal('fetch', fetchMock)
+    renderPage()
+
+    expect(await screen.findByRole('combobox', { name: 'Sort events' })).toHaveValue('name')
+    expect(fetchMock).toHaveBeenCalledWith('/api/v1/events?sort=name')
   })
 })

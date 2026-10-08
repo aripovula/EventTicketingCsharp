@@ -27,4 +27,18 @@ public class EventsTests : E2ETestBase
         await Expect(items.Filter(new() { HasNotText = "Jazz" })).ToHaveCountAsync(0);
         await Expect(items.Filter(new() { HasText = "Jazz Night" })).ToHaveCountAsync(1);
     }
+
+    [Test]
+    public async Task SortByPriceShowsTheCheapestEventFirst()
+    {
+        var cheapest = await Page.APIRequest.GetAsync($"{BaseUrl}/api/v1/events?sort=price&limit=1");
+        var cheapestTitle = (await cheapest.JsonAsync())!.Value.GetProperty("data")[0].GetProperty("title").GetString()!;
+        await Page.GotoAsync(BaseUrl);
+        var items = Page.GetByRole(AriaRole.List, new() { Name = "events" }).GetByRole(AriaRole.Listitem);
+        await Expect(items.First).ToBeVisibleAsync();
+
+        await Page.GetByRole(AriaRole.Combobox, new() { Name = "Sort events" }).SelectOptionAsync("price");
+
+        await Expect(items.First.GetByRole(AriaRole.Heading)).ToHaveTextAsync(cheapestTitle);
+    }
 }

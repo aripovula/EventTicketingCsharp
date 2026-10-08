@@ -6,7 +6,7 @@ const jazz = {
 }
 
 test('the home page lists events from the API', async ({ page }) => {
-  await page.route('**/api/v1/events', route =>
+  await page.route('**/api/v1/events?sort=name', route =>
     route.fulfill({ json: { data: [jazz, { ...jazz, id: 2, title: 'Comedy Showcase' }], errors: [], meta: { nextCursor: null } } }),
   )
   await page.goto('/')
@@ -30,4 +30,19 @@ test('typing in the search box asks the API for matching events', async ({ page 
   const list = page.getByRole('list', { name: 'events' })
   await expect(list.getByRole('listitem')).toHaveCount(1)
   await expect(list.getByRole('link', { name: 'Comedy Showcase', exact: true })).toBeVisible()
+})
+
+test('choosing a sort order asks the API to sort', async ({ page }) => {
+  await page.route('**/api/v1/events**', route => {
+    const sort = new URL(route.request().url()).searchParams.get('sort')
+    const events = sort === 'price' ? [{ ...jazz, id: 3, title: 'Cheapest First' }, jazz] : [jazz]
+    return route.fulfill({ json: { data: events, errors: [], meta: { nextCursor: null } } })
+  })
+  await page.goto('/')
+
+  await page.getByRole('combobox', { name: 'Sort events' }).selectOption('price')
+
+  const items = page.getByRole('list', { name: 'events' }).getByRole('listitem')
+  await expect(items).toHaveCount(2)
+  await expect(items.first()).toContainText('Cheapest First')
 })

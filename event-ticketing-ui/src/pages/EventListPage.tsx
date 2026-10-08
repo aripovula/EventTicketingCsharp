@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { fetchEvents, type EventItem } from '../api/events'
+import { fetchEvents, type EventItem, type EventSort } from '../api/events'
 import { colorForType } from '../utils/eventTypes'
 import { formatPrice } from '../utils/formatPrice'
 
@@ -11,6 +11,7 @@ export default function EventListPage() {
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
+  const [sortType, setSortType] = useState<EventSort>('name')
   const searchInputRef = useRef<HTMLInputElement>(null)
 
   // Search runs on the server, so wait for a pause in typing before asking for it.
@@ -20,12 +21,12 @@ export default function EventListPage() {
   }, [searchTerm])
 
   useEffect(() => {
-    fetchEvents({ q: debouncedSearch })
+    fetchEvents({ q: debouncedSearch, sort: sortType })
       .then(res => res.json())
       .then(body => setEvents(body.data ?? []))
       .catch(() => {})
       .finally(() => setLoading(false))
-  }, [debouncedSearch])
+  }, [debouncedSearch, sortType])
 
   const changeInputSize = (inputWidth: number, fontSize: number) => {
     searchInputRef.current!.style.width = `${inputWidth}px`
@@ -49,6 +50,16 @@ export default function EventListPage() {
           style={{ width: '200px', fontSize: '12px' }}
           className="rounded-lg border border-gray-300 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-cyan-400 transition"
         />
+        <select
+          aria-label="Sort events"
+          value={sortType}
+          onChange={e => setSortType(e.target.value as EventSort)}
+          className="rounded-lg border border-gray-300 px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-cyan-400 transition"
+        >
+          <option value="name">Sort by name</option>
+          <option value="date">Sort by date</option>
+          <option value="price">Sort by price</option>
+        </select>
       </div>
 
       <ul aria-label="events" className="space-y-4 list-none p-0 m-0">
