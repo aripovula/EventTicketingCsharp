@@ -81,8 +81,11 @@ public class AuthController(
         return NoContent();
     }
 
+    /// <summary>Returns the signed-in user from the access token.</summary>
     [Authorize]
     [HttpGet("me")]
+    [ProducesResponseType(typeof(ApiEnvelope<UserInfo>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public IActionResult Me()
     {
         var id = User.FindFirstValue(ClaimTypes.NameIdentifier);

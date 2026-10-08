@@ -94,4 +94,13 @@ public class SwaggerIntegrationTests(IntegrationTestFactory factory) : IClassFix
 
         Assert.Equal(["204"], StatusCodes(op));
     }
+
+    [Fact]
+    public async Task Me_DocumentsItsResponses()
+    {
+        var op = await OperationAsync("/api/v1/auth/me", "get");
+
+        Assert.Equal(["200", "401"], StatusCodes(op));
+        Assert.Contains("UserInfo", SuccessSchemaRef(op, "200"));
+    }
 }
