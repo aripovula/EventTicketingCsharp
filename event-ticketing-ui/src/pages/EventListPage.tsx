@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { fetchEvents, type EventItem } from '../api/events'
 import { colorForType } from '../utils/eventTypes'
@@ -9,19 +9,48 @@ const time = (iso: string) => new Date(iso).toLocaleTimeString(undefined, { hour
 export default function EventListPage() {
   const [events, setEvents] = useState<EventItem[]>([])
   const [loading, setLoading] = useState(true)
+  const [searchTerm, setSearchTerm] = useState('')
+  const [debouncedSearch, setDebouncedSearch] = useState('')
+  const searchInputRef = useRef<HTMLInputElement>(null)
+
+  // Search runs on the server, so wait for a pause in typing before asking for it.
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(searchTerm), 300)
+    return () => clearTimeout(timer)
+  }, [searchTerm])
 
   useEffect(() => {
-    fetchEvents()
+    fetchEvents({ q: debouncedSearch })
       .then(res => res.json())
       .then(body => setEvents(body.data ?? []))
       .catch(() => {})
       .finally(() => setLoading(false))
-  }, [])
+  }, [debouncedSearch])
+
+  const changeInputSize = (inputWidth: number, fontSize: number) => {
+    searchInputRef.current!.style.width = `${inputWidth}px`
+    searchInputRef.current!.style.fontSize = `${fontSize}px`
+  }
 
   if (loading) return <p className="text-gray-500 text-center py-12">Loading events...</p>
 
   return (
     <div>
+      <div className="flex gap-3 mb-6">
+        <input
+          ref={searchInputRef}
+          type="text"
+          aria-label="Search events"
+          value={searchTerm}
+          onChange={e => setSearchTerm(e.target.value)}
+          onFocus={() => changeInputSize(400, 22)}
+          onBlur={() => changeInputSize(200, 12)}
+          placeholder="type search term"
+          style={{ width: '200px', fontSize: '12px' }}
+          className="rounded-lg border border-gray-300 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-cyan-400 transition"
+        />
+      </div>
+
       <ul aria-label="events" className="space-y-4 list-none p-0 m-0">
         {events.map(event => (
           <li key={event.id} className="bg-white rounded-xl border border-gray-200 overflow-hidden hover:shadow-md transition-shadow flex h-[220px]">

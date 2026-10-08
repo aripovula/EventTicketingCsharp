@@ -16,3 +16,18 @@ test('the home page lists events from the API', async ({ page }) => {
   await expect(list.getByRole('link', { name: 'Jazz Night', exact: true })).toBeVisible()
   await expect(list.getByText('$25.00').first()).toBeVisible()
 })
+
+test('typing in the search box asks the API for matching events', async ({ page }) => {
+  await page.route('**/api/v1/events**', route => {
+    const q = new URL(route.request().url()).searchParams.get('q')
+    const events = q === 'comedy' ? [{ ...jazz, id: 2, title: 'Comedy Showcase' }] : [jazz, { ...jazz, id: 2, title: 'Comedy Showcase' }]
+    return route.fulfill({ json: { data: events, errors: [], meta: { nextCursor: null } } })
+  })
+  await page.goto('/')
+
+  await page.getByRole('textbox', { name: 'Search events' }).fill('comedy')
+
+  const list = page.getByRole('list', { name: 'events' })
+  await expect(list.getByRole('listitem')).toHaveCount(1)
+  await expect(list.getByRole('link', { name: 'Comedy Showcase', exact: true })).toBeVisible()
+})

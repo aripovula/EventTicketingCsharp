@@ -1,4 +1,5 @@
-import { render, screen, within } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import type { EventItem } from '../api/events'
 import EventListPage from './EventListPage'
@@ -59,5 +60,30 @@ describe('EventListPage', () => {
     expect(card.getByText('48 seats available')).toBeInTheDocument()
     expect(card.getByText('$25.00')).toBeInTheDocument()
     expect(card.getByRole('link', { name: 'View Jazz Night' })).toHaveAttribute('href', '/events/1')
+  })
+
+  it('searches on the server after typing pauses', async () => {
+    const fetchMock = vi.fn<(url: string) => Promise<Response>>(() => Promise.resolve(
+      new Response(JSON.stringify({ data: [makeEvent()], errors: [], meta: { nextCursor: null } }))))
+    vi.stubGlobal('fetch', fetchMock)
+    renderPage()
+    await screen.findByRole('list', { name: 'events' })
+
+    await userEvent.type(screen.getByRole('textbox', { name: 'Search events' }), 'jazz')
+
+    await waitFor(() => expect(fetchMock).toHaveBeenLastCalledWith('/api/v1/events?q=jazz'))
+    expect(fetchMock.mock.calls.filter(([url]) => String(url).includes('q='))).toHaveLength(1)
+  })
+
+  it('widens the search box on focus and shrinks it on blur', async () => {
+    stubEvents([makeEvent()])
+    renderPage()
+    const input = await screen.findByRole('textbox', { name: 'Search events' })
+
+    await userEvent.click(input)
+    expect(input).toHaveStyle({ width: '400px', fontSize: '22px' })
+
+    await userEvent.tab()
+    expect(input).toHaveStyle({ width: '200px', fontSize: '12px' })
   })
 })
