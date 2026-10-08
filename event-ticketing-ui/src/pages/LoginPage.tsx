@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { login } from '../api/auth'
 import { useAuth } from '../context/useAuth'
 
@@ -143,6 +143,11 @@ function AccountSignInPanel({ onSubmit, error, submitting }: AccountPanelProps) 
           {submitting ? 'Signing in…' : 'Sign in'}
         </button>
       </form>
+
+      <p className="text-sm text-gray-600 m-0">
+        Don't have an account?{' '}
+        <Link to="/register" className="text-cyan-600 hover:underline">Create one</Link>
+      </p>
     </div>
   )
 }

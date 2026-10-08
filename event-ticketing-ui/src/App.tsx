@@ -1,6 +1,7 @@
 import { BrowserRouter, Link, Route, Routes, useNavigate } from 'react-router-dom'
 import { useAuth } from './context/useAuth'
 import LoginPage from './pages/LoginPage'
+import RegisterPage from './pages/RegisterPage'
 
 function HeaderNav() {
   const { user, signOut } = useAuth()
@@ -43,6 +44,7 @@ function App() {
           <Routes>
             <Route path="/" element={null} />
             <Route path="/login" element={<LoginPage />} />
+            <Route path="/register" element={<RegisterPage />} />
           </Routes>
         </main>
       </div>

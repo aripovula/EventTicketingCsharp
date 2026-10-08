@@ -19,6 +19,7 @@ function renderPage() {
         <Routes>
           <Route path="/" element={<HomeProbe />} />
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/register" element={<p>Register page</p>} />
         </Routes>
       </MemoryRouter>
     </AuthProvider>,
@@ -181,5 +182,14 @@ describe('LoginPage', () => {
     await userEvent.click(screen.getAllByRole('button', { name: 'Sign in' })[0])
 
     expect(await screen.findByText('Home page for Jane Doer')).toBeInTheDocument()
+  })
+
+  it('links to the register page', async () => {
+    stubFetch(new Response(null, { status: 401 }))
+    renderPage()
+
+    await userEvent.click(screen.getByRole('link', { name: 'Create one' }))
+
+    expect(screen.getByText('Register page')).toBeInTheDocument()
   })
 })
