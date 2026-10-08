@@ -46,3 +46,23 @@ test('choosing a sort order asks the API to sort', async ({ page }) => {
   await expect(items).toHaveCount(2)
   await expect(items.first()).toContainText('Cheapest First')
 })
+
+test('scrolling to the bottom loads the next page of events', async ({ page }) => {
+  const pageOne = Array.from({ length: 20 }, (_, i) => ({ ...jazz, id: i + 1, title: `Event ${String(i + 1).padStart(2, '0')}` }))
+  await page.route('**/api/v1/events**', route => {
+    const after = new URL(route.request().url()).searchParams.get('after')
+    return route.fulfill({
+      json: after === 'page-2'
+        ? { data: [{ ...jazz, id: 21, title: 'Event 21' }], errors: [], meta: { nextCursor: null } }
+        : { data: pageOne, errors: [], meta: { nextCursor: 'page-2' } },
+    })
+  })
+  await page.goto('/')
+  const items = page.getByRole('list', { name: 'events' }).getByRole('listitem')
+  await expect(items).toHaveCount(20)
+
+  await page.getByTestId('events-sentinel').scrollIntoViewIfNeeded()
+
+  await expect(items).toHaveCount(21)
+  await expect(page.getByRole('link', { name: 'Event 21', exact: true })).toBeVisible()
+})

@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import type { EventItem } from '../api/events'
@@ -30,7 +30,18 @@ function renderPage() {
   render(<MemoryRouter><EventListPage /></MemoryRouter>)
 }
 
+// happy-dom does no layout, so tests trigger the infinite-scroll sentinel by hand.
+let intersect: () => void = () => {}
+class FakeIntersectionObserver {
+  constructor(callback: IntersectionObserverCallback) {
+    intersect = () => callback([{ isIntersecting: true } as IntersectionObserverEntry], this as unknown as IntersectionObserver)
+  }
+  observe() {}
+  disconnect() {}
+}
+
 describe('EventListPage', () => {
+  beforeEach(() => vi.stubGlobal('IntersectionObserver', FakeIntersectionObserver))
   afterEach(() => vi.unstubAllGlobals())
 
   it('shows a loading message until events arrive', async () => {
@@ -107,5 +118,55 @@ describe('EventListPage', () => {
 
     expect(await screen.findByRole('combobox', { name: 'Sort events' })).toHaveValue('name')
     expect(fetchMock).toHaveBeenCalledWith('/api/v1/events?sort=name')
+  })
+
+  function stubPages(pages: Record<string, { events: EventItem[]; nextCursor: string | null }>) {
+    const fetchMock = vi.fn<(url: string) => Promise<Response>>(url => {
+      const after = new URL(url, 'http://localhost').searchParams.get('after') ?? 'first'
+      const page = pages[after]
+      return Promise.resolve(new Response(JSON.stringify({ data: page.events, errors: [], meta: { nextCursor: page.nextCursor } })))
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    return fetchMock
+  }
+
+  it('loads and appends the next page when the sentinel scrolls into view', async () => {
+    const fetchMock = stubPages({
+      first: { events: [makeEvent({ id: 1, title: 'First' })], nextCursor: 'c1' },
+      c1: { events: [makeEvent({ id: 2, title: 'Second' })], nextCursor: null },
+    })
+    renderPage()
+    await screen.findByRole('link', { name: 'First' })
+
+    act(() => intersect())
+
+    expect(await screen.findByRole('link', { name: 'Second' })).toBeInTheDocument()
+    expect(screen.getAllByRole('listitem')).toHaveLength(2)
+    expect(fetchMock).toHaveBeenLastCalledWith('/api/v1/events?sort=name&after=c1')
+  })
+
+  it('stops loading when there is no next cursor', async () => {
+    const fetchMock = stubPages({ first: { events: [makeEvent()], nextCursor: null } })
+    renderPage()
+    await screen.findByRole('link', { name: 'Jazz Night' })
+
+    act(() => intersect())
+
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('starts again from the first page when the sort changes', async () => {
+    stubPages({
+      first: { events: [makeEvent({ id: 1, title: 'First' })], nextCursor: 'c1' },
+      c1: { events: [makeEvent({ id: 2, title: 'Second' })], nextCursor: null },
+    })
+    renderPage()
+    await screen.findByRole('link', { name: 'First' })
+    act(() => intersect())
+    await screen.findByRole('link', { name: 'Second' })
+
+    await userEvent.selectOptions(screen.getByRole('combobox', { name: 'Sort events' }), 'date')
+
+    await waitFor(() => expect(screen.getAllByRole('listitem')).toHaveLength(1))
   })
 })

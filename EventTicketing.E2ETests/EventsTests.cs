@@ -41,4 +41,16 @@ public class EventsTests : E2ETestBase
 
         await Expect(items.First.GetByRole(AriaRole.Heading)).ToHaveTextAsync(cheapestTitle);
     }
+
+    [Test]
+    public async Task ScrollingToTheBottomLoadsAllSeededEvents()
+    {
+        await Page.GotoAsync(BaseUrl);
+        var items = Page.GetByRole(AriaRole.List, new() { Name = "events" }).GetByRole(AriaRole.Listitem);
+        await Expect(items).ToHaveCountAsync(20);
+
+        await Page.GetByTestId("events-sentinel").ScrollIntoViewIfNeededAsync();
+
+        await Expect(items).ToHaveCountAsync(30);
+    }
 }

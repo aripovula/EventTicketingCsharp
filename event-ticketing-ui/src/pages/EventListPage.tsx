@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { fetchEvents, type EventItem, type EventSort } from '../api/events'
 import { colorForType } from '../utils/eventTypes'
@@ -12,7 +12,12 @@ export default function EventListPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
   const [sortType, setSortType] = useState<EventSort>('name')
+  const [nextCursor, setNextCursor] = useState<string | null>(null)
+  const [loadingMore, setLoadingMore] = useState(false)
   const searchInputRef = useRef<HTMLInputElement>(null)
+  const sentinelRef = useRef<HTMLDivElement>(null)
+  // Bumped whenever search or sort changes, so late responses for old criteria are ignored.
+  const requestId = useRef(0)
 
   // Search runs on the server, so wait for a pause in typing before asking for it.
   useEffect(() => {
@@ -21,12 +26,43 @@ export default function EventListPage() {
   }, [searchTerm])
 
   useEffect(() => {
+    const id = ++requestId.current
     fetchEvents({ q: debouncedSearch, sort: sortType })
       .then(res => res.json())
-      .then(body => setEvents(body.data ?? []))
+      .then(body => {
+        if (id !== requestId.current) return
+        setEvents(body.data ?? [])
+        setNextCursor(body.meta?.nextCursor ?? null)
+      })
       .catch(() => {})
       .finally(() => setLoading(false))
   }, [debouncedSearch, sortType])
+
+  const loadMore = useCallback(() => {
+    if (!nextCursor || loadingMore) return
+    const id = requestId.current
+    setLoadingMore(true)
+    fetchEvents({ q: debouncedSearch, sort: sortType, after: nextCursor })
+      .then(res => res.json())
+      .then(body => {
+        if (id !== requestId.current) return
+        setEvents(prev => [...prev, ...(body.data ?? [])])
+        setNextCursor(body.meta?.nextCursor ?? null)
+      })
+      .catch(() => {})
+      .finally(() => setLoadingMore(false))
+  }, [nextCursor, loadingMore, debouncedSearch, sortType])
+
+  // Infinite scroll: load the next page when the sentinel under the list scrolls into view.
+  useEffect(() => {
+    const sentinel = sentinelRef.current
+    if (!sentinel) return
+    const observer = new IntersectionObserver(entries => {
+      if (entries.some(entry => entry.isIntersecting)) loadMore()
+    })
+    observer.observe(sentinel)
+    return () => observer.disconnect()
+  }, [loadMore, loading])
 
   const changeInputSize = (inputWidth: number, fontSize: number) => {
     searchInputRef.current!.style.width = `${inputWidth}px`
@@ -103,6 +139,8 @@ export default function EventListPage() {
           </li>
         ))}
       </ul>
+      <div ref={sentinelRef} data-testid="events-sentinel" className="h-1" />
+      {loadingMore && <p className="text-gray-500 text-center py-6">Loading more events...</p>}
     </div>
   )
 }
