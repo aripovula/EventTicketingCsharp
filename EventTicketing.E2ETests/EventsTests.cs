@@ -53,4 +53,16 @@ public class EventsTests : E2ETestBase
 
         await Expect(items).ToHaveCountAsync(30);
     }
+
+    [Test]
+    public async Task ViewingAnEventShowsItsDetails()
+    {
+        await Page.GotoAsync(BaseUrl);
+
+        await Page.GetByRole(AriaRole.Link, new() { Name = "View Jazz Night" }).ClickAsync();
+
+        await Expect(Page.GetByRole(AriaRole.Heading, new() { Name = "Jazz Night" })).ToBeVisibleAsync();
+        await Expect(Page.GetByText("48 of 120 seats available")).ToBeVisibleAsync();
+        await Expect(Page.GetByText("$25.00")).ToBeVisibleAsync();
+    }
 }

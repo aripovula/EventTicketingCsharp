@@ -90,3 +90,12 @@ test('View on an event card opens its detail page', async ({ page }) => {
   await expect(page).toHaveURL('/events/1')
   await expect(page.getByRole('link', { name: '← Back to events' })).toBeVisible()
 })
+
+test('the detail page shows the event from the API', async ({ page }) => {
+  await page.route('**/api/v1/events/1', route => route.fulfill({ json: { data: jazz, errors: [] } }))
+  await page.goto('/events/1')
+
+  await expect(page.getByRole('heading', { name: 'Jazz Night' })).toBeVisible()
+  await expect(page.getByText('48 of 120 seats available')).toBeVisible()
+  await expect(page).toHaveTitle('Jazz Night | Ticketing')
+})
