@@ -146,4 +146,41 @@ public class EventsListIntegrationTests(IntegrationTestFactory factory) : IClass
 
         Assert.Empty(titles);
     }
+
+    private async Task<List<JsonElement>> AllEventsAsync(string query)
+    {
+        var events = new List<JsonElement>();
+        string? cursor = null;
+        do
+        {
+            var url = $"/api/v1/events?{query}" + (cursor is null ? "" : $"&after={Uri.EscapeDataString(cursor)}");
+            var (status, body) = await GetAsync(url);
+            Assert.Equal(HttpStatusCode.OK, status);
+            events.AddRange(body.GetProperty("data").EnumerateArray().Select(e => e.Clone()));
+            var next = body.GetProperty("meta").GetProperty("nextCursor");
+            cursor = next.ValueKind == JsonValueKind.Null ? null : next.GetString();
+        } while (cursor is not null);
+        return events;
+    }
+
+    [Fact]
+    public async Task List_SortByDatePagesThroughAllEventsInStartTimeOrder()
+    {
+        var events = await AllEventsAsync("sort=date&limit=4");
+
+        var starts = events.Select(e => e.GetProperty("startTime").GetDateTime()).ToList();
+        Assert.Equal(30, starts.Count);
+        Assert.Equal(starts.Order(), starts);
+    }
+
+    [Fact]
+    public async Task List_CursorFromAnotherSortIsRejected()
+    {
+        var (_, first) = await GetAsync("/api/v1/events?sort=name&limit=5");
+        var nameCursor = first.GetProperty("meta").GetProperty("nextCursor").GetString()!;
+
+        var (status, _) = await GetAsync($"/api/v1/events?sort=date&after={Uri.EscapeDataString(nameCursor)}");
+
+        Assert.Equal(HttpStatusCode.BadRequest, status);
+    }
 }
