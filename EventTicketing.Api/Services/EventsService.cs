@@ -47,10 +47,8 @@ public class EventsService(AppDbContext db)
         return new EventPage(items, nextCursor);
     }
 
-    public Task<EventResponse?> GetAsync(int id, CancellationToken cancellationToken)
-    {
-        return Task.FromResult<EventResponse?>(null);
-    }
+    public Task<EventResponse?> GetAsync(int id, CancellationToken cancellationToken) =>
+        db.Events.Where(e => e.Id == id).Select(ToResponse).SingleOrDefaultAsync(cancellationToken);
 
     private static IQueryable<Event> Ordered(IQueryable<Event> events, string sort) => sort switch
     {
