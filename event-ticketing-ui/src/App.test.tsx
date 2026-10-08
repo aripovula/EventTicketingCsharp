@@ -61,4 +61,10 @@ describe('App', () => {
     expect(window.location.pathname).toBe('/login')
     expect(screen.getByRole('link', { name: 'Sign in' })).toBeInTheDocument()
   })
+
+  it('shows the events list on the home page', () => {
+    renderApp()
+
+    expect(screen.getByRole('list', { name: 'events' })).toBeInTheDocument()
+  })
 })
