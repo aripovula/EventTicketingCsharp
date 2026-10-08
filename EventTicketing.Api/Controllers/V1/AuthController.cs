@@ -37,6 +37,9 @@ public class AuthController(
     public async Task<IActionResult> Register(RegisterRequest request, CancellationToken cancellationToken)
     {
         var user = await authService.RegisterAsync(request, cancellationToken);
+        if (user is null)
+            return Conflict(new ApiEnvelope(null, [new ApiError("email_taken", "An account with this email already exists.", "email")]));
+
         return StatusCode(StatusCodes.Status201Created, user);
     }
 

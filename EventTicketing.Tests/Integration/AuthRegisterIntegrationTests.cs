@@ -44,4 +44,16 @@ public class AuthRegisterIntegrationTests(IntegrationTestFactory factory) : ICla
         Assert.Equal("user", data.GetProperty("role").GetString());
         Assert.DoesNotContain("password", body, StringComparison.OrdinalIgnoreCase);
     }
+
+    [Fact]
+    public async Task Register_WithTakenEmail_Returns409EmailTaken()
+    {
+        var response = await RegisterAsync("Another Jane", "jane@example.com", "long-enough");
+
+        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+        var error = JsonDocument.Parse(await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken))
+            .RootElement.GetProperty("errors")[0];
+        Assert.Equal("email_taken", error.GetProperty("code").GetString());
+        Assert.Equal("email", error.GetProperty("field").GetString());
+    }
 }
