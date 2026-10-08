@@ -48,6 +48,17 @@ public class AuthController(
         return Ok(user);
     }
 
+    [HttpPost("refresh")]
+    public async Task<IActionResult> Refresh(CancellationToken cancellationToken)
+    {
+        var rawToken = Request.Cookies[RefreshTokenCookie];
+        var rotation = rawToken is null ? null : await refreshTokens.RotateAsync(rawToken, cancellationToken);
+        if (rotation is null)
+            return Unauthorized();
+
+        return Ok(rotation.User);
+    }
+
     [HttpPost("logout")]
     public IActionResult Logout()
     {

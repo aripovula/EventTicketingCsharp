@@ -1,4 +1,4 @@
-import { fetchMe, login, logout } from './auth'
+import { fetchMe, login, logout, refreshSession } from './auth'
 
 describe('login', () => {
   afterEach(() => vi.unstubAllGlobals())
@@ -41,5 +41,18 @@ describe('logout', () => {
     await logout()
 
     expect(fetchMock).toHaveBeenCalledWith('/api/v1/auth/logout', { method: 'POST', credentials: 'include' })
+  })
+})
+
+describe('refreshSession', () => {
+  afterEach(() => vi.unstubAllGlobals())
+
+  it('posts to the refresh endpoint with cookies included', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response('{}'))
+    vi.stubGlobal('fetch', fetchMock)
+
+    await refreshSession()
+
+    expect(fetchMock).toHaveBeenCalledWith('/api/v1/auth/refresh', { method: 'POST', credentials: 'include' })
   })
 })

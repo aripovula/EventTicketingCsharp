@@ -14,3 +14,7 @@ export function fetchMe() {
 export function logout() {
   return fetch('/api/v1/auth/logout', { method: 'POST', credentials: 'include' })
 }
+
+export function refreshSession() {
+  return fetch('/api/v1/auth/refresh', { method: 'POST', credentials: 'include' })
+}

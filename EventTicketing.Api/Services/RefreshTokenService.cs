@@ -27,6 +27,11 @@ public class RefreshTokenService(AppDbContext db, IOptions<JwtOptions> options)
         return rawToken;
     }
 
+    public Task<RefreshTokenRotation?> RotateAsync(string rawToken, CancellationToken cancellationToken)
+    {
+        return Task.FromResult<RefreshTokenRotation?>(null);
+    }
+
     public static string Hash(string rawToken) =>
         Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(rawToken)));
 }
