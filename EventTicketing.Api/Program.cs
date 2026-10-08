@@ -95,6 +95,7 @@ using (var scope = app.Services.CreateScope())
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     db.Database.Migrate();
     UserSeeder.Seed(db);
+    EventSeeder.Seed(db, DateOnly.FromDateTime(DateTime.UtcNow));
 }
 
 app.UseExceptionHandler(_ => { });
