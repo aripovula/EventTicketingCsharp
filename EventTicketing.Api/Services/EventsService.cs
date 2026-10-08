@@ -46,12 +46,14 @@ public class EventsService(AppDbContext db)
     private static IQueryable<Event> Ordered(IQueryable<Event> events, string sort) => sort switch
     {
         "date" => events.OrderBy(e => e.StartTime).ThenBy(e => e.Id),
+        "price" => events.OrderBy(e => e.PriceCents).ThenBy(e => e.Id),
         _ => events.OrderBy(e => e.Title).ThenBy(e => e.Id),
     };
 
     private static string SortKey(EventResponse e, string sort) => sort switch
     {
         "date" => e.StartTime.ToString("O", CultureInfo.InvariantCulture),
+        "price" => e.PriceCents.ToString(CultureInfo.InvariantCulture),
         _ => e.Title,
     };
 
@@ -65,6 +67,10 @@ public class EventsService(AppDbContext db)
                     return null;
                 start = DateTime.SpecifyKind(start, DateTimeKind.Utc);
                 return events.Where(e => e.StartTime > start || (e.StartTime == start && e.Id > id));
+            case "price":
+                if (!int.TryParse(key, CultureInfo.InvariantCulture, out var price))
+                    return null;
+                return events.Where(e => e.PriceCents > price || (e.PriceCents == price && e.Id > id));
             default:
                 return events.Where(e => string.Compare(e.Title, key) > 0 || (e.Title == key && e.Id > id));
         }

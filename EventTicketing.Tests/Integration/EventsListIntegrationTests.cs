@@ -174,12 +174,23 @@ public class EventsListIntegrationTests(IntegrationTestFactory factory) : IClass
     }
 
     [Fact]
+    public async Task List_SortByPricePagesThroughAllEventsInPriceOrder()
+    {
+        var events = await AllEventsAsync("sort=price&limit=4");
+
+        var prices = events.Select(e => e.GetProperty("priceCents").GetInt32()).ToList();
+        Assert.Equal(30, prices.Count);
+        Assert.Equal(prices.Order(), prices);
+        Assert.Equal(30, events.Select(e => e.GetProperty("id").GetInt32()).Distinct().Count());
+    }
+
+    [Fact]
     public async Task List_CursorFromAnotherSortIsRejected()
     {
-        var (_, first) = await GetAsync("/api/v1/events?sort=name&limit=5");
-        var nameCursor = first.GetProperty("meta").GetProperty("nextCursor").GetString()!;
+        var (_, first) = await GetAsync("/api/v1/events?sort=price&limit=5");
+        var priceCursor = first.GetProperty("meta").GetProperty("nextCursor").GetString()!;
 
-        var (status, _) = await GetAsync($"/api/v1/events?sort=date&after={Uri.EscapeDataString(nameCursor)}");
+        var (status, _) = await GetAsync($"/api/v1/events?sort=date&after={Uri.EscapeDataString(priceCursor)}");
 
         Assert.Equal(HttpStatusCode.BadRequest, status);
     }
