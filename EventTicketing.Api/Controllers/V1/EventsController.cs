@@ -1,5 +1,6 @@
 using EventTicketing.Api.Contracts;
 using EventTicketing.Api.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace EventTicketing.Api.Controllers.V1;
@@ -34,6 +35,7 @@ public class EventsController(EventsService eventsService) : ControllerBase
         return Ok(ev);
     }
 
+    [Authorize(Roles = "admin")]
     [HttpPost]
     public async Task<IActionResult> Create(EventRequest request, CancellationToken cancellationToken)
     {
