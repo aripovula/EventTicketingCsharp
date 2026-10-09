@@ -86,3 +86,24 @@ test('an admin opens an event for editing from the admin list', async ({ page })
   await expect(page.getByLabel('Event type')).toHaveValue('Comedy')
   await expect(page.getByLabel('Price ($)')).toHaveValue('19.99')
 })
+
+test('an admin saves changes to an event', async ({ page }) => {
+  await signedInAs(page, 'admin')
+  const event = { id: 6, title: 'Old Title', description: 'Edit me.', startTime: '2026-11-02T23:00:00Z', endTime: '2026-11-03T02:00:00Z',
+    venue: 'Hall', eventType: 'Music', totalSeats: 10, availableSeats: 10, priceCents: 1000, imageUrl: null }
+  let saved: Record<string, unknown> | null = null
+  await page.route('**/api/v1/events/6', route => {
+    if (route.request().method() === 'PUT') {
+      saved = route.request().postDataJSON()
+      return route.fulfill({ status: 204 })
+    }
+    return route.fulfill({ json: { data: event, errors: [] } })
+  })
+  await page.goto('/admin/6/edit')
+
+  await page.getByLabel('Title').fill('New Title')
+  await page.getByRole('button', { name: 'Save changes' }).click()
+
+  await expect(page).toHaveURL('/admin')
+  expect(saved).toMatchObject({ title: 'New Title', priceCents: 1000 })
+})

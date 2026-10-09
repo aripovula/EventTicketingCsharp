@@ -113,7 +113,10 @@ describe('AdminEventFormPage', () => {
   function renderEdit(id = 7) {
     render(
       <MemoryRouter initialEntries={[`/admin/${id}/edit`]}>
-        <Routes><Route path="/admin/:id/edit" element={<AdminEventFormPage />} /></Routes>
+        <Routes>
+          <Route path="/admin" element={<p>Admin page</p>} />
+          <Route path="/admin/:id/edit" element={<AdminEventFormPage />} />
+        </Routes>
       </MemoryRouter>,
     )
   }
@@ -136,5 +139,40 @@ describe('AdminEventFormPage', () => {
     renderEdit()
 
     expect(await screen.findByText('Failed to load event (404).')).toBeInTheDocument()
+  })
+
+  function stubEditThenSave(saveResponse: Response) {
+    const event = makeEvent({ id: 7 })
+    const fetchMock = vi.fn((_url: string, init?: RequestInit) => Promise.resolve(init?.method === 'PUT'
+      ? saveResponse
+      : new Response(JSON.stringify({ data: event, errors: [] }))))
+    vi.stubGlobal('fetch', fetchMock)
+    return fetchMock
+  }
+
+  it('saves changes to the edited event and returns to admin', async () => {
+    const fetchMock = stubEditThenSave(new Response(null, { status: 204 }))
+    renderEdit()
+    const title = await screen.findByLabelText('Title')
+
+    await userEvent.clear(title)
+    await userEvent.type(title, 'Jazz Night Deluxe')
+    expect(screen.getByRole('button', { name: 'Save changes' })).toBeInTheDocument()
+    submitForm()
+
+    expect(await screen.findByText('Admin page')).toBeInTheDocument()
+    const [url, init] = fetchMock.mock.calls.find(([, i]) => i?.method === 'PUT')!
+    expect(url).toBe('/api/v1/events/7')
+    expect(JSON.parse(init!.body as string).title).toBe('Jazz Night Deluxe')
+  })
+
+  it('reports a failed update', async () => {
+    stubEditThenSave(new Response('oops', { status: 500 }))
+    renderEdit()
+    await screen.findByLabelText('Title')
+
+    submitForm()
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Failed to update event (500). Please try again.')
   })
 })

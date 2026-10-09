@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { createEvent, fetchEvent } from '../api/events'
+import { createEvent, fetchEvent, updateEvent } from '../api/events'
 import { eventToForm, toEventInput, type EventFormData } from '../utils/eventForm'
 import { EVENT_TYPES } from '../utils/eventTypes'
 
@@ -50,7 +50,8 @@ export default function AdminEventFormPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setSubmitError(null)
-    const res = await createEvent(toEventInput(form)).catch(() => null)
+    const input = toEventInput(form)
+    const res = await (isEdit ? updateEvent(Number(id), input) : createEvent(input)).catch(() => null)
     if (res?.ok) {
       navigate('/admin')
       return
@@ -59,7 +60,7 @@ export default function AdminEventFormPage() {
     const details: string[] = (body?.errors ?? []).map((error: { detail: string }) => error.detail)
     setSubmitError(details.length > 0
       ? details.join(' ')
-      : `Failed to create event (${res?.status ?? 'network error'}). Please try again.`)
+      : `Failed to ${isEdit ? 'update' : 'create'} event (${res?.status ?? 'network error'}). Please try again.`)
   }
 
   if (loading) return <p className="text-gray-500 text-center py-12">Loading...</p>
@@ -134,7 +135,7 @@ export default function AdminEventFormPage() {
 
           <div className="flex gap-3 pt-2">
             <button type="submit" className="bg-cyan-600 text-white px-5 py-2 rounded-lg text-sm font-medium hover:bg-cyan-700 transition-colors">
-              Create event
+              {isEdit ? 'Save changes' : 'Create event'}
             </button>
             <Link to="/admin" className="border border-gray-300 text-gray-600 px-5 py-2 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors no-underline">
               Cancel

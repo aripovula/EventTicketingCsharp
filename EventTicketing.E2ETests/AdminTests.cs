@@ -96,4 +96,45 @@ public class AdminTests : E2ETestBase
                 await Page.APIRequest.DeleteAsync($"{BaseUrl}/api/v1/events/{ev.GetProperty("id").GetInt32()}");
         }
     }
+
+    [Test]
+    public async Task AdminEditsAnEventThroughTheForm()
+    {
+        await SignInAsAdminAsync();
+        var title = $"E2E Edit {Guid.NewGuid():N}"[..18];
+        var created = await Page.APIRequest.PostAsync($"{BaseUrl}/api/v1/events", new()
+        {
+            DataObject = new
+            {
+                title,
+                description = "Edited by an E2E test.",
+                startTime = DateTime.UtcNow.AddDays(45),
+                endTime = DateTime.UtcNow.AddDays(45).AddHours(2),
+                venue = "Test Hall",
+                eventType = "Other",
+                totalSeats = 10,
+                availableSeats = 10,
+                priceCents = 1000,
+            },
+        });
+        var id = (await created.JsonAsync())!.Value.GetProperty("data").GetProperty("id").GetInt32();
+
+        try
+        {
+            await Page.GotoAsync($"{BaseUrl}/admin/{id}/edit");
+            await Expect(Page.GetByLabel("Title")).ToHaveValueAsync(title);
+            await Page.GetByLabel("Title").FillAsync(title + " v2");
+            await Page.GetByLabel("Price ($)").FillAsync("12.50");
+            await Page.GetByRole(AriaRole.Button, new() { Name = "Save changes" }).ClickAsync();
+
+            await Expect(Page).ToHaveURLAsync(new Regex("/admin$"));
+            var saved = (await (await Page.APIRequest.GetAsync($"{BaseUrl}/api/v1/events/{id}")).JsonAsync())!.Value.GetProperty("data");
+            Assert.That(saved.GetProperty("title").GetString(), Is.EqualTo(title + " v2"));
+            Assert.That(saved.GetProperty("priceCents").GetInt32(), Is.EqualTo(1250));
+        }
+        finally
+        {
+            await Page.APIRequest.DeleteAsync($"{BaseUrl}/api/v1/events/{id}");
+        }
+    }
 }
