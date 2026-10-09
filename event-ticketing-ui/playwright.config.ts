@@ -7,6 +7,8 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
+  // Each worker is a Chromium instance; on a small dev machine more than two starve each other of memory.
+  workers: process.env.CI ? undefined : 2,
   reporter: 'list',
   // First visits make Vite compile pages on demand, which on a busy machine can exceed the 5s default.
   expect: { timeout: 15_000 },
