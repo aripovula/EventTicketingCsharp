@@ -43,6 +43,7 @@ public class EventsController(EventsService eventsService) : ControllerBase
         return CreatedAtAction(nameof(Get), new { id = ev.Id }, ev);
     }
 
+    [Authorize(Roles = "admin")]
     [HttpPut("{id:int}")]
     public async Task<IActionResult> Update(int id, EventRequest request, CancellationToken cancellationToken)
     {

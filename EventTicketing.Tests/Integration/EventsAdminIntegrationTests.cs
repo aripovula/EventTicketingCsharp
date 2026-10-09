@@ -70,4 +70,22 @@ public class EventsAdminIntegrationTests(IntegrationTestFactory factory) : IClas
         var fetched = await admin.GetStringAsync(response.Headers.Location, TestContext.Current.CancellationToken);
         Assert.Contains("Brand New Gig", fetched);
     }
+
+    [Fact]
+    public async Task Update_Anonymously_Returns401()
+    {
+        var response = await factory.CreateClient().PutAsJsonAsync("/api/v1/events/1", NewEvent(), TestContext.Current.CancellationToken);
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Update_AsRegularUser_Returns403()
+    {
+        var client = await SignedInAsync("jane@example.com");
+
+        var response = await client.PutAsJsonAsync("/api/v1/events/1", NewEvent(), TestContext.Current.CancellationToken);
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
 }
