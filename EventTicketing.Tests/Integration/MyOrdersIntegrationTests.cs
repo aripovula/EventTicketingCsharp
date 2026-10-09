@@ -71,4 +71,38 @@ public class MyOrdersIntegrationTests(IntegrationTestFactory factory) : IClassFi
 
         Assert.Equal([second, first], ids);
     }
+
+    [Fact]
+    public async Task MyOrders_PagesThroughAllOrdersWithTheCursor()
+    {
+        var eventId = await CreateEventAsync();
+        var john = await SignedInAsync("john@example.com");
+        var booked = new List<int>();
+        for (var i = 0; i < 5; i++)
+            booked.Add(await BookAsync(john, eventId, "john@example.com"));
+
+        var seen = new List<int>();
+        string? cursor = null;
+        do
+        {
+            var url = "/api/v1/auth/me/orders?limit=2" + (cursor is null ? "" : $"&after={Uri.EscapeDataString(cursor)}");
+            var body = JsonDocument.Parse(await john.GetStringAsync(url, TestContext.Current.CancellationToken)).RootElement;
+            seen.AddRange(body.GetProperty("data").EnumerateArray().Select(o => o.GetProperty("id").GetInt32()));
+            var next = body.GetProperty("meta").GetProperty("nextCursor");
+            cursor = next.ValueKind == JsonValueKind.Null ? null : next.GetString();
+        } while (cursor is not null);
+
+        Assert.Equal(booked.AsEnumerable().Reverse().ToArray(), seen.Where(booked.Contains).ToArray());
+        Assert.Equal(seen.Distinct().Count(), seen.Count);
+    }
+
+    [Fact]
+    public async Task MyOrders_WithMalformedCursor_Returns400()
+    {
+        var john = await SignedInAsync("john@example.com");
+
+        var response = await john.GetAsync("/api/v1/auth/me/orders?after=garbage", TestContext.Current.CancellationToken);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
 }

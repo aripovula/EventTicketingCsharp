@@ -106,7 +106,10 @@ public class AuthController(
     {
         var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
         var page = await ordersService.ListForUserAsync(userId, query, cancellationToken);
-        return Ok(new ApiEnvelope(page!.Items, [], new { nextCursor = page.NextCursor }));
+        if (page is null)
+            return BadRequest(new ApiEnvelope(null, [new ApiError("invalid_cursor", "The page cursor is invalid.", "after")]));
+
+        return Ok(new ApiEnvelope(page.Items, [], new { nextCursor = page.NextCursor }));
     }
 
     private void AppendAccessTokenCookie(UserInfo user)

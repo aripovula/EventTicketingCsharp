@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
 using EventTicketing.Api.Contracts;
@@ -11,6 +12,8 @@ public record OrderViewer(int? UserId, bool IsAdmin, string? GuestToken);
 
 public class OrdersService(AppDbContext db)
 {
+    private const string CursorSort = "booked-desc";
+
     /// <returns>The order, or null when it doesn't exist or the viewer may not see it.</returns>
     public async Task<OrderResponse?> GetAsync(int orderId, OrderViewer viewer, CancellationToken cancellationToken)
     {
@@ -33,14 +36,28 @@ public class OrdersService(AppDbContext db)
     /// <returns>The page, or null when the cursor is malformed.</returns>
     public async Task<OrderPage?> ListForUserAsync(int userId, PageQuery query, CancellationToken cancellationToken)
     {
-        var items = await db.Orders
-            .Where(o => o.UserId == userId)
+        var orders = db.Orders.Where(o => o.UserId == userId);
+        if (query.After is not null)
+        {
+            if (!PageCursor.TryDecode(query.After, CursorSort, out var key, out var id)
+                || !DateTime.TryParse(key, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out var bookedAt))
+                return null;
+            bookedAt = DateTime.SpecifyKind(bookedAt, DateTimeKind.Utc);
+            orders = orders.Where(o => o.BookedAt < bookedAt || (o.BookedAt == bookedAt && o.Id < id));
+        }
+
+        // One extra row tells us whether another page exists.
+        var rows = await orders
             .OrderByDescending(o => o.BookedAt).ThenByDescending(o => o.Id)
-            .Take(query.Limit)
+            .Take(query.Limit + 1)
             .Select(o => new OrderResponse(o.Id, o.EventId, o.Event.Title, o.Email, o.PriceCents, o.BookedAt, null))
             .ToListAsync(cancellationToken);
 
-        return new OrderPage(items, null);
+        var items = rows.Take(query.Limit).ToList();
+        var nextCursor = rows.Count > query.Limit
+            ? PageCursor.Encode(CursorSort, items[^1].BookedAt.ToString("O", CultureInfo.InvariantCulture), items[^1].Id)
+            : null;
+        return new OrderPage(items, nextCursor);
     }
 
     private static bool TokenMatches(string? token, string? storedHash) =>
