@@ -85,6 +85,11 @@ public class EventsController(EventsService eventsService, BookingService bookin
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
         var result = await bookingService.BookAsync(id, request, userId is null ? null : int.Parse(userId), cancellationToken);
-        return StatusCode(StatusCodes.Status201Created, result.Order);
+        return result.Status switch
+        {
+            BookingStatus.SoldOut => Conflict(new ApiEnvelope(null, [new ApiError("sold_out", "Sorry, this event just sold out.")])),
+            BookingStatus.EventNotFound => NotFound(new ApiEnvelope(null, [new ApiError("not_found", "Event not found.")])),
+            _ => StatusCode(StatusCodes.Status201Created, result.Order),
+        };
     }
 }
