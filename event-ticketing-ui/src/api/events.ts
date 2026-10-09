@@ -52,3 +52,7 @@ export function updateEvent(id: number, input: EventInput) {
     body: JSON.stringify(input),
   })
 }
+
+export function deleteEvent(id: number) {
+  return fetch(`/api/v1/events/${id}`, { method: 'DELETE', credentials: 'include' })
+}

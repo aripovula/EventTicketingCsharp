@@ -52,4 +52,11 @@ public class EventsController(EventsService eventsService) : ControllerBase
 
         return NoContent();
     }
+
+    [HttpDelete("{id:int}")]
+    public async Task<IActionResult> Delete(int id, CancellationToken cancellationToken)
+    {
+        await eventsService.DeleteAsync(id, cancellationToken);
+        return NoContent();
+    }
 }

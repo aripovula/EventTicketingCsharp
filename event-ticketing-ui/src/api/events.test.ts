@@ -1,4 +1,4 @@
-import { createEvent, fetchEvent, fetchEvents, updateEvent, type EventInput } from './events'
+import { createEvent, deleteEvent, fetchEvent, fetchEvents, updateEvent, type EventInput } from './events'
 import { makeEvent } from '../test/fixtures'
 
 describe('fetchEvents', () => {
@@ -83,5 +83,18 @@ describe('updateEvent', () => {
       credentials: 'include',
       body: JSON.stringify(input),
     })
+  })
+})
+
+describe('deleteEvent', () => {
+  afterEach(() => vi.unstubAllGlobals())
+
+  it('deletes the event with cookies included', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(null, { status: 204 }))
+    vi.stubGlobal('fetch', fetchMock)
+
+    await deleteEvent(7)
+
+    expect(fetchMock).toHaveBeenCalledWith('/api/v1/events/7', { method: 'DELETE', credentials: 'include' })
   })
 })

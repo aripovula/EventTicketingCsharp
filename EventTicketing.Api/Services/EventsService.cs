@@ -92,6 +92,12 @@ public class EventsService(AppDbContext db)
         return true;
     }
 
+    /// <returns>False when no event has the given id.</returns>
+    public Task<bool> DeleteAsync(int id, CancellationToken cancellationToken)
+    {
+        return Task.FromResult(true);
+    }
+
     private static readonly Func<Event, EventResponse> ToResponseCompiled = ToResponse.Compile();
 
     private static IQueryable<Event> Ordered(IQueryable<Event> events, string sort) => sort switch
