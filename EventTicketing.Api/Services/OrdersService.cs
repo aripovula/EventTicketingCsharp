@@ -34,9 +34,10 @@ public class OrdersService(AppDbContext db)
     }
 
     /// <returns>The page, or null when the cursor is malformed.</returns>
-    public async Task<OrderPage?> ListForUserAsync(int userId, PageQuery query, CancellationToken cancellationToken)
+    /// <param name="userId">Only this user's orders, or every order when null (admin view).</param>
+    public async Task<OrderPage?> ListAsync(int? userId, PageQuery query, CancellationToken cancellationToken)
     {
-        var orders = db.Orders.Where(o => o.UserId == userId);
+        var orders = userId is null ? db.Orders : db.Orders.Where(o => o.UserId == userId);
         if (query.After is not null)
         {
             if (!PageCursor.TryDecode(query.After, CursorSort, out var key, out var id)

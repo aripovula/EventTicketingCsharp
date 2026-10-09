@@ -109,7 +109,7 @@ public class AuthController(
     public async Task<IActionResult> MyOrders([FromQuery] PageQuery query, CancellationToken cancellationToken)
     {
         var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
-        var page = await ordersService.ListForUserAsync(userId, query, cancellationToken);
+        var page = await ordersService.ListAsync(userId, query, cancellationToken);
         if (page is null)
             return BadRequest(new ApiEnvelope(null, [new ApiError("invalid_cursor", "The page cursor is invalid.", "after")]));
 
