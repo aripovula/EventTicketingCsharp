@@ -48,8 +48,14 @@ public class EventsController(EventsService eventsService) : ControllerBase
         return CreatedAtAction(nameof(Get), new { id = ev.Id }, ev);
     }
 
+    /// <summary>Updates an event. Admin only.</summary>
     [Authorize(Roles = "admin")]
     [HttpPut("{id:int}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(typeof(ApiEnvelope<object>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ApiEnvelope<object>), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Update(int id, EventRequest request, CancellationToken cancellationToken)
     {
         if (!await eventsService.UpdateAsync(id, request, cancellationToken))
