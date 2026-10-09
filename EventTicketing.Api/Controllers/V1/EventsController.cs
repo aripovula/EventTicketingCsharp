@@ -47,7 +47,9 @@ public class EventsController(EventsService eventsService) : ControllerBase
     [HttpPut("{id:int}")]
     public async Task<IActionResult> Update(int id, EventRequest request, CancellationToken cancellationToken)
     {
-        await eventsService.UpdateAsync(id, request, cancellationToken);
+        if (!await eventsService.UpdateAsync(id, request, cancellationToken))
+            return NotFound(new ApiEnvelope(null, [new ApiError("not_found", "Event not found.")]));
+
         return NoContent();
     }
 }
