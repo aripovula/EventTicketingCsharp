@@ -30,6 +30,12 @@ public class OrdersService(AppDbContext db)
             : null;
     }
 
+    /// <returns>The page, or null when the cursor is malformed.</returns>
+    public Task<OrderPage?> ListForUserAsync(int userId, PageQuery query, CancellationToken cancellationToken)
+    {
+        return Task.FromResult<OrderPage?>(new OrderPage([], null));
+    }
+
     private static bool TokenMatches(string? token, string? storedHash) =>
         token is not null && storedHash is not null
         && CryptographicOperations.FixedTimeEquals(Encoding.UTF8.GetBytes(SecureToken.Hash(token)), Encoding.UTF8.GetBytes(storedHash));

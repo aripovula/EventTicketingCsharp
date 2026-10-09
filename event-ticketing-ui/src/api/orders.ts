@@ -14,3 +14,9 @@ export function fetchOrder(id: number, guestToken?: string | null) {
     headers: guestToken ? { 'X-Order-Token': guestToken } : {},
   })
 }
+
+export function fetchMyOrders(after?: string | null) {
+  return fetch(after ? `/api/v1/auth/me/orders?after=${encodeURIComponent(after)}` : '/api/v1/auth/me/orders', {
+    credentials: 'include',
+  })
+}

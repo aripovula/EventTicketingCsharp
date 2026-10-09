@@ -13,6 +13,7 @@ public class AuthController(
     AuthService authService,
     TokenService tokenService,
     RefreshTokenService refreshTokens,
+    OrdersService ordersService,
     IOptions<JwtOptions> jwtOptions,
     IWebHostEnvironment env) : ControllerBase
 {
@@ -97,6 +98,15 @@ public class AuthController(
             return Unauthorized();
 
         return Ok(new UserInfo(int.Parse(id), name, email, role));
+    }
+
+    [Authorize]
+    [HttpGet("me/orders")]
+    public async Task<IActionResult> MyOrders([FromQuery] PageQuery query, CancellationToken cancellationToken)
+    {
+        var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        var page = await ordersService.ListForUserAsync(userId, query, cancellationToken);
+        return Ok(new ApiEnvelope(page!.Items, [], new { nextCursor = page.NextCursor }));
     }
 
     private void AppendAccessTokenCookie(UserInfo user)
