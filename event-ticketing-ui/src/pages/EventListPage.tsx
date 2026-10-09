@@ -1,68 +1,24 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { fetchEvents, type EventItem, type EventSort } from '../api/events'
+import { type EventSort } from '../api/events'
+import { useEventPages } from '../hooks/useEventPages'
 import { colorForType } from '../utils/eventTypes'
 import { formatPrice } from '../utils/formatPrice'
 
 const time = (iso: string) => new Date(iso).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })
 
 export default function EventListPage() {
-  const [events, setEvents] = useState<EventItem[]>([])
-  const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
   const [sortType, setSortType] = useState<EventSort>('name')
-  const [nextCursor, setNextCursor] = useState<string | null>(null)
-  const [loadingMore, setLoadingMore] = useState(false)
   const searchInputRef = useRef<HTMLInputElement>(null)
-  const sentinelRef = useRef<HTMLDivElement>(null)
-  // Bumped whenever search or sort changes, so late responses for old criteria are ignored.
-  const requestId = useRef(0)
+  const { events, loading, loadingMore, sentinelRef } = useEventPages({ q: debouncedSearch, sort: sortType })
 
   // Search runs on the server, so wait for a pause in typing before asking for it.
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedSearch(searchTerm), 300)
     return () => clearTimeout(timer)
   }, [searchTerm])
-
-  useEffect(() => {
-    const id = ++requestId.current
-    fetchEvents({ q: debouncedSearch, sort: sortType })
-      .then(res => res.json())
-      .then(body => {
-        if (id !== requestId.current) return
-        setEvents(body.data ?? [])
-        setNextCursor(body.meta?.nextCursor ?? null)
-      })
-      .catch(() => {})
-      .finally(() => setLoading(false))
-  }, [debouncedSearch, sortType])
-
-  const loadMore = useCallback(() => {
-    if (!nextCursor || loadingMore) return
-    const id = requestId.current
-    setLoadingMore(true)
-    fetchEvents({ q: debouncedSearch, sort: sortType, after: nextCursor })
-      .then(res => res.json())
-      .then(body => {
-        if (id !== requestId.current) return
-        setEvents(prev => [...prev, ...(body.data ?? [])])
-        setNextCursor(body.meta?.nextCursor ?? null)
-      })
-      .catch(() => {})
-      .finally(() => setLoadingMore(false))
-  }, [nextCursor, loadingMore, debouncedSearch, sortType])
-
-  // Infinite scroll: load the next page when the sentinel under the list scrolls into view.
-  useEffect(() => {
-    const sentinel = sentinelRef.current
-    if (!sentinel) return
-    const observer = new IntersectionObserver(entries => {
-      if (entries.some(entry => entry.isIntersecting)) loadMore()
-    })
-    observer.observe(sentinel)
-    return () => observer.disconnect()
-  }, [loadMore, loading])
 
   const changeInputSize = (inputWidth: number, fontSize: number) => {
     searchInputRef.current!.style.width = `${inputWidth}px`
