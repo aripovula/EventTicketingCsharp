@@ -100,8 +100,12 @@ public class AuthController(
         return Ok(new UserInfo(int.Parse(id), name, email, role));
     }
 
+    /// <summary>Lists the signed-in user's orders, newest first, with cursor pagination (meta.nextCursor).</summary>
     [Authorize]
     [HttpGet("me/orders")]
+    [ProducesResponseType(typeof(ApiEnvelope<IReadOnlyList<OrderResponse>>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiEnvelope<object>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> MyOrders([FromQuery] PageQuery query, CancellationToken cancellationToken)
     {
         var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);

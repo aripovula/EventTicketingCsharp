@@ -167,4 +167,13 @@ public class SwaggerIntegrationTests(IntegrationTestFactory factory) : IClassFix
         Assert.Contains("OrderResponse", SuccessSchemaRef(op, "200"));
         Assert.Contains(op.GetProperty("parameters").EnumerateArray(), p => p.GetProperty("name").GetString() == "X-Order-Token");
     }
+
+    [Fact]
+    public async Task MyOrders_DocumentsItsResponses()
+    {
+        var op = await OperationAsync("/api/v1/auth/me/orders", "get");
+
+        Assert.Equal(["200", "400", "401"], StatusCodes(op));
+        Assert.Contains("OrderResponse", SuccessSchemaRef(op, "200"));
+    }
 }
