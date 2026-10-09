@@ -136,4 +136,17 @@ public class EventsAdminIntegrationTests(IntegrationTestFactory factory) : IClas
 
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
     }
+
+    [Fact]
+    public async Task Delete_AsAdmin_Returns204AndRemovesTheEvent()
+    {
+        var admin = await SignedInAsync("admin@example.com");
+        var id = await CreateAsAdminAsync(admin, "Doomed Event");
+
+        var response = await admin.DeleteAsync($"/api/v1/events/{id}", TestContext.Current.CancellationToken);
+
+        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+        var fetched = await admin.GetAsync($"/api/v1/events/{id}", TestContext.Current.CancellationToken);
+        Assert.Equal(HttpStatusCode.NotFound, fetched.StatusCode);
+    }
 }

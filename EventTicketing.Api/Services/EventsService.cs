@@ -93,10 +93,8 @@ public class EventsService(AppDbContext db)
     }
 
     /// <returns>False when no event has the given id.</returns>
-    public Task<bool> DeleteAsync(int id, CancellationToken cancellationToken)
-    {
-        return Task.FromResult(true);
-    }
+    public async Task<bool> DeleteAsync(int id, CancellationToken cancellationToken) =>
+        await db.Events.Where(e => e.Id == id).ExecuteDeleteAsync(cancellationToken) > 0;
 
     private static readonly Func<Event, EventResponse> ToResponseCompiled = ToResponse.Compile();
 
