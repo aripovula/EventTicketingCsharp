@@ -93,4 +93,16 @@ public class BookingIntegrationTests(IntegrationTestFactory factory) : IClassFix
         Assert.Equal(0, (await db.Events.SingleAsync(e => e.Id == eventId, TestContext.Current.CancellationToken)).AvailableSeats);
         Assert.Equal(1, await db.Orders.CountAsync(o => o.EventId == eventId, TestContext.Current.CancellationToken));
     }
+
+    [Fact]
+    public async Task Book_PointsLocationAtTheNewOrder()
+    {
+        var eventId = await CreateEventAsync(availableSeats: 3);
+
+        var response = await BookAsync(eventId);
+
+        var orderId = JsonDocument.Parse(await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken))
+            .RootElement.GetProperty("data").GetProperty("id").GetInt32();
+        Assert.Equal($"/api/v1/orders/{orderId}", response.Headers.Location?.AbsolutePath);
+    }
 }

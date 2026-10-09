@@ -94,7 +94,7 @@ public class EventsController(EventsService eventsService, BookingService bookin
         {
             BookingStatus.SoldOut => Conflict(new ApiEnvelope(null, [new ApiError("sold_out", "Sorry, this event just sold out.")])),
             BookingStatus.EventNotFound => NotFound(new ApiEnvelope(null, [new ApiError("not_found", "Event not found.")])),
-            _ => StatusCode(StatusCodes.Status201Created, result.Order),
+            _ => CreatedAtAction(nameof(OrdersController.Get), "Orders", new { id = result.Order!.Id }, result.Order),
         };
     }
 }
