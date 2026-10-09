@@ -20,3 +20,9 @@ export function fetchMyOrders(after?: string | null) {
     credentials: 'include',
   })
 }
+
+export function fetchAllOrders(after?: string | null) {
+  return fetch(after ? `/api/v1/admin/orders?after=${encodeURIComponent(after)}` : '/api/v1/admin/orders', {
+    credentials: 'include',
+  })
+}

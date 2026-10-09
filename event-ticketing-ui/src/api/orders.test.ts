@@ -1,4 +1,4 @@
-import { fetchMyOrders, fetchOrder } from './orders'
+import { fetchAllOrders, fetchMyOrders, fetchOrder } from './orders'
 
 describe('fetchOrder', () => {
   afterEach(() => vi.unstubAllGlobals())
@@ -41,5 +41,20 @@ describe('fetchMyOrders', () => {
     await fetchMyOrders('abc+/=')
 
     expect(fetchMock).toHaveBeenCalledWith('/api/v1/auth/me/orders?after=abc%2B%2F%3D', { credentials: 'include' })
+  })
+})
+
+describe('fetchAllOrders', () => {
+  afterEach(() => vi.unstubAllGlobals())
+
+  it('gets all orders for the admin, with an optional cursor', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response('{}'))
+    vi.stubGlobal('fetch', fetchMock)
+
+    await fetchAllOrders()
+    await fetchAllOrders('c1')
+
+    expect(fetchMock).toHaveBeenNthCalledWith(1, '/api/v1/admin/orders', { credentials: 'include' })
+    expect(fetchMock).toHaveBeenNthCalledWith(2, '/api/v1/admin/orders?after=c1', { credentials: 'include' })
   })
 })
