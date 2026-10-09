@@ -1,8 +1,27 @@
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
+import { deleteEvent } from '../api/events'
+import ConfirmDialog from '../components/ConfirmDialog'
 import { useEventPages } from '../hooks/useEventPages'
 
 export default function AdminPage() {
-  const { events, loading, loadingMore, sentinelRef } = useEventPages({ sort: 'name' })
+  const { events, setEvents, loading, loadingMore, sentinelRef } = useEventPages({ sort: 'name' })
+  const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
+
+  async function handleDeleteConfirmed() {
+    if (confirmDeleteId === null) return
+    const res = await deleteEvent(confirmDeleteId).catch(() => null)
+    if (!res?.ok) {
+      setDeleteError(`Failed to delete event (${res?.status ?? 'network error'}). Please try again.`)
+      setConfirmDeleteId(null)
+      return
+    }
+    setEvents(prev => prev.filter(ev => ev.id !== confirmDeleteId))
+    setConfirmDeleteId(null)
+  }
+
+  const confirmingEvent = events.find(ev => ev.id === confirmDeleteId)
 
   return (
     <div>
@@ -17,6 +36,10 @@ export default function AdminPage() {
           </Link>
         </div>
       </div>
+
+      {deleteError && (
+        <p role="alert" className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2 mb-4">{deleteError}</p>
+      )}
 
       {loading ? (
         <p className="text-gray-500 text-center py-12">Loading...</p>
@@ -37,6 +60,13 @@ export default function AdminPage() {
                   >
                     Edit
                   </Link>
+                  <button
+                    onClick={() => setConfirmDeleteId(ev.id)}
+                    aria-label={`Delete ${ev.title}`}
+                    className="text-sm border border-red-200 text-red-600 px-3 py-1.5 rounded-lg hover:bg-red-50 transition-colors"
+                  >
+                    Delete
+                  </button>
                 </div>
               </li>
             ))}
@@ -44,6 +74,16 @@ export default function AdminPage() {
           <div ref={sentinelRef} data-testid="admin-events-sentinel" className="h-1" />
           {loadingMore && <p className="text-gray-500 text-center py-6">Loading more events...</p>}
         </div>
+      )}
+
+      {confirmDeleteId !== null && (
+        <ConfirmDialog
+          title="Delete event?"
+          message={<>Are you sure you want to delete <span className="font-medium text-gray-900">"{confirmingEvent?.title}"</span>? This cannot be undone.</>}
+          confirmLabel="Delete"
+          onConfirm={handleDeleteConfirmed}
+          onCancel={() => setConfirmDeleteId(null)}
+        />
       )}
     </div>
   )

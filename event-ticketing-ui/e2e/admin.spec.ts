@@ -23,3 +23,17 @@ test('a regular user is told they lack permission', async ({ page }) => {
 
   await expect(page.getByText('You do not have permission to view this page.')).toBeVisible()
 })
+
+test('an admin deletes an event after confirming', async ({ page }) => {
+  await signedInAs(page, 'admin')
+  const event = { id: 5, title: 'Doomed Gig', description: '', startTime: '2026-11-02T23:00:00Z', endTime: '2026-11-03T02:00:00Z',
+    venue: 'Hall', eventType: 'Music', totalSeats: 10, availableSeats: 10, priceCents: 100, imageUrl: null }
+  await page.route('**/api/v1/events?**', route => route.fulfill({ json: { data: [event], errors: [], meta: { nextCursor: null } } }))
+  await page.route('**/api/v1/events/5', route => route.fulfill({ status: 204 }))
+  await page.goto('/admin')
+
+  await page.getByRole('button', { name: 'Delete Doomed Gig' }).click()
+  await page.getByRole('dialog').getByRole('button', { name: 'Delete' }).click()
+
+  await expect(page.getByRole('list', { name: 'admin events' }).getByRole('listitem')).toHaveCount(0)
+})
