@@ -5,11 +5,13 @@ import { AuthProvider } from './context/AuthProvider'
 
 const john = { userId: 1, name: 'John Doe', email: 'john@example.com', role: 'user' }
 
-function renderApp(signedIn = false) {
+const admin = { userId: 4, name: 'Admin', email: 'admin@example.com', role: 'admin' }
+
+function renderApp(signedIn: boolean | typeof john = false) {
   const fetchMock = vi.fn((url: string) => {
     if (url === '/api/v1/auth/me')
       return Promise.resolve(signedIn
-        ? new Response(JSON.stringify({ data: john, errors: [] }))
+        ? new Response(JSON.stringify({ data: signedIn === true ? john : signedIn, errors: [] }))
         : new Response(null, { status: 401 }))
     return Promise.resolve(new Response(null, { status: 204 }))
   })
@@ -66,5 +68,18 @@ describe('App', () => {
     renderApp()
 
     expect(await screen.findByRole('list', { name: 'events' })).toBeInTheDocument()
+  })
+
+  it('shows the Admin link only to admins', async () => {
+    renderApp(admin)
+
+    expect(await screen.findByRole('link', { name: 'Admin' })).toHaveAttribute('href', '/admin')
+  })
+
+  it('hides the Admin link from regular users', async () => {
+    renderApp(true)
+
+    await screen.findByRole('button', { name: 'Sign out' })
+    expect(screen.queryByRole('link', { name: 'Admin' })).not.toBeInTheDocument()
   })
 })

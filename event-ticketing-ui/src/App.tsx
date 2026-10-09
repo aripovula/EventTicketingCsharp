@@ -1,5 +1,7 @@
 import { BrowserRouter, Link, Route, Routes, useNavigate } from 'react-router-dom'
+import RequireAdmin from './components/RequireAdmin'
 import { useAuth } from './context/useAuth'
+import AdminPage from './pages/AdminPage'
 import EventDetailPage from './pages/EventDetailPage'
 import EventListPage from './pages/EventListPage'
 import LoginPage from './pages/LoginPage'
@@ -16,6 +18,11 @@ function HeaderNav() {
 
   return (
     <nav className="flex items-center gap-4">
+      {user?.role === 'admin' && (
+        <Link to="/admin" className="text-sm text-gray-500 hover:text-cyan-600 transition-colors">
+          Admin
+        </Link>
+      )}
       {user ? (
         <button
           onClick={handleSignOut}
@@ -48,6 +55,9 @@ function App() {
             <Route path="/events/:id" element={<EventDetailPage />} />
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />
+            <Route element={<RequireAdmin />}>
+              <Route path="/admin" element={<AdminPage />} />
+            </Route>
           </Routes>
         </main>
       </div>
