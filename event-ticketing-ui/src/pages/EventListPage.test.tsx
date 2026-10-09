@@ -104,6 +104,15 @@ describe('EventListPage', () => {
     expect(fetchMock).toHaveBeenCalledWith('/api/v1/events?sort=name')
   })
 
+  // The observer for the loaded page is created by an effect that may run a moment after the
+  // cards render, so keep firing the sentinel until that observer asks for the next page.
+  async function scrollToNextPage(fetchMock: { mock: { calls: unknown[] } }, expectedCalls: number) {
+    await waitFor(() => {
+      act(() => intersect())
+      expect(fetchMock.mock.calls).toHaveLength(expectedCalls)
+    })
+  }
+
   function stubPages(pages: Record<string, { events: EventItem[]; nextCursor: string | null }>) {
     const fetchMock = vi.fn<(url: string) => Promise<Response>>(url => {
       const after = new URL(url, 'http://localhost').searchParams.get('after') ?? 'first'
@@ -122,7 +131,7 @@ describe('EventListPage', () => {
     renderPage()
     await screen.findByRole('link', { name: 'First' })
 
-    act(() => intersect())
+    await scrollToNextPage(fetchMock, 2)
 
     expect(await screen.findByRole('link', { name: 'Second' })).toBeInTheDocument()
     expect(screen.getAllByRole('listitem')).toHaveLength(2)
@@ -140,13 +149,13 @@ describe('EventListPage', () => {
   })
 
   it('starts again from the first page when the sort changes', async () => {
-    stubPages({
+    const fetchMock = stubPages({
       first: { events: [makeEvent({ id: 1, title: 'First' })], nextCursor: 'c1' },
       c1: { events: [makeEvent({ id: 2, title: 'Second' })], nextCursor: null },
     })
     renderPage()
     await screen.findByRole('link', { name: 'First' })
-    act(() => intersect())
+    await scrollToNextPage(fetchMock, 2)
     await screen.findByRole('link', { name: 'Second' })
 
     await userEvent.selectOptions(screen.getByRole('combobox', { name: 'Sort events' }), 'date')
