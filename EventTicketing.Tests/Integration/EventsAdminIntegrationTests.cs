@@ -88,4 +88,24 @@ public class EventsAdminIntegrationTests(IntegrationTestFactory factory) : IClas
 
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
     }
+
+    private async Task<int> CreateAsAdminAsync(HttpClient admin, string title)
+    {
+        var response = await admin.PostAsJsonAsync("/api/v1/events", NewEvent(title), TestContext.Current.CancellationToken);
+        return JsonDocument.Parse(await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken))
+            .RootElement.GetProperty("data").GetProperty("id").GetInt32();
+    }
+
+    [Fact]
+    public async Task Update_AsAdmin_Returns204AndSavesTheChanges()
+    {
+        var admin = await SignedInAsync("admin@example.com");
+        var id = await CreateAsAdminAsync(admin, "Before Edit");
+
+        var response = await admin.PutAsJsonAsync($"/api/v1/events/{id}", NewEvent("After Edit"), TestContext.Current.CancellationToken);
+
+        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+        var fetched = await admin.GetStringAsync($"/api/v1/events/{id}", TestContext.Current.CancellationToken);
+        Assert.Contains("After Edit", fetched);
+    }
 }

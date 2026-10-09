@@ -72,9 +72,24 @@ public class EventsService(AppDbContext db)
     }
 
     /// <returns>False when no event has the given id.</returns>
-    public Task<bool> UpdateAsync(int id, EventRequest request, CancellationToken cancellationToken)
+    public async Task<bool> UpdateAsync(int id, EventRequest request, CancellationToken cancellationToken)
     {
-        return Task.FromResult(true);
+        var ev = await db.Events.FindAsync([id], cancellationToken);
+        if (ev is null)
+            return false;
+
+        ev.Title = request.Title;
+        ev.Description = request.Description;
+        ev.StartTime = request.StartTime.ToUniversalTime();
+        ev.EndTime = request.EndTime.ToUniversalTime();
+        ev.Venue = request.Venue;
+        ev.EventType = request.EventType;
+        ev.TotalSeats = request.TotalSeats;
+        ev.AvailableSeats = request.AvailableSeats;
+        ev.PriceCents = request.PriceCents;
+        ev.ImageUrl = request.ImageUrl;
+        await db.SaveChangesAsync(cancellationToken);
+        return true;
     }
 
     private static readonly Func<Event, EventResponse> ToResponseCompiled = ToResponse.Compile();
