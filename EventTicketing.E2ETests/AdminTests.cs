@@ -137,4 +137,17 @@ public class AdminTests : E2ETestBase
             await Page.APIRequest.DeleteAsync($"{BaseUrl}/api/v1/events/{id}");
         }
     }
+
+    [Test]
+    public async Task EventsCalendarShowsSeededEvents()
+    {
+        await SignInAsAdminAsync();
+        await Page.GotoAsync($"{BaseUrl}/admin/calendar");
+
+        // Seeded Jazz Night is always tomorrow; step to next month when tomorrow falls in it.
+        if (DateTime.Now.AddDays(1).Month != DateTime.Now.Month)
+            await Page.GetByRole(AriaRole.Button, new() { Name = "next" }).ClickAsync();
+
+        await Expect(Page.GetByText("Jazz Night – 48")).ToBeVisibleAsync();
+    }
 }

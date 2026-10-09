@@ -1,4 +1,4 @@
-import { createEvent, deleteEvent, fetchEvent, fetchEvents, updateEvent, type EventInput } from './events'
+import { createEvent, deleteEvent, fetchAllEvents, fetchEvent, fetchEvents, updateEvent, type EventInput } from './events'
 import { makeEvent } from '../test/fixtures'
 
 describe('fetchEvents', () => {
@@ -96,5 +96,28 @@ describe('deleteEvent', () => {
     await deleteEvent(7)
 
     expect(fetchMock).toHaveBeenCalledWith('/api/v1/events/7', { method: 'DELETE', credentials: 'include' })
+  })
+})
+
+describe('fetchAllEvents', () => {
+  afterEach(() => vi.unstubAllGlobals())
+
+  it('follows the cursor through every page in date order', async () => {
+    const fetchMock = vi.fn<(url: string) => Promise<Response>>(url => Promise.resolve(new Response(JSON.stringify(
+      url.includes('after=c1')
+        ? { data: [makeEvent({ id: 2 })], errors: [], meta: { nextCursor: null } }
+        : { data: [makeEvent({ id: 1 })], errors: [], meta: { nextCursor: 'c1' } }))))
+    vi.stubGlobal('fetch', fetchMock)
+
+    const events = await fetchAllEvents()
+
+    expect(events.map(e => e.id)).toEqual([1, 2])
+    expect(fetchMock.mock.calls.map(([url]) => url)).toEqual(['/api/v1/events?sort=date', '/api/v1/events?sort=date&after=c1'])
+  })
+
+  it('fails when a page cannot be loaded', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('{}', { status: 500 })))
+
+    await expect(fetchAllEvents()).rejects.toThrow('Failed to load events (500).')
   })
 })

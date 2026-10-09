@@ -117,3 +117,16 @@ test('an admin opens the events calendar from the admin page', async ({ page }) 
   await expect(page).toHaveURL('/admin/calendar')
   await expect(page.getByRole('heading', { name: 'Events Calendar' })).toBeVisible()
 })
+
+test('the events calendar shows events as title and remaining seats', async ({ page }) => {
+  await signedInAs(page, 'admin')
+  const start = new Date()
+  start.setHours(19, 0, 0, 0)
+  const end = new Date(start.getTime() + 3 * 60 * 60 * 1000)
+  const event = { id: 7, title: 'Calendar Gig', description: '', startTime: start.toISOString(), endTime: end.toISOString(),
+    venue: 'Hall', eventType: 'Music', totalSeats: 10, availableSeats: 7, priceCents: 100, imageUrl: null }
+  await page.route('**/api/v1/events?**', route => route.fulfill({ json: { data: [event], errors: [], meta: { nextCursor: null } } }))
+  await page.goto('/admin/calendar')
+
+  await expect(page.getByText('Calendar Gig – 7')).toBeVisible()
+})

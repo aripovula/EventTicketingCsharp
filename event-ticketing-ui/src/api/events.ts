@@ -56,3 +56,17 @@ export function updateEvent(id: number, input: EventInput) {
 export function deleteEvent(id: number) {
   return fetch(`/api/v1/events/${id}`, { method: 'DELETE', credentials: 'include' })
 }
+
+/** Every event in date order, following the cursor through all pages (for the admin calendar). */
+export async function fetchAllEvents(): Promise<EventItem[]> {
+  const all: EventItem[] = []
+  let after: string | null = null
+  do {
+    const res = await fetchEvents({ sort: 'date', after })
+    if (!res.ok) throw new Error(`Failed to load events (${res.status}).`)
+    const body = await res.json()
+    all.push(...(body.data ?? []))
+    after = body.meta?.nextCursor ?? null
+  } while (after)
+  return all
+}
