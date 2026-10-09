@@ -1,6 +1,3 @@
-using System.Buffers.Text;
-using System.Security.Cryptography;
-using System.Text;
 using EventTicketing.Api.Contracts;
 using EventTicketing.Api.Data;
 using EventTicketing.Api.Models;
@@ -66,7 +63,7 @@ public class RefreshTokenService(AppDbContext db, IOptions<JwtOptions> options)
 
     private (RefreshToken Token, string RawToken) AddToken(int userId, Guid familyId)
     {
-        var rawToken = Base64Url.EncodeToString(RandomNumberGenerator.GetBytes(64));
+        var rawToken = SecureToken.Generate();
         var now = DateTime.UtcNow;
         var token = new RefreshToken
         {
@@ -81,6 +78,5 @@ public class RefreshTokenService(AppDbContext db, IOptions<JwtOptions> options)
         return (token, rawToken);
     }
 
-    public static string Hash(string rawToken) =>
-        Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(rawToken)));
+    public static string Hash(string rawToken) => SecureToken.Hash(rawToken);
 }
