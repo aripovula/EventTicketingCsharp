@@ -26,7 +26,7 @@ public class EventsService(AppDbContext db)
 
         if (query.After is not null)
         {
-            if (!EventCursor.TryDecode(query.After, query.Sort, out var key, out var id))
+            if (!PageCursor.TryDecode(query.After, query.Sort, out var key, out var id))
                 return null;
             var afterCursor = AfterCursor(events, query.Sort, key, id);
             if (afterCursor is null)
@@ -42,7 +42,7 @@ public class EventsService(AppDbContext db)
 
         var items = rows.Take(query.Limit).ToList();
         var nextCursor = rows.Count > query.Limit
-            ? EventCursor.Encode(query.Sort, SortKey(items[^1], query.Sort), items[^1].Id)
+            ? PageCursor.Encode(query.Sort, SortKey(items[^1], query.Sort), items[^1].Id)
             : null;
         return new EventPage(items, nextCursor);
     }

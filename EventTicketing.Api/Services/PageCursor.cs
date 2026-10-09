@@ -3,8 +3,8 @@ using System.Text.Json;
 
 namespace EventTicketing.Api.Services;
 
-/// <summary>Opaque keyset cursor: the sort it belongs to, the last item's sort key, and its id as a tiebreaker.</summary>
-public static class EventCursor
+/// <summary>Opaque keyset cursor for any paged list: the sort it belongs to, the last item's sort key, and its id as a tiebreaker.</summary>
+public static class PageCursor
 {
     private record Payload(string Sort, string Key, int Id);
 
