@@ -61,4 +61,12 @@ public class BookingServiceTests(IntegrationTestFactory factory) : IClassFixture
         Assert.Equal(BookingStatus.SoldOut, result.Status);
         Assert.Equal(0, await AvailableSeatsAsync(eventId));
     }
+
+    [Fact]
+    public async Task BookAsync_UnknownEvent_ReportsEventNotFound()
+    {
+        var result = await BookAsync(999_999);
+
+        Assert.Equal(BookingStatus.EventNotFound, result.Status);
+    }
 }

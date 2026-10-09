@@ -15,7 +15,10 @@ public class BookingService(AppDbContext db)
             .ExecuteUpdateAsync(s => s.SetProperty(e => e.AvailableSeats, e => e.AvailableSeats - 1), cancellationToken);
 
         if (reserved == 0)
-            return new BookingResult(BookingStatus.SoldOut);
+        {
+            var exists = await db.Events.AnyAsync(e => e.Id == eventId, cancellationToken);
+            return new BookingResult(exists ? BookingStatus.SoldOut : BookingStatus.EventNotFound);
+        }
 
         return new BookingResult(BookingStatus.Booked);
     }
