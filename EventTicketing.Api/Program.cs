@@ -63,6 +63,7 @@ builder.Services.AddScoped<TokenService>();
 builder.Services.AddScoped<RefreshTokenService>();
 builder.Services.AddScoped<EventsService>();
 builder.Services.AddScoped<BookingService>();
+builder.Services.AddScoped<OrdersService>();
 builder.Services.AddHealthChecks()
     .AddDbContextCheck<AppDbContext>(name: "database", tags: ["ready"]);
 builder.Services.AddSwaggerGen(options =>
