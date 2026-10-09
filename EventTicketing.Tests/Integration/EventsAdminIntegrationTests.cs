@@ -118,4 +118,22 @@ public class EventsAdminIntegrationTests(IntegrationTestFactory factory) : IClas
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
+
+    [Fact]
+    public async Task Delete_Anonymously_Returns401()
+    {
+        var response = await factory.CreateClient().DeleteAsync("/api/v1/events/1", TestContext.Current.CancellationToken);
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Delete_AsRegularUser_Returns403()
+    {
+        var client = await SignedInAsync("alex@example.com");
+
+        var response = await client.DeleteAsync("/api/v1/events/1", TestContext.Current.CancellationToken);
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
 }
