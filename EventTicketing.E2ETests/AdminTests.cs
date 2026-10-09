@@ -63,4 +63,37 @@ public class AdminTests : E2ETestBase
         var gone = await Page.APIRequest.GetAsync($"{BaseUrl}/api/v1/events?q={Uri.EscapeDataString(title)}");
         Assert.That((await gone.TextAsync()).Contains(title), Is.False);
     }
+
+    [Test]
+    public async Task AdminCreatesAnEventThroughTheForm()
+    {
+        await SignInAsAdminAsync();
+        var title = $"E2E Create {Guid.NewGuid():N}"[..20];
+        await Page.GotoAsync($"{BaseUrl}/admin/new");
+
+        await Page.GetByLabel("Title").FillAsync(title);
+        await Page.GetByLabel("Venue").FillAsync("Test Hall");
+        await Page.GetByLabel("Description").FillAsync("Created through the admin form by an E2E test.");
+        await Page.GetByLabel("Start time").FillAsync(DateTime.Now.AddDays(40).ToString("yyyy-MM-dd'T'19:00"));
+        await Page.GetByLabel("End time").FillAsync(DateTime.Now.AddDays(40).ToString("yyyy-MM-dd'T'22:00"));
+        await Page.GetByLabel("Total seats").FillAsync("50");
+        await Page.GetByLabel("Available seats").FillAsync("50");
+        await Page.GetByLabel("Price ($)").FillAsync("19.99");
+        await Page.GetByRole(AriaRole.Button, new() { Name = "Create event" }).ClickAsync();
+
+        try
+        {
+            await Expect(Page).ToHaveURLAsync(new Regex("/admin$"));
+            var search = await Page.APIRequest.GetAsync($"{BaseUrl}/api/v1/events?q={Uri.EscapeDataString(title)}");
+            var created = (await search.JsonAsync())!.Value.GetProperty("data")[0];
+            Assert.That(created.GetProperty("priceCents").GetInt32(), Is.EqualTo(1999));
+        }
+        finally
+        {
+            // Leave the shared dev database as we found it.
+            var search = await Page.APIRequest.GetAsync($"{BaseUrl}/api/v1/events?q={Uri.EscapeDataString(title)}");
+            foreach (var ev in (await search.JsonAsync())!.Value.GetProperty("data").EnumerateArray())
+                await Page.APIRequest.DeleteAsync($"{BaseUrl}/api/v1/events/{ev.GetProperty("id").GetInt32()}");
+        }
+    }
 }

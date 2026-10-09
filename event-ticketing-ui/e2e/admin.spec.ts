@@ -47,3 +47,26 @@ test('an admin opens the new-event form from the admin page', async ({ page }) =
   await expect(page).toHaveURL('/admin/new')
   await expect(page.getByRole('heading', { name: 'New event' })).toBeVisible()
 })
+
+test('an admin creates an event and returns to the admin page', async ({ page }) => {
+  await signedInAs(page, 'admin')
+  let posted: Record<string, unknown> | null = null
+  await page.route('**/api/v1/events', route => {
+    posted = route.request().postDataJSON()
+    return route.fulfill({ status: 201, json: { data: { id: 99, ...posted }, errors: [] } })
+  })
+  await page.goto('/admin/new')
+
+  await page.getByLabel('Title').fill('Brand New Gig')
+  await page.getByLabel('Venue').fill('Main Hall')
+  await page.getByLabel('Description').fill('A new gig.')
+  await page.getByLabel('Start time').fill('2026-11-02T19:00')
+  await page.getByLabel('End time').fill('2026-11-02T22:00')
+  await page.getByLabel('Total seats').fill('100')
+  await page.getByLabel('Available seats').fill('100')
+  await page.getByLabel('Price ($)').fill('19.99')
+  await page.getByRole('button', { name: 'Create event' }).click()
+
+  await expect(page).toHaveURL('/admin')
+  expect(posted).toMatchObject({ title: 'Brand New Gig', priceCents: 1999 })
+})

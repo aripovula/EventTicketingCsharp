@@ -1,23 +1,12 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
+import { createEvent } from '../api/events'
+import { toEventInput, type EventFormData } from '../utils/eventForm'
 import { EVENT_TYPES } from '../utils/eventTypes'
 
 const inputClass =
   'w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-400 transition'
 const labelClass = 'block text-sm font-medium text-gray-700 mb-1'
-
-export interface EventFormData {
-  title: string
-  venue: string
-  description: string
-  imageUrl: string
-  startTime: string
-  endTime: string
-  eventType: string
-  totalSeats: string
-  availableSeats: string
-  price: string
-}
 
 const emptyForm: EventFormData = {
   title: '',
@@ -34,10 +23,27 @@ const emptyForm: EventFormData = {
 
 export default function AdminEventFormPage() {
   const [form, setForm] = useState<EventFormData>(emptyForm)
+  const [submitError, setSubmitError] = useState<string | null>(null)
+  const navigate = useNavigate()
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target
     setForm(prev => ({ ...prev, [name]: value }))
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    setSubmitError(null)
+    const res = await createEvent(toEventInput(form)).catch(() => null)
+    if (res?.ok) {
+      navigate('/admin')
+      return
+    }
+    const body = await res?.json().catch(() => null)
+    const details: string[] = (body?.errors ?? []).map((error: { detail: string }) => error.detail)
+    setSubmitError(details.length > 0
+      ? details.join(' ')
+      : `Failed to create event (${res?.status ?? 'network error'}). Please try again.`)
   }
 
   return (
@@ -49,7 +55,7 @@ export default function AdminEventFormPage() {
       <h1 className="text-2xl font-bold text-gray-900 mt-6 mb-6">New event</h1>
 
       <div className="bg-white rounded-xl border border-gray-200 p-6">
-        <form aria-label="event form" onSubmit={e => e.preventDefault()} className="space-y-4">
+        <form aria-label="event form" onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
               <label htmlFor="title" className={labelClass}>Title</label>
@@ -102,6 +108,10 @@ export default function AdminEventFormPage() {
               <input id="price" name="price" type="number" min="0" step="0.01" value={form.price} onChange={handleChange} required className={inputClass} />
             </div>
           </div>
+
+          {submitError && (
+            <p role="alert" className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{submitError}</p>
+          )}
 
           <div className="flex gap-3 pt-2">
             <button type="submit" className="bg-cyan-600 text-white px-5 py-2 rounded-lg text-sm font-medium hover:bg-cyan-700 transition-colors">
