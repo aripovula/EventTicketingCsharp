@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
+using System.Text.Json;
 
 namespace EventTicketing.Tests.Integration;
 
@@ -54,5 +55,19 @@ public class EventsAdminIntegrationTests(IntegrationTestFactory factory) : IClas
             "/api/v1/events", new { title = "" }, TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Create_AsAdmin_Returns201WithLocationOfTheNewEvent()
+    {
+        var admin = await SignedInAsync("admin@example.com");
+
+        var response = await admin.PostAsJsonAsync("/api/v1/events", NewEvent("Brand New Gig"), TestContext.Current.CancellationToken);
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        var created = JsonDocument.Parse(await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken)).RootElement.GetProperty("data");
+        Assert.Equal("Brand New Gig", created.GetProperty("title").GetString());
+        var fetched = await admin.GetStringAsync(response.Headers.Location, TestContext.Current.CancellationToken);
+        Assert.Contains("Brand New Gig", fetched);
     }
 }

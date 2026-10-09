@@ -40,6 +40,6 @@ public class EventsController(EventsService eventsService) : ControllerBase
     public async Task<IActionResult> Create(EventRequest request, CancellationToken cancellationToken)
     {
         var ev = await eventsService.CreateAsync(request, cancellationToken);
-        return StatusCode(StatusCodes.Status201Created, ev);
+        return CreatedAtAction(nameof(Get), new { id = ev.Id }, ev);
     }
 }

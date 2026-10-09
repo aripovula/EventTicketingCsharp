@@ -50,10 +50,28 @@ public class EventsService(AppDbContext db)
     public Task<EventResponse?> GetAsync(int id, CancellationToken cancellationToken) =>
         db.Events.Where(e => e.Id == id).Select(ToResponse).SingleOrDefaultAsync(cancellationToken);
 
-    public Task<EventResponse?> CreateAsync(EventRequest request, CancellationToken cancellationToken)
+    public async Task<EventResponse> CreateAsync(EventRequest request, CancellationToken cancellationToken)
     {
-        return Task.FromResult<EventResponse?>(null);
+        var ev = new Event
+        {
+            Title = request.Title,
+            Description = request.Description,
+            StartTime = request.StartTime.ToUniversalTime(),
+            EndTime = request.EndTime.ToUniversalTime(),
+            Venue = request.Venue,
+            EventType = request.EventType,
+            TotalSeats = request.TotalSeats,
+            AvailableSeats = request.AvailableSeats,
+            PriceCents = request.PriceCents,
+            ImageUrl = request.ImageUrl,
+        };
+        db.Events.Add(ev);
+        await db.SaveChangesAsync(cancellationToken);
+
+        return ToResponseCompiled(ev);
     }
+
+    private static readonly Func<Event, EventResponse> ToResponseCompiled = ToResponse.Compile();
 
     private static IQueryable<Event> Ordered(IQueryable<Event> events, string sort) => sort switch
     {
