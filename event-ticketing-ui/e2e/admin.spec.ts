@@ -70,3 +70,19 @@ test('an admin creates an event and returns to the admin page', async ({ page })
   await expect(page).toHaveURL('/admin')
   expect(posted).toMatchObject({ title: 'Brand New Gig', priceCents: 1999 })
 })
+
+test('an admin opens an event for editing from the admin list', async ({ page }) => {
+  await signedInAs(page, 'admin')
+  const event = { id: 5, title: 'Editable Gig', description: 'Edit me.', startTime: '2026-11-02T23:00:00Z', endTime: '2026-11-03T02:00:00Z',
+    venue: 'Hall', eventType: 'Comedy', totalSeats: 10, availableSeats: 10, priceCents: 1999, imageUrl: null }
+  await page.route('**/api/v1/events?**', route => route.fulfill({ json: { data: [event], errors: [], meta: { nextCursor: null } } }))
+  await page.route('**/api/v1/events/5', route => route.fulfill({ json: { data: event, errors: [] } }))
+  await page.goto('/admin')
+
+  await page.getByRole('link', { name: 'Edit Editable Gig' }).click()
+
+  await expect(page.getByRole('heading', { name: 'Edit event' })).toBeVisible()
+  await expect(page.getByLabel('Title')).toHaveValue('Editable Gig')
+  await expect(page.getByLabel('Event type')).toHaveValue('Comedy')
+  await expect(page.getByLabel('Price ($)')).toHaveValue('19.99')
+})

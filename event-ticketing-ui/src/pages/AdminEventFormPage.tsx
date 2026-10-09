@@ -1,7 +1,7 @@
-import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
-import { createEvent } from '../api/events'
-import { toEventInput, type EventFormData } from '../utils/eventForm'
+import { useEffect, useState } from 'react'
+import { Link, useNavigate, useParams } from 'react-router-dom'
+import { createEvent, fetchEvent } from '../api/events'
+import { eventToForm, toEventInput, type EventFormData } from '../utils/eventForm'
 import { EVENT_TYPES } from '../utils/eventTypes'
 
 const inputClass =
@@ -22,7 +22,11 @@ const emptyForm: EventFormData = {
 }
 
 export default function AdminEventFormPage() {
+  const { id } = useParams<{ id: string }>()
+  const isEdit = id !== undefined
   const [form, setForm] = useState<EventFormData>(emptyForm)
+  const [loading, setLoading] = useState(isEdit)
+  const [loadError, setLoadError] = useState<string | null>(null)
   const [submitError, setSubmitError] = useState<string | null>(null)
   const navigate = useNavigate()
 
@@ -30,6 +34,18 @@ export default function AdminEventFormPage() {
     const { name, value } = e.target
     setForm(prev => ({ ...prev, [name]: value }))
   }
+
+  useEffect(() => {
+    if (!isEdit) return
+    fetchEvent(Number(id))
+      .then(async res => {
+        if (!res.ok) throw new Error(`Failed to load event (${res.status}).`)
+        const body = await res.json()
+        setForm(eventToForm(body.data))
+      })
+      .catch((err: Error) => setLoadError(err.message.startsWith('Failed to load') ? err.message : 'Could not load event.'))
+      .finally(() => setLoading(false))
+  }, [id, isEdit])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -46,13 +62,16 @@ export default function AdminEventFormPage() {
       : `Failed to create event (${res?.status ?? 'network error'}). Please try again.`)
   }
 
+  if (loading) return <p className="text-gray-500 text-center py-12">Loading...</p>
+  if (loadError) return <p className="text-center text-red-500 py-12">{loadError}</p>
+
   return (
     <div>
       <Link to="/admin" className="text-sm text-cyan-600 hover:text-cyan-800 transition-colors no-underline">
         ← Back to admin
       </Link>
 
-      <h1 className="text-2xl font-bold text-gray-900 mt-6 mb-6">New event</h1>
+      <h1 className="text-2xl font-bold text-gray-900 mt-6 mb-6">{isEdit ? 'Edit event' : 'New event'}</h1>
 
       <div className="bg-white rounded-xl border border-gray-200 p-6">
         <form aria-label="event form" onSubmit={handleSubmit} className="space-y-4">

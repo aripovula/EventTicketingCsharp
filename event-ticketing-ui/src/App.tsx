@@ -59,6 +59,7 @@ function App() {
             <Route element={<RequireAdmin />}>
               <Route path="/admin" element={<AdminPage />} />
               <Route path="/admin/new" element={<AdminEventFormPage />} />
+              <Route path="/admin/:id/edit" element={<AdminEventFormPage />} />
             </Route>
           </Routes>
         </main>

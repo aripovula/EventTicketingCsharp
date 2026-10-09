@@ -1,6 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
+import { makeEvent } from '../test/fixtures'
 import AdminEventFormPage from './AdminEventFormPage'
 
 function renderPage() {
@@ -107,5 +108,33 @@ describe('AdminEventFormPage', () => {
     submitForm()
 
     expect(await screen.findByRole('alert')).toHaveTextContent('Failed to create event (500). Please try again.')
+  })
+
+  function renderEdit(id = 7) {
+    render(
+      <MemoryRouter initialEntries={[`/admin/${id}/edit`]}>
+        <Routes><Route path="/admin/:id/edit" element={<AdminEventFormPage />} /></Routes>
+      </MemoryRouter>,
+    )
+  }
+
+  it('loads the event into the form when editing', async () => {
+    const event = makeEvent({ id: 7, startTime: new Date(2026, 10, 2, 19, 0).toISOString(), priceCents: 1999 })
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ data: event, errors: [] })))
+    vi.stubGlobal('fetch', fetchMock)
+    renderEdit()
+
+    expect(await screen.findByRole('heading', { name: 'Edit event' })).toBeInTheDocument()
+    expect(screen.getByLabelText('Title')).toHaveValue('Jazz Night')
+    expect(screen.getByLabelText('Start time')).toHaveValue('2026-11-02T19:00')
+    expect(screen.getByLabelText('Price ($)')).toHaveValue(19.99)
+    expect(fetchMock).toHaveBeenCalledWith('/api/v1/events/7')
+  })
+
+  it('says when the event cannot be loaded', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('{}', { status: 404 })))
+    renderEdit()
+
+    expect(await screen.findByText('Failed to load event (404).')).toBeInTheDocument()
   })
 })

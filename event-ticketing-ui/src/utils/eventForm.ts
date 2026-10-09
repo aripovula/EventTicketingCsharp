@@ -1,4 +1,4 @@
-import type { EventInput } from '../api/events'
+import type { EventInput, EventItem } from '../api/events'
 
 export interface EventFormData {
   title: string
@@ -35,5 +35,31 @@ export function toEventInput(form: EventFormData): EventInput {
     totalSeats: Number(form.totalSeats),
     availableSeats: Number(form.availableSeats),
     priceCents: dollarsToCents(form.price),
+  }
+}
+
+/** A UTC ISO timestamp as a datetime-local value in the admin's local time. */
+export function isoToLocalInput(iso: string): string {
+  const d = new Date(iso)
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+}
+
+export function centsToDollars(cents: number): string {
+  return (cents / 100).toFixed(2)
+}
+
+export function eventToForm(event: EventItem): EventFormData {
+  return {
+    title: event.title,
+    venue: event.venue,
+    description: event.description,
+    imageUrl: event.imageUrl ?? '',
+    startTime: isoToLocalInput(event.startTime),
+    endTime: isoToLocalInput(event.endTime),
+    eventType: event.eventType,
+    totalSeats: String(event.totalSeats),
+    availableSeats: String(event.availableSeats),
+    price: centsToDollars(event.priceCents),
   }
 }
