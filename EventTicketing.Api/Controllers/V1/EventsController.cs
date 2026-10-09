@@ -57,7 +57,9 @@ public class EventsController(EventsService eventsService) : ControllerBase
     [HttpDelete("{id:int}")]
     public async Task<IActionResult> Delete(int id, CancellationToken cancellationToken)
     {
-        await eventsService.DeleteAsync(id, cancellationToken);
+        if (!await eventsService.DeleteAsync(id, cancellationToken))
+            return NotFound(new ApiEnvelope(null, [new ApiError("not_found", "Event not found.")]));
+
         return NoContent();
     }
 }

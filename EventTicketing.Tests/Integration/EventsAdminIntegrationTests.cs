@@ -149,4 +149,14 @@ public class EventsAdminIntegrationTests(IntegrationTestFactory factory) : IClas
         var fetched = await admin.GetAsync($"/api/v1/events/{id}", TestContext.Current.CancellationToken);
         Assert.Equal(HttpStatusCode.NotFound, fetched.StatusCode);
     }
+
+    [Fact]
+    public async Task Delete_UnknownEvent_Returns404()
+    {
+        var admin = await SignedInAsync("admin@example.com");
+
+        var response = await admin.DeleteAsync("/api/v1/events/999999", TestContext.Current.CancellationToken);
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
 }
