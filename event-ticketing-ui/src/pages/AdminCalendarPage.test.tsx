@@ -13,9 +13,10 @@ type StubProps = {
   events: StubEvent[]
   eventMouseEnter?: (arg: object) => void
   eventMouseLeave?: () => void
+  eventClick?: (arg: object) => void
 }
 vi.mock('@fullcalendar/react', () => ({
-  default: ({ events, eventMouseEnter, eventMouseLeave }: StubProps) => (
+  default: ({ events, eventMouseEnter, eventMouseLeave, eventClick }: StubProps) => (
     <ul aria-label="calendar events">
       {events.map(e => (
         <li
@@ -24,6 +25,7 @@ vi.mock('@fullcalendar/react', () => ({
           data-color={e.backgroundColor}
           onMouseEnter={ev => eventMouseEnter?.({ event: { extendedProps: e.extendedProps }, el: ev.currentTarget })}
           onMouseLeave={() => eventMouseLeave?.()}
+          onClick={ev => eventClick?.({ event: { extendedProps: e.extendedProps }, el: ev.currentTarget })}
         >
           {e.title}
         </li>
@@ -88,5 +90,38 @@ describe('AdminCalendarPage', () => {
 
     await userEvent.unhover(item)
     expect(screen.queryByRole('tooltip')).not.toBeInTheDocument()
+  })
+
+  it('opens a details popup with an edit link when an event is clicked', async () => {
+    stubEvents([makeEvent({ id: 7 })])
+    renderPage()
+
+    await userEvent.click(await screen.findByText('Jazz Night – 48'))
+
+    const popup = screen.getByRole('dialog', { name: 'Jazz Night' })
+    expect(popup).toHaveTextContent('Blue Note Club')
+    expect(popup).toHaveTextContent('48 / 120 seats remaining')
+    expect(popup).toHaveTextContent('$25.00')
+    expect(within(popup).getByRole('link', { name: 'Edit' })).toHaveAttribute('href', '/admin/7/edit')
+  })
+
+  it('closes the popup with the close button', async () => {
+    stubEvents([makeEvent()])
+    renderPage()
+    await userEvent.click(await screen.findByText('Jazz Night – 48'))
+
+    await userEvent.click(screen.getByRole('button', { name: 'Close' }))
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  })
+
+  it('closes the popup when clicking outside it', async () => {
+    stubEvents([makeEvent()])
+    renderPage()
+    await userEvent.click(await screen.findByText('Jazz Night – 48'))
+
+    await userEvent.click(screen.getByRole('heading', { name: 'Events Calendar' }))
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 })

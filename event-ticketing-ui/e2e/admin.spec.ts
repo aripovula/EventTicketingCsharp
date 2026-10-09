@@ -144,3 +144,23 @@ test('hovering a calendar event shows its remaining seats', async ({ page }) => 
 
   await expect(page.getByRole('tooltip')).toContainText('3 seats left')
 })
+
+test('clicking a calendar event opens details with a working edit link', async ({ page }) => {
+  await signedInAs(page, 'admin')
+  const start = new Date()
+  start.setHours(19, 0, 0, 0)
+  const event = { id: 9, title: 'Popup Gig', description: 'Click me.', startTime: start.toISOString(), endTime: new Date(start.getTime() + 3600000).toISOString(),
+    venue: 'Popup Hall', eventType: 'Music', totalSeats: 10, availableSeats: 4, priceCents: 1999, imageUrl: null }
+  await page.route('**/api/v1/events?**', route => route.fulfill({ json: { data: [event], errors: [], meta: { nextCursor: null } } }))
+  await page.route('**/api/v1/events/9', route => route.fulfill({ json: { data: event, errors: [] } }))
+  await page.goto('/admin/calendar')
+
+  await page.getByText('Popup Gig – 4').click()
+  const popup = page.getByRole('dialog', { name: 'Popup Gig' })
+  await expect(popup).toContainText('Popup Hall')
+  await expect(popup).toContainText('$19.99')
+  await popup.getByRole('link', { name: 'Edit' }).click()
+
+  await expect(page).toHaveURL('/admin/9/edit')
+  await expect(page.getByLabel('Title')).toHaveValue('Popup Gig')
+})

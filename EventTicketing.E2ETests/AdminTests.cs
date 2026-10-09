@@ -150,4 +150,21 @@ public class AdminTests : E2ETestBase
 
         await Expect(Page.GetByText("Jazz Night – 48")).ToBeVisibleAsync();
     }
+
+    [Test]
+    public async Task ClickingACalendarEventOpensItsDetails()
+    {
+        await SignInAsAdminAsync();
+        await Page.GotoAsync($"{BaseUrl}/admin/calendar");
+        if (DateTime.Now.AddDays(1).Month != DateTime.Now.Month)
+            await Page.GetByRole(AriaRole.Button, new() { Name = "next" }).ClickAsync();
+
+        await Page.GetByText("Jazz Night – 48").ClickAsync();
+
+        var popup = Page.GetByRole(AriaRole.Dialog, new() { Name = "Jazz Night" });
+        await Expect(popup).ToContainTextAsync("Blue Note Club");
+        await Expect(popup).ToContainTextAsync("48 / 120 seats remaining");
+        await popup.GetByRole(AriaRole.Link, new() { Name = "Edit" }).ClickAsync();
+        await Expect(Page.GetByLabel("Title")).ToHaveValueAsync("Jazz Night");
+    }
 }
