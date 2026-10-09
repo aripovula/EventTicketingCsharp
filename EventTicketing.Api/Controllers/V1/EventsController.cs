@@ -1,5 +1,6 @@
 using EventTicketing.Api.Contracts;
 using EventTicketing.Api.Services;
+using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -7,7 +8,7 @@ namespace EventTicketing.Api.Controllers.V1;
 
 [ApiController]
 [Route("api/v1/events")]
-public class EventsController(EventsService eventsService) : ControllerBase
+public class EventsController(EventsService eventsService, BookingService bookingService) : ControllerBase
 {
     /// <summary>Lists events with title search, sorting and keyset cursor pagination (meta.nextCursor).</summary>
     [HttpGet]
@@ -77,5 +78,13 @@ public class EventsController(EventsService eventsService) : ControllerBase
             return NotFound(new ApiEnvelope(null, [new ApiError("not_found", "Event not found.")]));
 
         return NoContent();
+    }
+
+    [HttpPost("{id:int}/bookings")]
+    public async Task<IActionResult> Book(int id, BookingRequest request, CancellationToken cancellationToken)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        var result = await bookingService.BookAsync(id, request, userId is null ? null : int.Parse(userId), cancellationToken);
+        return StatusCode(StatusCodes.Status201Created, result.Order);
     }
 }
