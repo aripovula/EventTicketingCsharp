@@ -1,10 +1,12 @@
 using EventTicketing.Api.Contracts;
 using EventTicketing.Api.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace EventTicketing.Api.Controllers.V1;
 
 [ApiController]
+[Authorize(Roles = "admin")]
 [Route("api/v1/admin")]
 public class AdminController(OrdersService ordersService) : ControllerBase
 {
