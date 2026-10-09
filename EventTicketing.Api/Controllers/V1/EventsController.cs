@@ -33,4 +33,11 @@ public class EventsController(EventsService eventsService) : ControllerBase
 
         return Ok(ev);
     }
+
+    [HttpPost]
+    public async Task<IActionResult> Create(EventRequest request, CancellationToken cancellationToken)
+    {
+        var ev = await eventsService.CreateAsync(request, cancellationToken);
+        return StatusCode(StatusCodes.Status201Created, ev);
+    }
 }

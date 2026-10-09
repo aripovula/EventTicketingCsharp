@@ -32,3 +32,14 @@ export function fetchEvents({ q, sort, after }: EventListParams = {}) {
 export function fetchEvent(id: number) {
   return fetch(`/api/v1/events/${id}`)
 }
+
+export type EventInput = Omit<EventItem, 'id'>
+
+export function createEvent(input: EventInput) {
+  return fetch('/api/v1/events', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify(input),
+  })
+}

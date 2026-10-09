@@ -50,6 +50,11 @@ public class EventsService(AppDbContext db)
     public Task<EventResponse?> GetAsync(int id, CancellationToken cancellationToken) =>
         db.Events.Where(e => e.Id == id).Select(ToResponse).SingleOrDefaultAsync(cancellationToken);
 
+    public Task<EventResponse?> CreateAsync(EventRequest request, CancellationToken cancellationToken)
+    {
+        return Task.FromResult<EventResponse?>(null);
+    }
+
     private static IQueryable<Event> Ordered(IQueryable<Event> events, string sort) => sort switch
     {
         "date" => events.OrderBy(e => e.StartTime).ThenBy(e => e.Id),
