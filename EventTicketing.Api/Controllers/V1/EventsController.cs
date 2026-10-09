@@ -80,7 +80,12 @@ public class EventsController(EventsService eventsService, BookingService bookin
         return NoContent();
     }
 
+    /// <summary>Books one seat for an event, as a guest or signed-in user. The seat is reserved atomically, so the last seat can never be sold twice.</summary>
     [HttpPost("{id:int}/bookings")]
+    [ProducesResponseType(typeof(ApiEnvelope<OrderResponse>), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(ApiEnvelope<object>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ApiEnvelope<object>), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ApiEnvelope<object>), StatusCodes.Status409Conflict)]
     public async Task<IActionResult> Book(int id, BookingRequest request, CancellationToken cancellationToken)
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
