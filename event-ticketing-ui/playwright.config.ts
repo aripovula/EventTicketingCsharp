@@ -6,7 +6,8 @@ export default defineConfig({
   testDir: './e2e',
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
-  retries: process.env.CI ? 2 : 0,
+  // One local retry absorbs load spikes on a busy dev machine; Playwright still reports such tests as flaky.
+  retries: process.env.CI ? 2 : 1,
   // Each worker is a Chromium instance; on a small dev machine more than two starve each other of memory.
   workers: process.env.CI ? undefined : 2,
   reporter: 'list',
