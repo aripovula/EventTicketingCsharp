@@ -31,9 +31,16 @@ public class OrdersService(AppDbContext db)
     }
 
     /// <returns>The page, or null when the cursor is malformed.</returns>
-    public Task<OrderPage?> ListForUserAsync(int userId, PageQuery query, CancellationToken cancellationToken)
+    public async Task<OrderPage?> ListForUserAsync(int userId, PageQuery query, CancellationToken cancellationToken)
     {
-        return Task.FromResult<OrderPage?>(new OrderPage([], null));
+        var items = await db.Orders
+            .Where(o => o.UserId == userId)
+            .OrderByDescending(o => o.BookedAt).ThenByDescending(o => o.Id)
+            .Take(query.Limit)
+            .Select(o => new OrderResponse(o.Id, o.EventId, o.Event.Title, o.Email, o.PriceCents, o.BookedAt, null))
+            .ToListAsync(cancellationToken);
+
+        return new OrderPage(items, null);
     }
 
     private static bool TokenMatches(string? token, string? storedHash) =>
