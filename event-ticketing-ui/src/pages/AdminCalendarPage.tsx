@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import FullCalendar from '@fullcalendar/react'
 import dayGridPlugin from '@fullcalendar/daygrid'
+import type { EventHoveringArg } from '@fullcalendar/core'
 import { fetchAllEvents, type EventItem } from '../api/events'
 import { EVENT_TYPE_COLORS, EVENT_TYPES, colorForType } from '../utils/eventTypes'
 
@@ -9,6 +10,7 @@ export default function AdminCalendarPage() {
   const [events, setEvents] = useState<EventItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [tooltip, setTooltip] = useState<{ title: string; availableSeats: number; top: number; left: number } | null>(null)
 
   useEffect(() => {
     fetchAllEvents()
@@ -26,6 +28,12 @@ export default function AdminCalendarPage() {
     borderColor: colorForType(ev.eventType),
     extendedProps: { event: ev },
   }))
+
+  function handleEventMouseEnter(arg: EventHoveringArg) {
+    const ev = arg.event.extendedProps.event as EventItem
+    const rect = arg.el.getBoundingClientRect()
+    setTooltip({ title: ev.title, availableSeats: ev.availableSeats, top: rect.top - 8, left: rect.left + rect.width / 2 })
+  }
 
   if (loading) return <p className="text-gray-500 text-center py-12">Loading...</p>
   if (error) return <p className="text-center text-red-500 py-12">{error}</p>
@@ -56,12 +64,25 @@ export default function AdminCalendarPage() {
           plugins={[dayGridPlugin]}
           initialView="dayGridMonth"
           events={calendarEvents}
+          eventMouseEnter={handleEventMouseEnter}
+          eventMouseLeave={() => setTooltip(null)}
           height="auto"
           headerToolbar={{ left: 'prev,next today', center: 'title', right: '' }}
           eventDisplay="block"
           dayMaxEvents={false}
         />
       </div>
+
+      {tooltip && (
+        <div
+          role="tooltip"
+          className="fixed z-50 pointer-events-none -translate-x-1/2 -translate-y-full bg-gray-900 text-white text-xs rounded-lg px-3 py-2 shadow-lg whitespace-nowrap"
+          style={{ top: tooltip.top, left: tooltip.left }}
+        >
+          <span className="font-medium">{tooltip.title}</span>
+          <span className="text-gray-300 ml-2">{tooltip.availableSeats} seats left</span>
+        </div>
+      )}
     </div>
   )
 }

@@ -130,3 +130,17 @@ test('the events calendar shows events as title and remaining seats', async ({ p
 
   await expect(page.getByText('Calendar Gig – 7')).toBeVisible()
 })
+
+test('hovering a calendar event shows its remaining seats', async ({ page }) => {
+  await signedInAs(page, 'admin')
+  const start = new Date()
+  start.setHours(19, 0, 0, 0)
+  const event = { id: 8, title: 'Hover Gig', description: '', startTime: start.toISOString(), endTime: new Date(start.getTime() + 3600000).toISOString(),
+    venue: 'Hall', eventType: 'Music', totalSeats: 10, availableSeats: 3, priceCents: 100, imageUrl: null }
+  await page.route('**/api/v1/events?**', route => route.fulfill({ json: { data: [event], errors: [], meta: { nextCursor: null } } }))
+  await page.goto('/admin/calendar')
+
+  await page.getByText('Hover Gig – 3').hover()
+
+  await expect(page.getByRole('tooltip')).toContainText('3 seats left')
+})

@@ -1,4 +1,5 @@
 import { render, screen, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import type { EventItem } from '../api/events'
 import { makeEvent } from '../test/fixtures'
@@ -7,10 +8,26 @@ import AdminCalendarPage from './AdminCalendarPage'
 
 // FullCalendar needs real layout; in unit tests a stub lists the events it was given.
 vi.mock('@fullcalendar/daygrid', () => ({ default: {} }))
+type StubEvent = { id: string; title: string; start: string; backgroundColor: string; extendedProps: object }
+type StubProps = {
+  events: StubEvent[]
+  eventMouseEnter?: (arg: object) => void
+  eventMouseLeave?: () => void
+}
 vi.mock('@fullcalendar/react', () => ({
-  default: ({ events }: { events: { id: string; title: string; start: string; backgroundColor: string }[] }) => (
+  default: ({ events, eventMouseEnter, eventMouseLeave }: StubProps) => (
     <ul aria-label="calendar events">
-      {events.map(e => <li key={e.id} data-start={e.start} data-color={e.backgroundColor}>{e.title}</li>)}
+      {events.map(e => (
+        <li
+          key={e.id}
+          data-start={e.start}
+          data-color={e.backgroundColor}
+          onMouseEnter={ev => eventMouseEnter?.({ event: { extendedProps: e.extendedProps }, el: ev.currentTarget })}
+          onMouseLeave={() => eventMouseLeave?.()}
+        >
+          {e.title}
+        </li>
+      ))}
     </ul>
   ),
 }))
@@ -59,5 +76,17 @@ describe('AdminCalendarPage', () => {
     renderPage()
 
     expect(await screen.findByText('Failed to load events (500).')).toBeInTheDocument()
+  })
+
+  it('shows remaining seats in a tooltip while hovering an event', async () => {
+    stubEvents([makeEvent()])
+    renderPage()
+    const item = await screen.findByText('Jazz Night – 48')
+
+    await userEvent.hover(item)
+    expect(screen.getByRole('tooltip')).toHaveTextContent('Jazz Night48 seats left')
+
+    await userEvent.unhover(item)
+    expect(screen.queryByRole('tooltip')).not.toBeInTheDocument()
   })
 })
