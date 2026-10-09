@@ -11,7 +11,10 @@ public class OrdersController(OrdersService ordersService) : ControllerBase
 {
     public const string GuestTokenHeader = "X-Order-Token";
 
+    /// <summary>Returns an order to its owner, an admin, or a guest presenting the order's X-Order-Token.</summary>
     [HttpGet("{id:int}")]
+    [ProducesResponseType(typeof(ApiEnvelope<OrderResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiEnvelope<object>), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Get(int id, [FromHeader(Name = GuestTokenHeader)] string? guestToken, CancellationToken cancellationToken)
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
