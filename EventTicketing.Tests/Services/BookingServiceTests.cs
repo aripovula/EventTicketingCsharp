@@ -96,4 +96,31 @@ public class BookingServiceTests(IntegrationTestFactory factory) : IClassFixture
         Assert.Null(saved.UserId);
         Assert.Equal("guest@example.com", saved.Email);
     }
+
+    [Fact]
+    public async Task BookAsync_GivesGuestsATokenAndStoresOnlyItsHash()
+    {
+        var eventId = await CreateEventAsync(availableSeats: 5);
+
+        var result = await BookAsync(eventId);
+
+        var token = result.Order!.GuestAccessToken;
+        Assert.False(string.IsNullOrEmpty(token));
+        var saved = await CreateDb().Orders.SingleAsync(o => o.Id == result.Order.Id, TestContext.Current.CancellationToken);
+        Assert.Equal(SecureToken.Hash(token), saved.GuestAccessTokenHash);
+    }
+
+    [Fact]
+    public async Task BookAsync_SignedInBookingsGetNoGuestToken()
+    {
+        var eventId = await CreateEventAsync(availableSeats: 5);
+        var john = await CreateDb().Users.SingleAsync(u => u.Email == "john@example.com", TestContext.Current.CancellationToken);
+
+        var result = await new BookingService(CreateDb()).BookAsync(
+            eventId, new BookingRequest { Email = "john@example.com" }, john.Id, TestContext.Current.CancellationToken);
+
+        Assert.Null(result.Order!.GuestAccessToken);
+        var saved = await CreateDb().Orders.SingleAsync(o => o.Id == result.Order.Id, TestContext.Current.CancellationToken);
+        Assert.Null(saved.GuestAccessTokenHash);
+    }
 }

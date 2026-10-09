@@ -22,6 +22,8 @@ public class BookingService(AppDbContext db)
         }
 
         var ev = await db.Events.SingleAsync(e => e.Id == eventId, cancellationToken);
+        // Guests have no account to find the order by, so they get a one-time lookup secret.
+        var guestToken = userId is null ? SecureToken.Generate() : null;
         var order = new Order
         {
             EventId = eventId,
@@ -29,11 +31,12 @@ public class BookingService(AppDbContext db)
             Email = request.Email,
             PriceCents = ev.PriceCents,
             BookedAt = DateTime.UtcNow,
+            GuestAccessTokenHash = guestToken is null ? null : SecureToken.Hash(guestToken),
         };
         db.Orders.Add(order);
         await db.SaveChangesAsync(cancellationToken);
 
         return new BookingResult(BookingStatus.Booked,
-            new OrderResponse(order.Id, eventId, ev.Title, order.Email, order.PriceCents, order.BookedAt));
+            new OrderResponse(order.Id, eventId, ev.Title, order.Email, order.PriceCents, order.BookedAt, guestToken));
     }
 }
