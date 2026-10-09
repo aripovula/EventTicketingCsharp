@@ -1,4 +1,4 @@
-import { createEvent, fetchEvent, fetchEvents, type EventInput } from './events'
+import { createEvent, fetchEvent, fetchEvents, updateEvent, type EventInput } from './events'
 import { makeEvent } from '../test/fixtures'
 
 describe('fetchEvents', () => {
@@ -60,6 +60,25 @@ describe('createEvent', () => {
 
     expect(fetchMock).toHaveBeenCalledWith('/api/v1/events', {
       method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(input),
+    })
+  })
+})
+
+describe('updateEvent', () => {
+  afterEach(() => vi.unstubAllGlobals())
+
+  it('puts the edited event as JSON with cookies included', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(null, { status: 204 }))
+    vi.stubGlobal('fetch', fetchMock)
+    const input = Object.fromEntries(Object.entries(makeEvent()).filter(([key]) => key !== 'id')) as EventInput
+
+    await updateEvent(7, input)
+
+    expect(fetchMock).toHaveBeenCalledWith('/api/v1/events/7', {
+      method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
       body: JSON.stringify(input),

@@ -42,4 +42,11 @@ public class EventsController(EventsService eventsService) : ControllerBase
         var ev = await eventsService.CreateAsync(request, cancellationToken);
         return CreatedAtAction(nameof(Get), new { id = ev.Id }, ev);
     }
+
+    [HttpPut("{id:int}")]
+    public async Task<IActionResult> Update(int id, EventRequest request, CancellationToken cancellationToken)
+    {
+        await eventsService.UpdateAsync(id, request, cancellationToken);
+        return NoContent();
+    }
 }

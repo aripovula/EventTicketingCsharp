@@ -43,3 +43,12 @@ export function createEvent(input: EventInput) {
     body: JSON.stringify(input),
   })
 }
+
+export function updateEvent(id: number, input: EventInput) {
+  return fetch(`/api/v1/events/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify(input),
+  })
+}
