@@ -21,4 +21,15 @@ public class AdminTests : E2ETestBase
 
         await Expect(Page.GetByRole(AriaRole.Heading, new() { Name = "Admin" })).ToBeVisibleAsync();
     }
+
+    [Test]
+    public async Task AdminPageListsEventsWithEditLinks()
+    {
+        await SignInAsAdminAsync();
+        await Page.GotoAsync($"{BaseUrl}/admin");
+
+        var list = Page.GetByRole(AriaRole.List, new() { Name = "admin events" });
+        await Expect(list.GetByRole(AriaRole.Listitem).Filter(new() { HasText = "Jazz Night" })).ToContainTextAsync("Blue Note Club");
+        await Expect(Page.GetByRole(AriaRole.Link, new() { Name = "Edit Jazz Night" })).ToBeVisibleAsync();
+    }
 }

@@ -1,6 +1,9 @@
 import { Link } from 'react-router-dom'
+import { useEventPages } from '../hooks/useEventPages'
 
 export default function AdminPage() {
+  const { events, loading, loadingMore, sentinelRef } = useEventPages({ sort: 'name' })
+
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
@@ -14,6 +17,34 @@ export default function AdminPage() {
           </Link>
         </div>
       </div>
+
+      {loading ? (
+        <p className="text-gray-500 text-center py-12">Loading...</p>
+      ) : (
+        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+          <ul aria-label="admin events" className="divide-y divide-gray-100 list-none p-0 m-0">
+            {events.map(ev => (
+              <li key={ev.id} className="flex items-center justify-between px-6 py-4 gap-4">
+                <div>
+                  <p className="font-medium text-gray-900">{ev.title}</p>
+                  <p className="text-sm text-gray-500">{ev.venue}</p>
+                </div>
+                <div className="flex gap-2 shrink-0">
+                  <Link
+                    to={`/admin/${ev.id}/edit`}
+                    aria-label={`Edit ${ev.title}`}
+                    className="text-sm border border-gray-300 text-gray-600 px-3 py-1.5 rounded-lg hover:bg-gray-50 transition-colors no-underline"
+                  >
+                    Edit
+                  </Link>
+                </div>
+              </li>
+            ))}
+          </ul>
+          <div ref={sentinelRef} data-testid="admin-events-sentinel" className="h-1" />
+          {loadingMore && <p className="text-gray-500 text-center py-6">Loading more events...</p>}
+        </div>
+      )}
     </div>
   )
 }
