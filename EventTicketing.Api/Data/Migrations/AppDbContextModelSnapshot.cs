@@ -130,6 +130,11 @@ namespace EventTicketing.Api.Data.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("event_id");
 
+                    b.Property<string>("GuestAccessTokenHash")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("guest_access_token_hash");
+
                     b.Property<int>("PriceCents")
                         .HasColumnType("integer")
                         .HasColumnName("price_cents");

@@ -22,4 +22,8 @@ public class Order
     public int PriceCents { get; set; }
 
     public DateTime BookedAt { get; set; }
+
+    // SHA-256 of the lookup token a guest receives at booking time; null for signed-in bookings.
+    [MaxLength(64)]
+    public string? GuestAccessTokenHash { get; set; }
 }
