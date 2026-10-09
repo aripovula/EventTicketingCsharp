@@ -69,4 +69,31 @@ public class BookingServiceTests(IntegrationTestFactory factory) : IClassFixture
 
         Assert.Equal(BookingStatus.EventNotFound, result.Status);
     }
+
+    [Fact]
+    public async Task BookAsync_SavesTheOrderAtTheEventPrice()
+    {
+        var eventId = await CreateEventAsync(availableSeats: 5);
+        var john = await CreateDb().Users.SingleAsync(u => u.Email == "john@example.com", TestContext.Current.CancellationToken);
+
+        var result = await new BookingService(CreateDb()).BookAsync(
+            eventId, new BookingRequest { Email = "john@example.com" }, john.Id, TestContext.Current.CancellationToken);
+
+        Assert.NotNull(result.Order);
+        Assert.Equal((eventId, "john@example.com", 2500), (result.Order.EventId, result.Order.Email, result.Order.PriceCents));
+        var saved = await CreateDb().Orders.SingleAsync(o => o.Id == result.Order.Id, TestContext.Current.CancellationToken);
+        Assert.Equal(john.Id, saved.UserId);
+    }
+
+    [Fact]
+    public async Task BookAsync_GuestOrderHasNoUser()
+    {
+        var eventId = await CreateEventAsync(availableSeats: 5);
+
+        var result = await BookAsync(eventId);
+
+        var saved = await CreateDb().Orders.SingleAsync(o => o.Id == result.Order!.Id, TestContext.Current.CancellationToken);
+        Assert.Null(saved.UserId);
+        Assert.Equal("guest@example.com", saved.Email);
+    }
 }

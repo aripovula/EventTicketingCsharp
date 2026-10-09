@@ -1,5 +1,6 @@
 using EventTicketing.Api.Contracts;
 using EventTicketing.Api.Data;
+using EventTicketing.Api.Models;
 using Microsoft.EntityFrameworkCore;
 
 namespace EventTicketing.Api.Services;
@@ -20,6 +21,19 @@ public class BookingService(AppDbContext db)
             return new BookingResult(exists ? BookingStatus.SoldOut : BookingStatus.EventNotFound);
         }
 
-        return new BookingResult(BookingStatus.Booked);
+        var ev = await db.Events.SingleAsync(e => e.Id == eventId, cancellationToken);
+        var order = new Order
+        {
+            EventId = eventId,
+            UserId = userId,
+            Email = request.Email,
+            PriceCents = ev.PriceCents,
+            BookedAt = DateTime.UtcNow,
+        };
+        db.Orders.Add(order);
+        await db.SaveChangesAsync(cancellationToken);
+
+        return new BookingResult(BookingStatus.Booked,
+            new OrderResponse(order.Id, eventId, ev.Title, order.Email, order.PriceCents, order.BookedAt));
     }
 }
