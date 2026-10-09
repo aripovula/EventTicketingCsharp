@@ -6,10 +6,11 @@ import { useAuth } from './useAuth'
 const jane = { userId: 2, name: 'Jane Doer', email: 'jane@example.com', role: 'user' as const }
 
 function Probe() {
-  const { user, signIn, signOut } = useAuth()
+  const { user, loading, signIn, signOut } = useAuth()
   return (
     <>
       <p>{user ? `Signed in as ${user.name}` : 'Signed out'}</p>
+      <p>{loading ? 'Checking session' : 'Session checked'}</p>
       <button onClick={() => signIn(jane)}>sign in</button>
       <button onClick={() => signOut().catch(() => {})}>sign out</button>
     </>
@@ -113,5 +114,24 @@ describe('AuthProvider', () => {
 
     expect(screen.getByText('Signed out')).toBeInTheDocument()
     expect(fetchMock.mock.calls.filter(([url]) => url === '/api/v1/auth/me')).toHaveLength(1)
+  })
+
+  it('is loading until the session check finishes', async () => {
+    let respond: (response: Response) => void = () => {}
+    vi.stubGlobal('fetch', vi.fn().mockReturnValueOnce(new Promise<Response>(resolve => { respond = resolve })))
+    render(<AuthProvider><Probe /></AuthProvider>)
+
+    expect(screen.getByText('Checking session')).toBeInTheDocument()
+
+    respond(new Response(JSON.stringify({ data: jane, errors: [] })))
+    expect(await screen.findByText('Session checked')).toBeInTheDocument()
+    expect(screen.getByText('Signed in as Jane Doer')).toBeInTheDocument()
+  })
+
+  it('stops loading even when the session check fails', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('Failed to fetch')))
+    render(<AuthProvider><Probe /></AuthProvider>)
+
+    expect(await screen.findByText('Session checked')).toBeInTheDocument()
   })
 })

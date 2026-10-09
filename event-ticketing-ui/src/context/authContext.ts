@@ -9,6 +9,8 @@ export interface User {
 
 export interface AuthContextValue {
   user: User | null
+  /** True until the startup /me check (and any refresh) has finished. */
+  loading: boolean
   signIn: (user: User) => void
   signOut: () => Promise<void>
 }

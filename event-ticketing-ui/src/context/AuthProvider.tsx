@@ -4,6 +4,7 @@ import { AuthContext, type User } from './authContext'
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     // An expired access token gets one refresh attempt before giving up.
@@ -16,6 +17,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .then(res => (res.ok ? res.json() : null))
       .then(body => { if (body?.data) setUser(body.data) })
       .catch(() => {})
+      .finally(() => setLoading(false))
   }, [])
 
   async function signOut() {
@@ -26,5 +28,5 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  return <AuthContext.Provider value={{ user, signIn: setUser, signOut }}>{children}</AuthContext.Provider>
+  return <AuthContext.Provider value={{ user, loading, signIn: setUser, signOut }}>{children}</AuthContext.Provider>
 }
