@@ -1,6 +1,7 @@
 import { BrowserRouter, Link, Route, Routes, useNavigate } from 'react-router-dom'
 import RequireAdmin from './components/RequireAdmin'
 import { useAuth } from './context/useAuth'
+import AdminEventFormPage from './pages/AdminEventFormPage'
 import AdminPage from './pages/AdminPage'
 import EventDetailPage from './pages/EventDetailPage'
 import EventListPage from './pages/EventListPage'
@@ -57,6 +58,7 @@ function App() {
             <Route path="/register" element={<RegisterPage />} />
             <Route element={<RequireAdmin />}>
               <Route path="/admin" element={<AdminPage />} />
+              <Route path="/admin/new" element={<AdminEventFormPage />} />
             </Route>
           </Routes>
         </main>

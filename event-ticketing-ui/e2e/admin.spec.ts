@@ -37,3 +37,13 @@ test('an admin deletes an event after confirming', async ({ page }) => {
 
   await expect(page.getByRole('list', { name: 'admin events' }).getByRole('listitem')).toHaveCount(0)
 })
+
+test('an admin opens the new-event form from the admin page', async ({ page }) => {
+  await signedInAs(page, 'admin')
+  await page.goto('/admin')
+
+  await page.getByRole('link', { name: '+ New event' }).click()
+
+  await expect(page).toHaveURL('/admin/new')
+  await expect(page.getByRole('heading', { name: 'New event' })).toBeVisible()
+})
