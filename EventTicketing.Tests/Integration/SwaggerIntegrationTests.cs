@@ -140,4 +140,12 @@ public class SwaggerIntegrationTests(IntegrationTestFactory factory) : IClassFix
 
         Assert.Equal(["204", "400", "401", "403", "404"], StatusCodes(op));
     }
+
+    [Fact]
+    public async Task DeleteEvent_DocumentsItsResponses()
+    {
+        var op = await OperationAsync("/api/v1/events/{id}", "delete");
+
+        Assert.Equal(["204", "401", "403", "404"], StatusCodes(op));
+    }
 }

@@ -64,8 +64,13 @@ public class EventsController(EventsService eventsService) : ControllerBase
         return NoContent();
     }
 
+    /// <summary>Deletes an event. Admin only.</summary>
     [Authorize(Roles = "admin")]
     [HttpDelete("{id:int}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ApiEnvelope<object>), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Delete(int id, CancellationToken cancellationToken)
     {
         if (!await eventsService.DeleteAsync(id, cancellationToken))
