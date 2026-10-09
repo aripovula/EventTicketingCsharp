@@ -96,10 +96,17 @@ public class EventsService(AppDbContext db)
     public async Task<bool> DeleteAsync(int id, CancellationToken cancellationToken) =>
         await db.Events.Where(e => e.Id == id).ExecuteDeleteAsync(cancellationToken) > 0;
 
-    public Task<IReadOnlyList<EventSummary>> SummaryAsync(CancellationToken cancellationToken)
-    {
-        return Task.FromResult<IReadOnlyList<EventSummary>>([]);
-    }
+    public async Task<IReadOnlyList<EventSummary>> SummaryAsync(CancellationToken cancellationToken) =>
+        await db.Events
+            .OrderBy(e => e.StartTime).ThenBy(e => e.Id)
+            .Select(e => new EventSummary(
+                e.Id,
+                e.Title,
+                e.TotalSeats,
+                e.TotalSeats - e.AvailableSeats,
+                e.AvailableSeats,
+                (e.TotalSeats - e.AvailableSeats) * e.PriceCents))
+            .ToListAsync(cancellationToken);
 
     private static readonly Func<Event, EventResponse> ToResponseCompiled = ToResponse.Compile();
 

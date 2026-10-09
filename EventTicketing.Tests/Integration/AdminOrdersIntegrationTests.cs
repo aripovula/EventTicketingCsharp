@@ -80,4 +80,37 @@ public class AdminOrdersIntegrationTests(IntegrationTestFactory factory) : IClas
 
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
     }
+
+    [Fact]
+    public async Task Summary_AsAdmin_ReportsSeatsAndRevenuePerEvent()
+    {
+        int eventId;
+        using (var scope = factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var ev = new Event
+            {
+                Title = "Summary Event",
+                Description = "For summary tests.",
+                StartTime = DateTime.UtcNow.AddDays(6),
+                EndTime = DateTime.UtcNow.AddDays(6).AddHours(2),
+                Venue = "Test Hall",
+                TotalSeats = 10,
+                AvailableSeats = 10,
+                PriceCents = 1500,
+            };
+            db.Events.Add(ev);
+            await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+            eventId = ev.Id;
+        }
+        var guest = factory.CreateClient();
+        await guest.PostAsJsonAsync($"/api/v1/events/{eventId}/bookings", new { email = "a@example.com" }, TestContext.Current.CancellationToken);
+        await guest.PostAsJsonAsync($"/api/v1/events/{eventId}/bookings", new { email = "b@example.com" }, TestContext.Current.CancellationToken);
+
+        var body = await (await SignedInAsync("admin@example.com")).GetStringAsync("/api/v1/admin/summary", TestContext.Current.CancellationToken);
+
+        var row = JsonDocument.Parse(body).RootElement.GetProperty("data").EnumerateArray().Single(e => e.GetProperty("eventId").GetInt32() == eventId);
+        Assert.Equal((10, 2, 8, 3000), (row.GetProperty("totalSeats").GetInt32(), row.GetProperty("soldSeats").GetInt32(),
+            row.GetProperty("remainingSeats").GetInt32(), row.GetProperty("revenueCents").GetInt32()));
+    }
 }
