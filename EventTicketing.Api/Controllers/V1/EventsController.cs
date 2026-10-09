@@ -35,8 +35,13 @@ public class EventsController(EventsService eventsService) : ControllerBase
         return Ok(ev);
     }
 
+    /// <summary>Creates an event. Admin only.</summary>
     [Authorize(Roles = "admin")]
     [HttpPost]
+    [ProducesResponseType(typeof(ApiEnvelope<EventResponse>), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(ApiEnvelope<object>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<IActionResult> Create(EventRequest request, CancellationToken cancellationToken)
     {
         var ev = await eventsService.CreateAsync(request, cancellationToken);

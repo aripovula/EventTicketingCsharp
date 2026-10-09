@@ -123,4 +123,13 @@ public class SwaggerIntegrationTests(IntegrationTestFactory factory) : IClassFix
         Assert.Equal(["200", "404"], StatusCodes(op));
         Assert.Contains("EventResponse", SuccessSchemaRef(op, "200"));
     }
+
+    [Fact]
+    public async Task CreateEvent_DocumentsItsResponses()
+    {
+        var op = await OperationAsync("/api/v1/events", "post");
+
+        Assert.Equal(["201", "400", "401", "403"], StatusCodes(op));
+        Assert.Contains("EventResponse", SuccessSchemaRef(op, "201"));
+    }
 }
