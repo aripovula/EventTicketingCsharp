@@ -25,7 +25,11 @@ public class AdminController(OrdersService ordersService, EventsService eventsSe
         return Ok(new ApiEnvelope(page.Items, [], new { nextCursor = page.NextCursor }));
     }
 
+    /// <summary>Seats sold, seats remaining and revenue for every event, in date order. Admin only.</summary>
     [HttpGet("summary")]
+    [ProducesResponseType(typeof(ApiEnvelope<IReadOnlyList<EventSummary>>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<IActionResult> Summary(CancellationToken cancellationToken)
     {
         return Ok(await eventsService.SummaryAsync(cancellationToken));
