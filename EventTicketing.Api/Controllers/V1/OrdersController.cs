@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using EventTicketing.Api.Contracts;
 using EventTicketing.Api.Services;
 using Microsoft.AspNetCore.Mvc;
 
@@ -16,6 +17,10 @@ public class OrdersController(OrdersService ordersService) : ControllerBase
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
         var viewer = new OrderViewer(userId is null ? null : int.Parse(userId), User.IsInRole("admin"), guestToken);
         var order = await ordersService.GetAsync(id, viewer, cancellationToken);
+        // Same answer for "missing" and "not yours", so order ids can't be probed.
+        if (order is null)
+            return NotFound(new ApiEnvelope(null, [new ApiError("not_found", "Order not found.")]));
+
         return Ok(order);
     }
 }
