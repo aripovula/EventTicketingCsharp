@@ -10,7 +10,12 @@ namespace EventTicketing.Api.Controllers.V1;
 [Route("api/v1/admin")]
 public class AdminController(OrdersService ordersService, EventsService eventsService) : ControllerBase
 {
+    /// <summary>Lists every order, newest first, with cursor pagination (meta.nextCursor). Admin only.</summary>
     [HttpGet("orders")]
+    [ProducesResponseType(typeof(ApiEnvelope<IReadOnlyList<OrderResponse>>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiEnvelope<object>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<IActionResult> Orders([FromQuery] PageQuery query, CancellationToken cancellationToken)
     {
         var page = await ordersService.ListAsync(null, query, cancellationToken);
