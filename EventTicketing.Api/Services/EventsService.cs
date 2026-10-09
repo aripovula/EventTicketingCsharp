@@ -96,6 +96,11 @@ public class EventsService(AppDbContext db)
     public async Task<bool> DeleteAsync(int id, CancellationToken cancellationToken) =>
         await db.Events.Where(e => e.Id == id).ExecuteDeleteAsync(cancellationToken) > 0;
 
+    public Task<IReadOnlyList<EventSummary>> SummaryAsync(CancellationToken cancellationToken)
+    {
+        return Task.FromResult<IReadOnlyList<EventSummary>>([]);
+    }
+
     private static readonly Func<Event, EventResponse> ToResponseCompiled = ToResponse.Compile();
 
     private static IQueryable<Event> Ordered(IQueryable<Event> events, string sort) => sort switch

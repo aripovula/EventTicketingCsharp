@@ -72,4 +72,12 @@ public class AdminOrdersIntegrationTests(IntegrationTestFactory factory) : IClas
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
+
+    [Fact]
+    public async Task Summary_AsRegularUser_Returns403()
+    {
+        var response = await (await SignedInAsync("john@example.com")).GetAsync("/api/v1/admin/summary", TestContext.Current.CancellationToken);
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
 }
