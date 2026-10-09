@@ -31,6 +31,7 @@ describe('AdminPage', () => {
 
     expect(screen.getByRole('heading', { name: 'Admin' })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: '+ New event' })).toHaveAttribute('href', '/admin/new')
+    expect(screen.getByRole('link', { name: 'Events Calendar' })).toHaveAttribute('href', '/admin/calendar')
   })
 
   it('lists events by name with their venue and an edit link', async () => {

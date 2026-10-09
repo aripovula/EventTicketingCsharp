@@ -29,6 +29,12 @@ export default function AdminPage() {
         <h1 className="text-2xl font-bold text-gray-900 m-0">Admin</h1>
         <div className="flex gap-3">
           <Link
+            to="/admin/calendar"
+            className="border border-gray-300 text-gray-600 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors no-underline"
+          >
+            Events Calendar
+          </Link>
+          <Link
             to="/admin/new"
             className="bg-cyan-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-cyan-700 transition-colors no-underline"
           >
