@@ -107,6 +107,52 @@ namespace EventTicketing.Api.Data.Migrations
                         });
                 });
 
+            modelBuilder.Entity("EventTicketing.Api.Models.Order", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("BookedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("booked_at");
+
+                    b.Property<string>("Email")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("email");
+
+                    b.Property<int>("EventId")
+                        .HasColumnType("integer")
+                        .HasColumnName("event_id");
+
+                    b.Property<int>("PriceCents")
+                        .HasColumnType("integer")
+                        .HasColumnName("price_cents");
+
+                    b.Property<int?>("UserId")
+                        .HasColumnType("integer")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_orders");
+
+                    b.HasIndex("Email")
+                        .HasDatabaseName("ix_orders_email");
+
+                    b.HasIndex("EventId")
+                        .HasDatabaseName("ix_orders_event_id");
+
+                    b.HasIndex("UserId")
+                        .HasDatabaseName("ix_orders_user_id");
+
+                    b.ToTable("orders", (string)null);
+                });
+
             modelBuilder.Entity("EventTicketing.Api.Models.RefreshToken", b =>
                 {
                     b.Property<int>("Id")
@@ -211,6 +257,26 @@ namespace EventTicketing.Api.Data.Migrations
                         .HasDatabaseName("ix_users_email");
 
                     b.ToTable("users", (string)null);
+                });
+
+            modelBuilder.Entity("EventTicketing.Api.Models.Order", b =>
+                {
+                    b.HasOne("EventTicketing.Api.Models.Event", "Event")
+                        .WithMany()
+                        .HasForeignKey("EventId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_orders_events_event_id");
+
+                    b.HasOne("EventTicketing.Api.Models.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_orders_users_user_id");
+
+                    b.Navigation("Event");
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("EventTicketing.Api.Models.RefreshToken", b =>

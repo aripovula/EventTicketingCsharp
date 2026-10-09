@@ -8,6 +8,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<User> Users => Set<User>();
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
     public DbSet<Event> Events => Set<Event>();
+    public DbSet<Order> Orders => Set<Order>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -40,6 +41,16 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         modelBuilder.Entity<Event>().HasIndex(e => new { e.Title, e.Id });
         modelBuilder.Entity<Event>().HasIndex(e => new { e.StartTime, e.Id });
         modelBuilder.Entity<Event>().HasIndex(e => new { e.PriceCents, e.Id });
+
+        // Deleting a user keeps their order history; deleting an event removes its orders.
+        modelBuilder.Entity<Order>()
+            .HasOne(o => o.User)
+            .WithMany()
+            .HasForeignKey(o => o.UserId)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        modelBuilder.Entity<Order>()
+            .HasIndex(o => o.Email);
     }
 
     public override int SaveChanges(bool acceptAllChangesOnSuccess)
