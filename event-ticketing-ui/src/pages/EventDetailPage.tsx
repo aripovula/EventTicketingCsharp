@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
+import { bookEvent } from '../api/bookings'
 import { fetchEvent, type EventItem } from '../api/events'
+import BookingModal from '../components/BookingModal'
+import { useAuth } from '../context/useAuth'
 import { formatPrice } from '../utils/formatPrice'
 
 const time = (iso: string) => new Date(iso).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })
@@ -10,6 +13,10 @@ export default function EventDetailPage() {
   const [event, setEvent] = useState<EventItem | null>(null)
   const [loading, setLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
+  const [modalOpen, setModalOpen] = useState(false)
+  const [bookingError, setBookingError] = useState<string | null>(null)
+  const [bookedOrderId, setBookedOrderId] = useState<number | null>(null)
+  const { user } = useAuth()
 
   const loadEvent = useCallback(() => {
     fetchEvent(Number(id))
@@ -35,6 +42,21 @@ export default function EventDetailPage() {
 
   const soldOut = event.availableSeats === 0
 
+  async function handleConfirmBooking(email: string) {
+    setBookingError(null)
+    const res = await bookEvent(event!.id, email).catch(() => null)
+    if (res?.ok) {
+      const body = await res.json()
+      setBookedOrderId(body.data.id)
+      setModalOpen(false)
+      loadEvent()
+    } else if (res?.status === 409) {
+      setBookingError('Sorry, this event just sold out.')
+    } else {
+      setBookingError('Booking failed. Please try again.')
+    }
+  }
+
   return (
     <div>
       <Link to="/" className="text-sm text-cyan-600 hover:text-cyan-800 transition-colors no-underline">
@@ -50,16 +72,43 @@ export default function EventDetailPage() {
             {time(event.startTime)}{' – '}{time(event.endTime)}
           </p>
           <p className="text-gray-700 leading-relaxed mb-6">{event.description}</p>
-          <div className="border-t border-gray-100 pt-5">
-            <span className="text-3xl font-bold text-cyan-600">{formatPrice(event.priceCents)}</span>
-            <p className="text-sm mt-1 text-gray-500">
-              {soldOut
-                ? <span className="text-red-500 font-medium">Sold out</span>
-                : <>{event.availableSeats} of {event.totalSeats} seats available</>}
-            </p>
+          <div className="flex items-center justify-between border-t border-gray-100 pt-5">
+            <div>
+              <span className="text-3xl font-bold text-cyan-600">{formatPrice(event.priceCents)}</span>
+              <p className="text-sm mt-1 text-gray-500">
+                {soldOut
+                  ? <span className="text-red-500 font-medium">Sold out</span>
+                  : <>{event.availableSeats} of {event.totalSeats} seats available</>}
+              </p>
+            </div>
+            <button
+              onClick={() => setModalOpen(true)}
+              disabled={soldOut}
+              className="bg-cyan-600 text-white px-6 py-2.5 rounded-lg font-medium hover:bg-cyan-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              {soldOut ? 'Sold out' : 'Buy ticket'}
+            </button>
           </div>
+          {bookedOrderId !== null && (
+            <p role="status" className="mt-4 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">
+              Booked! Your order number is #{bookedOrderId}.
+            </p>
+          )}
         </div>
       </div>
+
+      {modalOpen && (
+        <BookingModal
+          eventTitle={event.title}
+          eventDate={event.startTime}
+          eventVenue={event.venue}
+          priceCents={event.priceCents}
+          savedEmail={user?.email}
+          onConfirm={handleConfirmBooking}
+          onClose={() => { setModalOpen(false); setBookingError(null) }}
+          error={bookingError}
+        />
+      )}
     </div>
   )
 }

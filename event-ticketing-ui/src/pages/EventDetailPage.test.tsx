@@ -1,6 +1,8 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import type { EventItem } from '../api/events'
+import { AuthContext, type User } from '../context/authContext'
 import EventDetailPage from './EventDetailPage'
 import { makeEvent } from '../test/fixtures'
 
@@ -10,11 +12,13 @@ function stubEvent(event: EventItem) {
   return fetchMock
 }
 
-function renderPage(id = 1) {
+function renderPage(id = 1, user: User | null = null) {
   render(
-    <MemoryRouter initialEntries={[`/events/${id}`]}>
-      <Routes><Route path="/events/:id" element={<EventDetailPage />} /></Routes>
-    </MemoryRouter>,
+    <AuthContext.Provider value={{ user, loading: false, signIn: () => {}, signOut: async () => {} }}>
+      <MemoryRouter initialEntries={[`/events/${id}`]}>
+        <Routes><Route path="/events/:id" element={<EventDetailPage />} /></Routes>
+      </MemoryRouter>
+    </AuthContext.Provider>,
   )
 }
 
@@ -51,7 +55,8 @@ describe('EventDetailPage', () => {
     stubEvent(makeEvent({ availableSeats: 0 }))
     renderPage()
 
-    expect(await screen.findByText('Sold out')).toBeInTheDocument()
+    // Both the seat line and the disabled button say so.
+    expect(await screen.findAllByText('Sold out')).toHaveLength(2)
   })
 
   it('names the browser tab after the event', async () => {
@@ -82,5 +87,68 @@ describe('EventDetailPage', () => {
     renderPage()
 
     expect(await screen.findByText('Something went wrong. Please try again.')).toBeInTheDocument()
+  })
+
+  function stubEventThenBooking(bookingResponse: Response, seatsAfter = 47) {
+    let booked = false
+    const fetchMock = vi.fn((_: string, init?: RequestInit) => {
+      if (init?.method === 'POST') { booked = true; return Promise.resolve(bookingResponse) }
+      return Promise.resolve(new Response(JSON.stringify({ data: makeEvent({ availableSeats: booked ? seatsAfter : 48 }), errors: [] })))
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    return fetchMock
+  }
+
+  it('disables buying when sold out', async () => {
+    stubEvent(makeEvent({ availableSeats: 0 }))
+    renderPage()
+
+    expect(await screen.findByRole('button', { name: 'Sold out' })).toBeDisabled()
+  })
+
+  it('opens the booking modal with the signed-in user email', async () => {
+    stubEvent(makeEvent())
+    renderPage(1, { userId: 1, name: 'John Doe', email: 'john@example.com', role: 'user' })
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Buy ticket' }))
+
+    expect(within(screen.getByRole('dialog', { name: 'Place order' })).getByLabelText('Email')).toHaveValue('john@example.com')
+  })
+
+  it('books a seat, confirms the order and refreshes the seat count', async () => {
+    const order = { id: 42, eventId: 1, eventTitle: 'Jazz Night', email: 'guest@example.com', priceCents: 2500, bookedAt: '2026-10-09T12:00:00Z' }
+    const fetchMock = stubEventThenBooking(new Response(JSON.stringify({ data: order, errors: [] }), { status: 201 }))
+    renderPage()
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Buy ticket' }))
+    await userEvent.type(screen.getByLabelText('Email'), 'guest@example.com')
+    await userEvent.click(screen.getByRole('button', { name: 'Place order' }))
+
+    expect(await screen.findByRole('status')).toHaveTextContent('Booked! Your order number is #42.')
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(await screen.findByText('47 of 120 seats available')).toBeInTheDocument()
+    expect(fetchMock).toHaveBeenCalledWith('/api/v1/events/1/bookings', expect.objectContaining({ method: 'POST' }))
+  })
+
+  it('says when the last seat was just taken', async () => {
+    stubEventThenBooking(new Response(JSON.stringify({ data: null, errors: [{ code: 'sold_out', detail: 'Sorry, this event just sold out.' }] }), { status: 409 }))
+    renderPage()
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Buy ticket' }))
+    await userEvent.type(screen.getByLabelText('Email'), 'guest@example.com')
+    await userEvent.click(screen.getByRole('button', { name: 'Place order' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Sorry, this event just sold out.')
+  })
+
+  it('reports other booking failures', async () => {
+    stubEventThenBooking(new Response('oops', { status: 500 }))
+    renderPage()
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Buy ticket' }))
+    await userEvent.type(screen.getByLabelText('Email'), 'guest@example.com')
+    await userEvent.click(screen.getByRole('button', { name: 'Place order' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Booking failed. Please try again.')
   })
 })
