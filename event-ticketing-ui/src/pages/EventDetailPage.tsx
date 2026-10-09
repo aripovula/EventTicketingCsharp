@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { fetchEvent, type EventItem } from '../api/events'
 import { formatPrice } from '../utils/formatPrice'
@@ -11,7 +11,7 @@ export default function EventDetailPage() {
   const [loading, setLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
 
-  useEffect(() => {
+  const loadEvent = useCallback(() => {
     fetchEvent(Number(id))
       .then(res => {
         if (res.status === 404) { setNotFound(true); return null }
@@ -21,6 +21,8 @@ export default function EventDetailPage() {
       .catch(() => {})
       .finally(() => setLoading(false))
   }, [id])
+
+  useEffect(() => { loadEvent() }, [loadEvent])
 
   useEffect(() => {
     document.title = event ? `${event.title} | Ticketing` : 'Ticketing'
