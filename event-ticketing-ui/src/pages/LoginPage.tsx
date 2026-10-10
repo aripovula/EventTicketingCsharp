@@ -228,6 +228,13 @@ export default function LoginPage() {
         error={accountError}
         submitting={accountBusy}
       />
+
+      <div className="rounded-xl border border-amber-300 bg-amber-50 px-5 py-4 text-sm text-amber-900 leading-relaxed">
+        <strong>Tip:</strong> Log in here as a regular user and open this app in another browser (or
+        incognito window) to log in as admin — or vice versa. That way you can see what the admin
+        panel reflects in real time based on a regular user's actions, and vice versa.{' '}
+        Real-time push updates are delivered via <strong>SignalR</strong> (WebSockets).
+      </div>
     </div>
   )
 }

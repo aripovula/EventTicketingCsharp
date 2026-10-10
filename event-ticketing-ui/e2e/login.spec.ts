@@ -17,6 +17,12 @@ test('login page offers the demo-account panels', async ({ page }) => {
   await expect(page.getByRole('radio', { name: /john doe/i })).toBeChecked()
 })
 
+test('login page suggests watching live updates in two browsers', async ({ page }) => {
+  await page.goto('/login')
+
+  await expect(page.getByText(/open this app in another browser/)).toBeVisible()
+})
+
 test('signing in as a demo user goes to the home page', async ({ page }) => {
   await page.route('**/api/v1/auth/login', route =>
     route.fulfill({ json: { data: { userId: 1, name: 'John Doe', email: 'john@example.com', role: 'user' }, errors: [] } }),

@@ -206,4 +206,11 @@ describe('LoginPage', () => {
 
     expect(screen.queryByRole('status')).not.toBeInTheDocument()
   })
+
+  it('suggests trying it in two browsers to watch live updates', () => {
+    renderPage()
+
+    expect(screen.getByText(/open this app in another browser/)).toBeInTheDocument()
+    expect(screen.getByText('SignalR')).toBeInTheDocument()
+  })
 })
