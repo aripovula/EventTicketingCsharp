@@ -179,4 +179,18 @@ public class AdminTests : E2ETestBase
         await Expect(Page.GetByRole(AriaRole.Heading, new() { Name = "All orders" })).ToBeVisibleAsync();
         await Expect(Page.GetByText("Failed to load orders.")).ToHaveCountAsync(0);
     }
+
+    [Test]
+    public async Task AdminSeesTheSeatSummary()
+    {
+        await SignInAsAdminAsync();
+        await Page.GotoAsync($"{BaseUrl}/admin");
+
+        await Page.GetByRole(AriaRole.Link, new() { Name = "Seat summary" }).ClickAsync();
+
+        var jazz = Page.GetByRole(AriaRole.Row).Filter(new() { HasText = "Jazz Night" });
+        await Expect(jazz).ToContainTextAsync("120");
+        await Expect(jazz).ToContainTextAsync("72");
+        await Expect(jazz).ToContainTextAsync("$1,800.00");
+    }
 }

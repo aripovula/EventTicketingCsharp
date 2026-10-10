@@ -5,6 +5,7 @@ import AdminCalendarPage from './pages/AdminCalendarPage'
 import AdminEventFormPage from './pages/AdminEventFormPage'
 import AdminOrdersPage from './pages/AdminOrdersPage'
 import AdminPage from './pages/AdminPage'
+import AdminSummaryPage from './pages/AdminSummaryPage'
 import EventDetailPage from './pages/EventDetailPage'
 import EventListPage from './pages/EventListPage'
 import LoginPage from './pages/LoginPage'
@@ -76,6 +77,7 @@ function App() {
               <Route path="/admin" element={<AdminPage />} />
               <Route path="/admin/calendar" element={<AdminCalendarPage />} />
               <Route path="/admin/orders" element={<AdminOrdersPage />} />
+              <Route path="/admin/summary" element={<AdminSummaryPage />} />
               <Route path="/admin/new" element={<AdminEventFormPage />} />
               <Route path="/admin/:id/edit" element={<AdminEventFormPage />} />
             </Route>

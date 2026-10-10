@@ -178,3 +178,16 @@ test('an admin opens all orders from the admin page', async ({ page }) => {
   await expect(page.getByRole('heading', { name: 'All orders' })).toBeVisible()
   await expect(page.getByRole('row').nth(1)).toContainText('jane@example.com')
 })
+
+test('an admin opens the seat summary from the admin page', async ({ page }) => {
+  await signedInAs(page, 'admin')
+  await page.route('**/api/v1/admin/summary', route => route.fulfill({ json: { data: [
+    { eventId: 1, title: 'Jazz Night', totalSeats: 120, soldSeats: 72, remainingSeats: 48, revenueCents: 180000 },
+  ], errors: [] } }))
+  await page.goto('/admin')
+
+  await page.getByRole('link', { name: 'Seat summary' }).click()
+
+  await expect(page.getByRole('heading', { name: 'Seat summary' })).toBeVisible()
+  await expect(page.getByRole('row').nth(1)).toContainText('$1,800.00')
+})
