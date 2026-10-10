@@ -82,4 +82,10 @@ describe('App', () => {
     await screen.findByRole('button', { name: 'Sign out' })
     expect(screen.queryByRole('link', { name: 'Admin' })).not.toBeInTheDocument()
   })
+
+  it('links to My orders from the header', () => {
+    renderApp()
+
+    expect(screen.getByRole('banner').querySelector('a[href="/orders"]')).toHaveTextContent('My orders')
+  })
 })

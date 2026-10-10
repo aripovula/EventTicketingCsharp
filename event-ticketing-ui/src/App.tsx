@@ -7,6 +7,7 @@ import AdminPage from './pages/AdminPage'
 import EventDetailPage from './pages/EventDetailPage'
 import EventListPage from './pages/EventListPage'
 import LoginPage from './pages/LoginPage'
+import MyOrdersPage from './pages/MyOrdersPage'
 import OrderConfirmationPage from './pages/OrderConfirmationPage'
 import RegisterPage from './pages/RegisterPage'
 
@@ -21,6 +22,9 @@ function HeaderNav() {
 
   return (
     <nav className="flex items-center gap-4">
+      <Link to="/orders" className="text-sm text-gray-500 hover:text-cyan-600 transition-colors">
+        My orders
+      </Link>
       {user?.role === 'admin' && (
         <Link to="/admin" className="text-sm text-gray-500 hover:text-cyan-600 transition-colors">
           Admin
@@ -56,6 +60,7 @@ function App() {
           <Routes>
             <Route path="/" element={<EventListPage />} />
             <Route path="/events/:id" element={<EventDetailPage />} />
+            <Route path="/orders" element={<MyOrdersPage />} />
             <Route path="/orders/:id" element={<OrderConfirmationPage />} />
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />
