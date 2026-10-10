@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import { fakeHub } from './fakeHub'
 
 const jazz = {
   id: 1, title: 'Jazz Night', description: 'Live jazz.', startTime: '2026-11-02T23:00:00Z', endTime: '2026-11-03T02:00:00Z',
@@ -108,4 +109,17 @@ test('an unknown event shows not found', async ({ page }) => {
   await page.goto('/events/999')
 
   await expect(page.getByText('Event not found.')).toBeVisible()
+})
+
+test('the detail page updates its seats live when someone books', async ({ page }) => {
+  const hub = await fakeHub(page)
+  let seats = 48
+  await page.route('**/api/v1/events/1', route => route.fulfill({ json: { data: { ...jazz, availableSeats: seats }, errors: [] } }))
+  await page.goto('/events/1')
+  await expect(page.getByText('48 of 120 seats available')).toBeVisible()
+
+  seats = 47
+  await hub.push('BookingMade', 1)
+
+  await expect(page.getByText('47 of 120 seats available')).toBeVisible()
 })

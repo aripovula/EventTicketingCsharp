@@ -4,6 +4,7 @@ import { bookEvent } from '../api/bookings'
 import { fetchEvent, type EventItem } from '../api/events'
 import BookingModal from '../components/BookingModal'
 import { useAuth } from '../context/useAuth'
+import { useHubEvents } from '../hooks/useHubEvents'
 import { formatPrice } from '../utils/formatPrice'
 
 const time = (iso: string) => new Date(iso).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })
@@ -30,6 +31,13 @@ export default function EventDetailPage() {
   }, [id])
 
   useEffect(() => { loadEvent() }, [loadEvent])
+
+  // Live updates: seats and details change under the visitor's feet; a deleted event sends them home.
+  useHubEvents({
+    BookingMade: eventId => { if (eventId === Number(id)) loadEvent() },
+    EventUpdated: eventId => { if (eventId === Number(id)) loadEvent() },
+    EventDeleted: eventId => { if (eventId === Number(id)) navigate('/') },
+  })
 
   useEffect(() => {
     document.title = event ? `${event.title} | Ticketing` : 'Ticketing'

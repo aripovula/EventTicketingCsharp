@@ -1,10 +1,15 @@
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes, useParams, useSearchParams } from 'react-router-dom'
 import type { EventItem } from '../api/events'
 import { AuthContext, type User } from '../context/authContext'
 import EventDetailPage from './EventDetailPage'
 import { makeEvent } from '../test/fixtures'
+
+const hub = vi.hoisted(() => ({ handlers: {} as Record<string, (eventId: number) => void> }))
+vi.mock('../hooks/useHubEvents', () => ({
+  useHubEvents: (handlers: Record<string, (eventId: number) => void>) => { hub.handlers = handlers },
+}))
 
 function stubEvent(event: EventItem) {
   const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ data: event, errors: [] })))
@@ -25,6 +30,7 @@ function renderPage(id = 1, user: User | null = null) {
         <Routes>
           <Route path="/events/:id" element={<EventDetailPage />} />
           <Route path="/orders/:id" element={<OrderProbe />} />
+          <Route path="/" element={<p>Home page</p>} />
         </Routes>
       </MemoryRouter>
     </AuthContext.Provider>,
@@ -168,5 +174,61 @@ describe('EventDetailPage', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Place order' }))
 
     expect(await screen.findByRole('alert')).toHaveTextContent('Booking failed. Please try again.')
+  })
+
+  describe('live updates', () => {
+    function stubSeatsSequence(...seats: number[]) {
+      const fetchMock = vi.fn()
+      for (const availableSeats of seats) {
+        fetchMock.mockImplementationOnce(() => Promise.resolve(new Response(JSON.stringify({ data: makeEvent({ availableSeats }), errors: [] }))))
+      }
+      vi.stubGlobal('fetch', fetchMock)
+      return fetchMock
+    }
+
+    it('refreshes the seats when this event is booked', async () => {
+      stubSeatsSequence(48, 47)
+      renderPage(1)
+      await screen.findByText('48 of 120 seats available')
+
+      act(() => hub.handlers.BookingMade(1))
+
+      expect(await screen.findByText('47 of 120 seats available')).toBeInTheDocument()
+    })
+
+    it('refreshes the details when this event is edited', async () => {
+      const fetchMock = stubSeatsSequence(48, 48)
+      renderPage(1)
+      await screen.findByText('48 of 120 seats available')
+
+      act(() => hub.handlers.EventUpdated(1))
+
+      await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2))
+    })
+
+    it('ignores updates about other events', async () => {
+      const fetchMock = stubSeatsSequence(48)
+      renderPage(1)
+      await screen.findByText('48 of 120 seats available')
+
+      act(() => {
+        hub.handlers.BookingMade(2)
+        hub.handlers.EventUpdated(2)
+        hub.handlers.EventDeleted(2)
+      })
+
+      expect(fetchMock).toHaveBeenCalledTimes(1)
+      expect(screen.getByText('48 of 120 seats available')).toBeInTheDocument()
+    })
+
+    it('goes to the home page when this event is deleted', async () => {
+      stubSeatsSequence(48)
+      renderPage(1)
+      await screen.findByText('48 of 120 seats available')
+
+      act(() => hub.handlers.EventDeleted(1))
+
+      expect(await screen.findByText('Home page')).toBeInTheDocument()
+    })
   })
 })
