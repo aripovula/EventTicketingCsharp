@@ -9,3 +9,17 @@ test('My orders asks a signed-out visitor to sign in', async ({ page }) => {
   await expect(page.getByRole('heading', { name: 'My orders' })).toBeVisible()
   await expect(page.getByRole('main').getByRole('link', { name: 'Sign in' })).toBeVisible()
 })
+
+test('a signed-in user sees their orders', async ({ page }) => {
+  await page.route('**/api/v1/auth/me', route =>
+    route.fulfill({ json: { data: { userId: 1, name: 'John Doe', email: 'john@example.com', role: 'user' }, errors: [] } }))
+  await page.route('**/api/v1/auth/me/orders**', route => route.fulfill({ json: { data: [
+    { id: 42, eventId: 1, eventTitle: 'Jazz Night', eventVenue: 'Blue Note Club', eventStartTime: '2026-11-02T23:00:00Z',
+      eventEndTime: '2026-11-03T02:00:00Z', email: 'john@example.com', priceCents: 2500, bookedAt: '2026-10-09T12:00:00Z' },
+  ], errors: [], meta: { nextCursor: null } } }))
+  await page.goto('/orders')
+
+  const order = page.getByRole('list', { name: 'orders' }).getByRole('listitem')
+  await expect(order).toContainText('Jazz Night')
+  await expect(order).toContainText('Order #42 · $25.00')
+})
