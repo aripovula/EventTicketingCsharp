@@ -18,7 +18,16 @@ public class OrdersIntegrationTests(IntegrationTestFactory factory) : IClassFixt
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
-    private async Task<JsonElement> GuestBookingAsync()
+    private async Task<HttpClient> SignInAsync(string email)
+    {
+        var client = factory.CreateClient();
+        await client.PostAsJsonAsync("/api/v1/auth/login", new { email, password = "Password" }, TestContext.Current.CancellationToken);
+        return client;
+    }
+
+    private Task<JsonElement> GuestBookingAsync() => BookingAsync(factory.CreateClient());
+
+    private async Task<JsonElement> BookingAsync(HttpClient client)
     {
         using (var scope = factory.Services.CreateScope())
         {
@@ -38,7 +47,7 @@ public class OrdersIntegrationTests(IntegrationTestFactory factory) : IClassFixt
         }
         var list = JsonDocument.Parse(await factory.CreateClient().GetStringAsync("/api/v1/events?q=Orders%20API%20Event", TestContext.Current.CancellationToken));
         var eventId = list.RootElement.GetProperty("data")[0].GetProperty("id").GetInt32();
-        var booked = await factory.CreateClient().PostAsJsonAsync($"/api/v1/events/{eventId}/bookings", new { email = "guest@example.com" }, TestContext.Current.CancellationToken);
+        var booked = await client.PostAsJsonAsync($"/api/v1/events/{eventId}/bookings", new { email = "guest@example.com" }, TestContext.Current.CancellationToken);
         return JsonDocument.Parse(await booked.Content.ReadAsStringAsync(TestContext.Current.CancellationToken)).RootElement.GetProperty("data").Clone();
     }
 
@@ -75,5 +84,27 @@ public class OrdersIntegrationTests(IntegrationTestFactory factory) : IClassFixt
         var response = await admin.GetAsync($"/api/v1/orders/{order.GetProperty("id").GetInt32()}", TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Get_OwnOrderAsTheBookingUser_Returns200()
+    {
+        var john = await SignInAsync("john@example.com");
+        var order = await BookingAsync(john);
+
+        var response = await john.GetAsync($"/api/v1/orders/{order.GetProperty("id").GetInt32()}", TestContext.Current.CancellationToken);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Get_AnotherUsersOrder_Returns404()
+    {
+        var order = await BookingAsync(await SignInAsync("john@example.com"));
+        var jane = await SignInAsync("jane@example.com");
+
+        var response = await jane.GetAsync($"/api/v1/orders/{order.GetProperty("id").GetInt32()}", TestContext.Current.CancellationToken);
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 }
