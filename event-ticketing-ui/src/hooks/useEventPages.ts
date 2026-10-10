@@ -13,6 +13,9 @@ export function useEventPages({ q = '', sort }: { q?: string; sort: EventSort })
   const sentinelRef = useRef<HTMLDivElement>(null)
   // Bumped whenever search or sort changes, so late responses for old criteria are ignored.
   const requestId = useRef(0)
+  // Bumped by reload() to fetch the first page again with the same criteria.
+  const [version, setVersion] = useState(0)
+  const reload = useCallback(() => setVersion(v => v + 1), [])
 
   useEffect(() => {
     const id = ++requestId.current
@@ -25,7 +28,7 @@ export function useEventPages({ q = '', sort }: { q?: string; sort: EventSort })
       })
       .catch(() => {})
       .finally(() => setLoading(false))
-  }, [q, sort])
+  }, [q, sort, version])
 
   const loadMore = useCallback(() => {
     if (!nextCursor || loadingMore) return
@@ -53,5 +56,5 @@ export function useEventPages({ q = '', sort }: { q?: string; sort: EventSort })
     return () => observer.disconnect()
   }, [loadMore, loading])
 
-  return { events, setEvents, loading, loadingMore, sentinelRef }
+  return { events, setEvents, reload, loading, loadingMore, sentinelRef }
 }
