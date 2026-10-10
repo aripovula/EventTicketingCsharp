@@ -9,6 +9,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
     public DbSet<Event> Events => Set<Event>();
     public DbSet<Order> Orders => Set<Order>();
+    public DbSet<IdempotencyKey> IdempotencyKeys => Set<IdempotencyKey>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -51,6 +52,15 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
 
         modelBuilder.Entity<Order>()
             .HasIndex(o => o.Email);
+
+        // One remembered response per key and endpoint.
+        modelBuilder.Entity<IdempotencyKey>()
+            .HasIndex(k => new { k.Key, k.RequestPath })
+            .IsUnique();
+
+        modelBuilder.Entity<IdempotencyKey>()
+            .Property(k => k.ResponseBody)
+            .HasColumnType("jsonb");
     }
 
     public override int SaveChanges(bool acceptAllChangesOnSuccess)
