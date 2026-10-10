@@ -20,4 +20,17 @@ public class RateLimitingIntegrationTests(IntegrationTestFactory factory) : ICla
 
         Assert.Equal(HttpStatusCode.TooManyRequests, response.StatusCode);
     }
+
+    [Fact]
+    public async Task ARejectedRequest_GetsTheErrorEnvelopeAndRetryAfter()
+    {
+        var client = ClientWith("RateLimiting:GlobalPermitLimit", 1);
+        await client.GetAsync("/api/v1/events/1", TestContext.Current.CancellationToken);
+
+        var response = await client.GetAsync("/api/v1/events/1", TestContext.Current.CancellationToken);
+
+        Assert.Equal(HttpStatusCode.TooManyRequests, response.StatusCode);
+        Assert.Contains("\"code\":\"rate_limited\"", await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
+        Assert.InRange(int.Parse(response.Headers.GetValues("Retry-After").Single()), 1, 60);
+    }
 }

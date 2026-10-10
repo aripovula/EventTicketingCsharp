@@ -66,6 +66,7 @@ builder.Services.AddOptions<RateLimitingOptions>().Bind(builder.Configuration.Ge
 builder.Services.AddRateLimiter(options =>
 {
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.OnRejected = RateLimitRejection.WriteEnvelopeAsync;
     // Baseline protection for every endpoint: a fixed one-minute window per client IP.
     options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(context =>
         RateLimitPartition.GetFixedWindowLimiter(
