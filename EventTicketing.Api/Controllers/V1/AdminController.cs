@@ -11,14 +11,17 @@ namespace EventTicketing.Api.Controllers.V1;
 public class AdminController(OrdersService ordersService, EventsService eventsService) : ControllerBase
 {
     /// <summary>Lists every order, newest first, with cursor pagination (meta.nextCursor). Admin only.</summary>
+    /// <param name="query">Cursor paging.</param>
+    /// <param name="eventId">Only orders for this event.</param>
+    /// <param name="cancellationToken">Request cancellation.</param>
     [HttpGet("orders")]
     [ProducesResponseType(typeof(ApiEnvelope<IReadOnlyList<OrderResponse>>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiEnvelope<object>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
-    public async Task<IActionResult> Orders([FromQuery] PageQuery query, CancellationToken cancellationToken)
+    public async Task<IActionResult> Orders([FromQuery] PageQuery query, [FromQuery] int? eventId, CancellationToken cancellationToken)
     {
-        var page = await ordersService.ListAsync(null, query, cancellationToken);
+        var page = await ordersService.ListAsync(null, query, cancellationToken, eventId);
         if (page is null)
             return BadRequest(new ApiEnvelope(null, [new ApiError("invalid_cursor", "The page cursor is invalid.", "after")]));
 

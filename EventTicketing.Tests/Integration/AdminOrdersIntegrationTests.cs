@@ -65,6 +65,44 @@ public class AdminOrdersIntegrationTests(IntegrationTestFactory factory) : IClas
         Assert.Contains(JsonDocument.Parse(body).RootElement.GetProperty("data").EnumerateArray(), o => o.GetProperty("id").GetInt32() == orderId);
     }
 
+    private async Task<int> BookNewEventAsync(string title)
+    {
+        int eventId;
+        using (var scope = factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var ev = new Event
+            {
+                Title = title,
+                Description = "For admin order filter tests.",
+                StartTime = DateTime.UtcNow.AddDays(6),
+                EndTime = DateTime.UtcNow.AddDays(6).AddHours(2),
+                Venue = "Test Hall",
+                TotalSeats = 10,
+                AvailableSeats = 10,
+                PriceCents = 1500,
+            };
+            db.Events.Add(ev);
+            await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+            eventId = ev.Id;
+        }
+        await factory.CreateClient().PostAsJsonAsync($"/api/v1/events/{eventId}/bookings", new { email = "guest@example.com" }, TestContext.Current.CancellationToken);
+        return eventId;
+    }
+
+    [Fact]
+    public async Task Orders_WithEventId_ListsOnlyThatEventsOrders()
+    {
+        var wanted = await BookNewEventAsync("Filter Wanted Event");
+        await BookNewEventAsync("Filter Other Event");
+
+        var body = await (await SignedInAsync("admin@example.com")).GetStringAsync($"/api/v1/admin/orders?eventId={wanted}", TestContext.Current.CancellationToken);
+
+        var orders = JsonDocument.Parse(body).RootElement.GetProperty("data").EnumerateArray().ToList();
+        Assert.Single(orders);
+        Assert.Equal(wanted, orders[0].GetProperty("eventId").GetInt32());
+    }
+
     [Fact]
     public async Task Orders_WithMalformedCursor_Returns400()
     {
