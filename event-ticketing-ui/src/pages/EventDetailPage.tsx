@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import { bookEvent } from '../api/bookings'
 import { fetchEvent, type EventItem } from '../api/events'
 import BookingModal from '../components/BookingModal'
@@ -15,7 +15,7 @@ export default function EventDetailPage() {
   const [notFound, setNotFound] = useState(false)
   const [modalOpen, setModalOpen] = useState(false)
   const [bookingError, setBookingError] = useState<string | null>(null)
-  const [bookedOrderId, setBookedOrderId] = useState<number | null>(null)
+  const navigate = useNavigate()
   const { user } = useAuth()
 
   const loadEvent = useCallback(() => {
@@ -46,10 +46,11 @@ export default function EventDetailPage() {
     setBookingError(null)
     const res = await bookEvent(event!.id, email).catch(() => null)
     if (res?.ok) {
-      const body = await res.json()
-      setBookedOrderId(body.data.id)
-      setModalOpen(false)
-      loadEvent()
+      const order = (await res.json()).data
+      // Guests can only reach their order through the token, so it rides along in the link.
+      navigate(order.guestAccessToken
+        ? `/orders/${order.id}?token=${encodeURIComponent(order.guestAccessToken)}`
+        : `/orders/${order.id}`)
     } else if (res?.status === 409) {
       setBookingError('Sorry, this event just sold out.')
     } else {
@@ -89,11 +90,6 @@ export default function EventDetailPage() {
               {soldOut ? 'Sold out' : 'Buy ticket'}
             </button>
           </div>
-          {bookedOrderId !== null && (
-            <p role="status" className="mt-4 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">
-              Booked! Your order number is #{bookedOrderId}.
-            </p>
-          )}
         </div>
       </div>
 

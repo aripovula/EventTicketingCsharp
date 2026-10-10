@@ -6,7 +6,7 @@ namespace EventTicketing.E2ETests;
 public class BookingTests : E2ETestBase
 {
     [Test]
-    public async Task SignedInUserBooksASeatAndSeesTheOrderNumber()
+    public async Task SignedInUserBooksASeatAndSeesTheConfirmation()
     {
         // A throwaway event keeps the seeded events' seat counts unchanged for other tests.
         await Page.GotoAsync($"{BaseUrl}/login");
@@ -36,7 +36,9 @@ public class BookingTests : E2ETestBase
             await Expect(Page.GetByRole(AriaRole.Dialog).GetByLabel("Email")).ToHaveValueAsync("admin@example.com");
             await Page.GetByRole(AriaRole.Button, new() { Name = "Place order" }).ClickAsync();
 
-            await Expect(Page.GetByRole(AriaRole.Status)).ToContainTextAsync("Booked! Your order number is #");
+            await Expect(Page).ToHaveURLAsync(new Regex("/orders/\\d+$"));
+            await Expect(Page.GetByRole(AriaRole.Heading, new() { Name = "You're going!" })).ToBeVisibleAsync();
+            await Page.GotoAsync($"{BaseUrl}/events/{id}");
             await Expect(Page.GetByText("9 of 10 seats available")).ToBeVisibleAsync();
         }
         finally

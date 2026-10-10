@@ -1,6 +1,6 @@
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { MemoryRouter, Route, Routes } from 'react-router-dom'
+import { MemoryRouter, Route, Routes, useParams, useSearchParams } from 'react-router-dom'
 import type { EventItem } from '../api/events'
 import { AuthContext, type User } from '../context/authContext'
 import EventDetailPage from './EventDetailPage'
@@ -12,11 +12,20 @@ function stubEvent(event: EventItem) {
   return fetchMock
 }
 
+function OrderProbe() {
+  const { id } = useParams()
+  const [searchParams] = useSearchParams()
+  return <p>Order page {id}{searchParams.get('token') ? ` with token ${searchParams.get('token')}` : ''}</p>
+}
+
 function renderPage(id = 1, user: User | null = null) {
   render(
     <AuthContext.Provider value={{ user, loading: false, signIn: () => {}, signOut: async () => {} }}>
       <MemoryRouter initialEntries={[`/events/${id}`]}>
-        <Routes><Route path="/events/:id" element={<EventDetailPage />} /></Routes>
+        <Routes>
+          <Route path="/events/:id" element={<EventDetailPage />} />
+          <Route path="/orders/:id" element={<OrderProbe />} />
+        </Routes>
       </MemoryRouter>
     </AuthContext.Provider>,
   )
@@ -115,8 +124,8 @@ describe('EventDetailPage', () => {
     expect(within(screen.getByRole('dialog', { name: 'Place order' })).getByLabelText('Email')).toHaveValue('john@example.com')
   })
 
-  it('books a seat, confirms the order and refreshes the seat count', async () => {
-    const order = { id: 42, eventId: 1, eventTitle: 'Jazz Night', email: 'guest@example.com', priceCents: 2500, bookedAt: '2026-10-09T12:00:00Z' }
+  it('takes a guest to the order page with the lookup token', async () => {
+    const order = { id: 42, eventId: 1, eventTitle: 'Jazz Night', email: 'guest@example.com', priceCents: 2500, bookedAt: '2026-10-09T12:00:00Z', guestAccessToken: 'secret' }
     const fetchMock = stubEventThenBooking(new Response(JSON.stringify({ data: order, errors: [] }), { status: 201 }))
     renderPage()
 
@@ -124,10 +133,19 @@ describe('EventDetailPage', () => {
     await userEvent.type(screen.getByLabelText('Email'), 'guest@example.com')
     await userEvent.click(screen.getByRole('button', { name: 'Place order' }))
 
-    expect(await screen.findByRole('status')).toHaveTextContent('Booked! Your order number is #42.')
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
-    expect(await screen.findByText('47 of 120 seats available')).toBeInTheDocument()
+    expect(await screen.findByText('Order page 42 with token secret')).toBeInTheDocument()
     expect(fetchMock).toHaveBeenCalledWith('/api/v1/events/1/bookings', expect.objectContaining({ method: 'POST' }))
+  })
+
+  it('takes a signed-in user to the order page without a token', async () => {
+    const order = { id: 43, eventId: 1, eventTitle: 'Jazz Night', email: 'john@example.com', priceCents: 2500, bookedAt: '2026-10-09T12:00:00Z', guestAccessToken: null }
+    stubEventThenBooking(new Response(JSON.stringify({ data: order, errors: [] }), { status: 201 }))
+    renderPage(1, { userId: 1, name: 'John Doe', email: 'john@example.com', role: 'user' })
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Buy ticket' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Place order' }))
+
+    expect(await screen.findByText('Order page 43')).toBeInTheDocument()
   })
 
   it('says when the last seat was just taken', async () => {
