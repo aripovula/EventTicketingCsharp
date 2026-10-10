@@ -2,6 +2,9 @@ export interface OrderItem {
   id: number
   eventId: number
   eventTitle: string
+  eventVenue: string
+  eventStartTime: string
+  eventEndTime: string
   email: string
   priceCents: number
   bookedAt: string

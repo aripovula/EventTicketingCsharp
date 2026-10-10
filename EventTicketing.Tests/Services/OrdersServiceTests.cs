@@ -102,4 +102,17 @@ public class OrdersServiceTests(IntegrationTestFactory factory) : IClassFixture<
     {
         Assert.Null(await GetAsync(999_999, new OrderViewer(null, true, null)));
     }
+
+    [Fact]
+    public async Task OrdersCarryTheEventVenueAndTimes()
+    {
+        var john = await UserIdAsync("john@example.com");
+        var order = await BookAsync(john, "john@example.com");
+
+        var seen = await GetAsync(order.Id, new OrderViewer(john, false, null));
+
+        Assert.Equal("Test Hall", seen!.EventVenue);
+        Assert.True(seen.EventEndTime > seen.EventStartTime);
+        Assert.Equal(order.EventStartTime, seen.EventStartTime);
+    }
 }

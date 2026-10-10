@@ -19,7 +19,20 @@ public class OrdersService(AppDbContext db)
     {
         var order = await db.Orders
             .Where(o => o.Id == orderId)
-            .Select(o => new { o.Id, o.EventId, EventTitle = o.Event.Title, o.Email, o.PriceCents, o.BookedAt, o.UserId, o.GuestAccessTokenHash })
+            .Select(o => new
+            {
+                o.Id,
+                o.EventId,
+                EventTitle = o.Event.Title,
+                EventVenue = o.Event.Venue,
+                EventStartTime = o.Event.StartTime,
+                EventEndTime = o.Event.EndTime,
+                o.Email,
+                o.PriceCents,
+                o.BookedAt,
+                o.UserId,
+                o.GuestAccessTokenHash,
+            })
             .SingleOrDefaultAsync(cancellationToken);
         if (order is null)
             return null;
@@ -29,7 +42,8 @@ public class OrdersService(AppDbContext db)
             || TokenMatches(viewer.GuestToken, order.GuestAccessTokenHash);
 
         return allowed
-            ? new OrderResponse(order.Id, order.EventId, order.EventTitle, order.Email, order.PriceCents, order.BookedAt)
+            ? new OrderResponse(order.Id, order.EventId, order.EventTitle, order.EventVenue, order.EventStartTime, order.EventEndTime,
+                order.Email, order.PriceCents, order.BookedAt)
             : null;
     }
 
@@ -51,7 +65,8 @@ public class OrdersService(AppDbContext db)
         var rows = await orders
             .OrderByDescending(o => o.BookedAt).ThenByDescending(o => o.Id)
             .Take(query.Limit + 1)
-            .Select(o => new OrderResponse(o.Id, o.EventId, o.Event.Title, o.Email, o.PriceCents, o.BookedAt, null))
+            .Select(o => new OrderResponse(o.Id, o.EventId, o.Event.Title, o.Event.Venue, o.Event.StartTime, o.Event.EndTime,
+                o.Email, o.PriceCents, o.BookedAt, null))
             .ToListAsync(cancellationToken);
 
         var items = rows.Take(query.Limit).ToList();
