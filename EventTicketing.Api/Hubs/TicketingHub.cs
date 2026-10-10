@@ -12,4 +12,5 @@ public class TicketingHub : Hub;
 public static class TicketingEvents
 {
     public const string BookingMade = nameof(BookingMade);
+    public const string EventCreated = nameof(EventCreated);
 }

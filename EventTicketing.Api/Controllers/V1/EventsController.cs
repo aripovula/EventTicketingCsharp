@@ -48,6 +48,7 @@ public class EventsController(EventsService eventsService, BookingService bookin
     public async Task<IActionResult> Create(EventRequest request, CancellationToken cancellationToken)
     {
         var ev = await eventsService.CreateAsync(request, cancellationToken);
+        await hub.Clients.All.SendAsync(TicketingEvents.EventCreated, ev.Id, CancellationToken.None);
         return CreatedAtAction(nameof(Get), new { id = ev.Id }, ev);
     }
 

@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
+using System.Text.Json;
 using EventTicketing.Api.Data;
 using EventTicketing.Api.Models;
 using Microsoft.AspNetCore.Http.Connections;
@@ -54,6 +55,26 @@ public class TicketingHubIntegrationTests(IntegrationTestFactory factory) : ICla
         return ev.Id;
     }
 
+    private async Task<HttpClient> AdminAsync()
+    {
+        var client = factory.CreateClient();
+        await client.PostAsJsonAsync("/api/v1/auth/login", new { email = "admin@example.com", password = "Password" }, TestContext.Current.CancellationToken);
+        return client;
+    }
+
+    private static object NewEventRequest() => new
+    {
+        title = "Hub Created Event",
+        description = "Created in a hub test.",
+        startTime = DateTime.UtcNow.AddDays(8),
+        endTime = DateTime.UtcNow.AddDays(8).AddHours(2),
+        venue = "Test Hall",
+        eventType = "Other",
+        totalSeats = 10,
+        availableSeats = 10,
+        priceCents = 1000,
+    };
+
     [Fact]
     public async Task Booking_PushesBookingMadeWithTheEventId()
     {
@@ -80,5 +101,18 @@ public class TicketingHubIntegrationTests(IntegrationTestFactory factory) : ICla
         Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
         await Task.Delay(500, TestContext.Current.CancellationToken);
         Assert.False(received.Task.IsCompleted);
+    }
+
+    [Fact]
+    public async Task CreatingAnEvent_PushesEventCreatedWithItsId()
+    {
+        await using var connection = await ConnectAsync();
+        var received = new TaskCompletionSource<int>();
+        connection.On<int>("EventCreated", received.SetResult);
+
+        var response = await (await AdminAsync()).PostAsJsonAsync("/api/v1/events", NewEventRequest(), TestContext.Current.CancellationToken);
+
+        var id = (await response.Content.ReadFromJsonAsync<JsonElement>(TestContext.Current.CancellationToken)).GetProperty("data").GetProperty("id").GetInt32();
+        Assert.Equal(id, await received.Task.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken));
     }
 }
