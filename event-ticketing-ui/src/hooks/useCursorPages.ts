@@ -14,6 +14,9 @@ export function useCursorPages<T>(fetchPage: (after: string | null) => Promise<R
   const sentinelRef = useRef<HTMLDivElement>(null)
   // Bumped whenever fetchPage changes, so late responses for the old source are ignored.
   const requestId = useRef(0)
+  // Bumped by reload() to fetch the first page again; the current items stay until it arrives.
+  const [version, setVersion] = useState(0)
+  const reload = useCallback(() => setVersion(v => v + 1), [])
 
   // A new source starts over (React's "adjust state when a prop changes" pattern, no extra effect).
   const [source, setSource] = useState(() => fetchPage)
@@ -43,7 +46,7 @@ export function useCursorPages<T>(fetchPage: (after: string | null) => Promise<R
       })
       .catch(() => { if (id === requestId.current) setError(true) })
       .finally(() => { if (id === requestId.current) setLoading(false) })
-  }, [load, enabled])
+  }, [load, enabled, version])
 
   const loadMore = useCallback(() => {
     if (!nextCursor || loadingMore) return
@@ -69,5 +72,5 @@ export function useCursorPages<T>(fetchPage: (after: string | null) => Promise<R
     return () => observer.disconnect()
   }, [loadMore, loading])
 
-  return { items, loading, error, loadingMore, sentinelRef }
+  return { items, loading, error, loadingMore, sentinelRef, reload }
 }

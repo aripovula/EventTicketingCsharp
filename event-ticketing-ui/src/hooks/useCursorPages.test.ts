@@ -43,4 +43,15 @@ describe('useCursorPages', () => {
 
     expect(result.current.items).toEqual(['new'])
   })
+
+  it('reload fetches the first page again', async () => {
+    const fetchPage = vi.fn().mockResolvedValueOnce(page(['a'])).mockResolvedValueOnce(page(['new', 'a']))
+    const { result } = renderHook(() => useCursorPages<string>(fetchPage))
+    await waitFor(() => expect(result.current.items).toEqual(['a']))
+
+    act(() => result.current.reload())
+
+    await waitFor(() => expect(result.current.items).toEqual(['new', 'a']))
+    expect(fetchPage).toHaveBeenNthCalledWith(2, null)
+  })
 })
