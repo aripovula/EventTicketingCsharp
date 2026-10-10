@@ -17,6 +17,7 @@ public class IntegrationTestFactory : WebApplicationFactory<Program>, IAsyncLife
         // Each test host gets its own Redis key prefix, as it gets its own database.
         // Every TestServer request shares one client address, so lift the limits; rate-limit tests lower them.
         builder.UseSetting("RateLimiting:GlobalPermitLimit", "100000");
+        builder.UseSetting("RateLimiting:BookingPermitLimit", "100000");
         builder.UseSetting("Redis:InstanceName", $"event-ticketing-test-{Guid.NewGuid():N}:");
     }
 

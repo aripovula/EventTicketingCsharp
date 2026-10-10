@@ -77,6 +77,17 @@ builder.Services.AddRateLimiter(options =>
                 Window = TimeSpan.FromMinutes(1),
                 QueueLimit = 0,
             }));
+    // Stricter on booking, so a bot can't bulk-buy seats: a sliding one-minute window per client IP.
+    options.AddPolicy(RateLimitingOptions.BookingPolicy, context =>
+        RateLimitPartition.GetSlidingWindowLimiter(
+            partitionKey: context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            factory: _ => new SlidingWindowRateLimiterOptions
+            {
+                PermitLimit = context.RequestServices.GetRequiredService<IOptions<RateLimitingOptions>>().Value.BookingPermitLimit,
+                Window = TimeSpan.FromMinutes(1),
+                SegmentsPerWindow = 6,
+                QueueLimit = 0,
+            }));
 });
 builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<TokenService>();
