@@ -1,6 +1,7 @@
 using System.Text;
 using EventTicketing.Api.Data;
 using EventTicketing.Api.Filters;
+using EventTicketing.Api.Hubs;
 using EventTicketing.Api.Middleware;
 using EventTicketing.Api.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -64,6 +65,7 @@ builder.Services.AddScoped<RefreshTokenService>();
 builder.Services.AddScoped<EventsService>();
 builder.Services.AddScoped<BookingService>();
 builder.Services.AddScoped<OrdersService>();
+builder.Services.AddSignalR();
 builder.Services.AddHealthChecks()
     .AddDbContextCheck<AppDbContext>(name: "database", tags: ["ready"]);
 builder.Services.AddSwaggerGen(options =>
@@ -115,6 +117,7 @@ app.UseSwaggerUI(options =>
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
+app.MapHub<TicketingHub>("/hubs/ticketing");
 app.MapHealthChecks("/health");
 app.MapHealthChecks("/health/ready", new HealthCheckOptions
 {
