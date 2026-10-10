@@ -80,7 +80,8 @@ builder.Services.AddHybridCache(options => options.DefaultEntryOptions = new Hyb
     LocalCacheExpiration = TimeSpan.FromMinutes(2),
 });
 builder.Services.AddHealthChecks()
-    .AddDbContextCheck<AppDbContext>(name: "database", tags: ["ready"]);
+    .AddDbContextCheck<AppDbContext>(name: "database", tags: ["ready"])
+    .AddRedis(builder.Configuration.GetConnectionString("Redis")!, name: "redis", tags: ["ready"]);
 builder.Services.AddSwaggerGen(options =>
 {
     options.SwaggerDoc("v1", new OpenApiInfo
