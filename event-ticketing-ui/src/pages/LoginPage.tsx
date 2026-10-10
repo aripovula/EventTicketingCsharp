@@ -235,6 +235,25 @@ export default function LoginPage() {
         panel reflects in real time based on a regular user's actions, and vice versa.{' '}
         Real-time push updates are delivered via <strong>SignalR</strong> (WebSockets).
       </div>
+
+      <div className="rounded-xl border border-gray-200 bg-gray-50 px-5 py-4 text-sm text-gray-700 leading-relaxed space-y-2">
+        <p className="font-semibold text-gray-900">About this app</p>
+        <p>
+          A full-stack event ticketing demo. The backend is <strong>ASP.NET Core 10</strong> (C#) with
+          versioned REST controllers, backed by <strong>PostgreSQL</strong> with{' '}
+          <strong>Entity Framework Core</strong> for data access and migrations. Authentication uses
+          short-lived <strong>JWT</strong> access tokens and rotating refresh tokens in HttpOnly cookies.
+        </p>
+        <p>
+          The frontend is <strong>React 19</strong> with <strong>TypeScript</strong>, built with Vite and
+          styled with Tailwind CSS. Real-time seat and event updates are pushed from the server using{' '}
+          <strong>SignalR</strong> (WebSockets).
+        </p>
+        <p className="text-gray-500">
+          Backend tests: xUnit · Frontend tests: Vitest / React Testing Library · E2E: Playwright ·
+          CI: GitHub Actions
+        </p>
+      </div>
     </div>
   )
 }

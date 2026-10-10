@@ -210,7 +210,14 @@ describe('LoginPage', () => {
   it('suggests trying it in two browsers to watch live updates', () => {
     renderPage()
 
-    expect(screen.getByText(/open this app in another browser/)).toBeInTheDocument()
-    expect(screen.getByText('SignalR')).toBeInTheDocument()
+    expect(screen.getByText(/open this app in another browser/)).toHaveTextContent('SignalR')
+  })
+
+  it('describes the app and its tech stack', () => {
+    renderPage()
+
+    expect(screen.getByText('About this app')).toBeInTheDocument()
+    expect(screen.getByText('ASP.NET Core 10')).toBeInTheDocument()
+    expect(screen.getByText('React 19')).toBeInTheDocument()
   })
 })
