@@ -95,6 +95,7 @@ builder.Services.AddScoped<RefreshTokenService>();
 builder.Services.AddScoped<EventsService>();
 builder.Services.AddScoped<BookingService>();
 builder.Services.AddScoped<OrdersService>();
+builder.Services.AddScoped<IdempotencyService>();
 builder.Services.AddSignalR();
 // Admin writes evict cached event pages by tag; the 2-minute expiry is the safety net if one is missed.
 // HybridCache picks up this distributed cache as its shared second level (L2).
