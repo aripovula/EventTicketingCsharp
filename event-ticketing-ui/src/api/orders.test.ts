@@ -58,6 +58,17 @@ describe('fetchAllOrders', () => {
     expect(fetchMock).toHaveBeenNthCalledWith(1, '/api/v1/admin/orders', { credentials: 'include' })
     expect(fetchMock).toHaveBeenNthCalledWith(2, '/api/v1/admin/orders?after=c1', { credentials: 'include' })
   })
+
+  it('narrows the orders to one event', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response('{}'))
+    vi.stubGlobal('fetch', fetchMock)
+
+    await fetchAllOrders(null, 7)
+    await fetchAllOrders('c1', 7)
+
+    expect(fetchMock).toHaveBeenNthCalledWith(1, '/api/v1/admin/orders?eventId=7', { credentials: 'include' })
+    expect(fetchMock).toHaveBeenNthCalledWith(2, '/api/v1/admin/orders?eventId=7&after=c1', { credentials: 'include' })
+  })
 })
 
 describe('fetchAllMyOrders', () => {

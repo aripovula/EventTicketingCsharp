@@ -25,10 +25,12 @@ export function fetchMyOrders(after?: string | null) {
   })
 }
 
-export function fetchAllOrders(after?: string | null) {
-  return fetch(after ? `/api/v1/admin/orders?after=${encodeURIComponent(after)}` : '/api/v1/admin/orders', {
-    credentials: 'include',
-  })
+export function fetchAllOrders(after?: string | null, eventId?: number | null) {
+  const params = new URLSearchParams()
+  if (eventId) params.set('eventId', String(eventId))
+  if (after) params.set('after', after)
+  const query = params.toString()
+  return fetch(query ? `/api/v1/admin/orders?${query}` : '/api/v1/admin/orders', { credentials: 'include' })
 }
 
 /** Every order of the signed-in user, following the cursor through all pages (for My Calendar). */
