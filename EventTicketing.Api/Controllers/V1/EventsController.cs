@@ -96,7 +96,12 @@ public class EventsController(EventsService eventsService, BookingService bookin
     [ProducesResponseType(typeof(ApiEnvelope<object>), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ApiEnvelope<object>), StatusCodes.Status409Conflict)]
     [ProducesResponseType(typeof(ApiEnvelope<object>), StatusCodes.Status429TooManyRequests)]
-    public async Task<IActionResult> Book(int id, BookingRequest request, CancellationToken cancellationToken)
+    public async Task<IActionResult> Book(
+        int id,
+        BookingRequest request,
+        // Read by the [Idempotent] filter; declared here so Swagger documents the header.
+        [FromHeader(Name = IdempotentAttribute.HeaderName)] string? idempotencyKey,
+        CancellationToken cancellationToken)
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
         var result = await bookingService.BookAsync(id, request, userId is null ? null : int.Parse(userId), cancellationToken);

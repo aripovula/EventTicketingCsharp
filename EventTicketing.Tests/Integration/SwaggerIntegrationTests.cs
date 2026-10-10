@@ -150,12 +150,13 @@ public class SwaggerIntegrationTests(IntegrationTestFactory factory) : IClassFix
     }
 
     [Fact]
-    public async Task Book_DocumentsItsResponses()
+    public async Task Book_DocumentsItsResponsesAndIdempotencyKeyHeader()
     {
         var op = await OperationAsync("/api/v1/events/{id}/bookings", "post");
 
         Assert.Equal(["201", "400", "404", "409", "429"], StatusCodes(op));
         Assert.Contains("OrderResponse", SuccessSchemaRef(op, "201"));
+        Assert.Contains(op.GetProperty("parameters").EnumerateArray(), p => p.GetProperty("name").GetString() == "Idempotency-Key");
     }
 
     [Fact]
