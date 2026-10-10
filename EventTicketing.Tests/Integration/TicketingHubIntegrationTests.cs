@@ -128,4 +128,17 @@ public class TicketingHubIntegrationTests(IntegrationTestFactory factory) : ICla
 
         Assert.Equal(eventId, await received.Task.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken));
     }
+
+    [Fact]
+    public async Task DeletingAnEvent_PushesEventDeletedWithItsId()
+    {
+        var eventId = await CreateEventAsync();
+        await using var connection = await ConnectAsync();
+        var received = new TaskCompletionSource<int>();
+        connection.On<int>("EventDeleted", received.SetResult);
+
+        await (await AdminAsync()).DeleteAsync($"/api/v1/events/{eventId}", TestContext.Current.CancellationToken);
+
+        Assert.Equal(eventId, await received.Task.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken));
+    }
 }
