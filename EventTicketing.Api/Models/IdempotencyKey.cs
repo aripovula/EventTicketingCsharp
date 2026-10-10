@@ -17,7 +17,7 @@ public class IdempotencyKey
 
     public int StatusCode { get; set; }
 
-    // The full enveloped JSON body, exactly as first sent.
+    // The full enveloped JSON body. Stored as jsonb, so a replay may differ from the original in spacing and key order.
     [Required]
     public string ResponseBody { get; set; } = string.Empty;
 
