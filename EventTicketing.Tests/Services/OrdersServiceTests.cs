@@ -112,6 +112,7 @@ public class OrdersServiceTests(IntegrationTestFactory factory) : IClassFixture<
         var seen = await GetAsync(order.Id, new OrderViewer(john, false, null));
 
         Assert.Equal("Test Hall", seen!.EventVenue);
+        Assert.Equal("Other", seen.EventType);
         Assert.True(seen.EventEndTime > seen.EventStartTime);
         Assert.Equal(order.EventStartTime, seen.EventStartTime);
     }

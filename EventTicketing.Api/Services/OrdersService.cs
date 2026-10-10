@@ -25,6 +25,7 @@ public class OrdersService(AppDbContext db)
                 o.EventId,
                 EventTitle = o.Event.Title,
                 EventVenue = o.Event.Venue,
+                EventType = o.Event.EventType,
                 EventStartTime = o.Event.StartTime,
                 EventEndTime = o.Event.EndTime,
                 o.Email,
@@ -42,7 +43,7 @@ public class OrdersService(AppDbContext db)
             || TokenMatches(viewer.GuestToken, order.GuestAccessTokenHash);
 
         return allowed
-            ? new OrderResponse(order.Id, order.EventId, order.EventTitle, order.EventVenue, order.EventStartTime, order.EventEndTime,
+            ? new OrderResponse(order.Id, order.EventId, order.EventTitle, order.EventVenue, order.EventType, order.EventStartTime, order.EventEndTime,
                 order.Email, order.PriceCents, order.BookedAt)
             : null;
     }
@@ -65,7 +66,7 @@ public class OrdersService(AppDbContext db)
         var rows = await orders
             .OrderByDescending(o => o.BookedAt).ThenByDescending(o => o.Id)
             .Take(query.Limit + 1)
-            .Select(o => new OrderResponse(o.Id, o.EventId, o.Event.Title, o.Event.Venue, o.Event.StartTime, o.Event.EndTime,
+            .Select(o => new OrderResponse(o.Id, o.EventId, o.Event.Title, o.Event.Venue, o.Event.EventType, o.Event.StartTime, o.Event.EndTime,
                 o.Email, o.PriceCents, o.BookedAt, null))
             .ToListAsync(cancellationToken);
 

@@ -8,6 +8,7 @@ public record OrderResponse(
     int EventId,
     string EventTitle,
     string EventVenue,
+    string EventType,
     DateTime EventStartTime,
     DateTime EventEndTime,
     string Email,

@@ -3,6 +3,7 @@ export interface OrderItem {
   eventId: number
   eventTitle: string
   eventVenue: string
+  eventType: string
   eventStartTime: string
   eventEndTime: string
   email: string

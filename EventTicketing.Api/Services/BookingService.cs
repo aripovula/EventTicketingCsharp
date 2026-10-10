@@ -37,6 +37,6 @@ public class BookingService(AppDbContext db)
         await db.SaveChangesAsync(cancellationToken);
 
         return new BookingResult(BookingStatus.Booked,
-            new OrderResponse(order.Id, eventId, ev.Title, ev.Venue, ev.StartTime, ev.EndTime, order.Email, order.PriceCents, order.BookedAt, guestToken));
+            new OrderResponse(order.Id, eventId, ev.Title, ev.Venue, ev.EventType, ev.StartTime, ev.EndTime, order.Email, order.PriceCents, order.BookedAt, guestToken));
     }
 }

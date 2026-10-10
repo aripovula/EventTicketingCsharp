@@ -6,6 +6,7 @@ export function makeOrder(overrides: Partial<OrderItem> = {}): OrderItem {
     eventId: 1,
     eventTitle: 'Jazz Night',
     eventVenue: 'Blue Note Club',
+    eventType: 'Music',
     eventStartTime: '2026-11-02T23:00:00Z',
     eventEndTime: '2026-11-03T02:00:00Z',
     email: 'john@example.com',
