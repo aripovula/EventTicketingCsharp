@@ -35,3 +35,17 @@ test('a signed-in user opens My Calendar from the header', async ({ page }) => {
   await expect(page).toHaveURL('/calendar')
   await expect(page.getByRole('heading', { name: 'My Calendar' })).toBeVisible()
 })
+
+test('My Calendar shows booked events on their day', async ({ page }) => {
+  const start = new Date()
+  start.setHours(19, 0, 0, 0)
+  await page.route('**/api/v1/auth/me', route =>
+    route.fulfill({ json: { data: { userId: 1, name: 'John Doe', email: 'john@example.com', role: 'user' }, errors: [] } }))
+  await page.route('**/api/v1/auth/me/orders**', route => route.fulfill({ json: { data: [
+    { id: 42, eventId: 1, eventTitle: 'Booked Gig', eventVenue: 'Hall', eventType: 'Music', eventStartTime: start.toISOString(),
+      eventEndTime: new Date(start.getTime() + 3600000).toISOString(), email: 'john@example.com', priceCents: 2500, bookedAt: '2026-10-09T12:00:00Z' },
+  ], errors: [], meta: { nextCursor: null } } }))
+  await page.goto('/calendar')
+
+  await expect(page.getByText('Booked Gig')).toBeVisible()
+})

@@ -1,4 +1,5 @@
-import { fetchAllOrders, fetchMyOrders, fetchOrder } from './orders'
+import { fetchAllMyOrders, fetchAllOrders, fetchMyOrders, fetchOrder } from './orders'
+import { makeOrder } from '../test/orderFixtures'
 
 describe('fetchOrder', () => {
   afterEach(() => vi.unstubAllGlobals())
@@ -56,5 +57,25 @@ describe('fetchAllOrders', () => {
 
     expect(fetchMock).toHaveBeenNthCalledWith(1, '/api/v1/admin/orders', { credentials: 'include' })
     expect(fetchMock).toHaveBeenNthCalledWith(2, '/api/v1/admin/orders?after=c1', { credentials: 'include' })
+  })
+})
+
+describe('fetchAllMyOrders', () => {
+  afterEach(() => vi.unstubAllGlobals())
+
+  it('follows the cursor through every page', async () => {
+    const fetchMock = vi.fn<(url: string) => Promise<Response>>(url => Promise.resolve(new Response(JSON.stringify(
+      url.includes('after=c1')
+        ? { data: [makeOrder({ id: 2 })], errors: [], meta: { nextCursor: null } }
+        : { data: [makeOrder({ id: 1 })], errors: [], meta: { nextCursor: 'c1' } }))))
+    vi.stubGlobal('fetch', fetchMock)
+
+    expect((await fetchAllMyOrders()).map(o => o.id)).toEqual([1, 2])
+  })
+
+  it('fails when a page cannot be loaded', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('{}', { status: 500 })))
+
+    await expect(fetchAllMyOrders()).rejects.toThrow('Failed to load orders (500).')
   })
 })

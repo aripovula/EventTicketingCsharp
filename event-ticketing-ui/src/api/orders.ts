@@ -30,3 +30,17 @@ export function fetchAllOrders(after?: string | null) {
     credentials: 'include',
   })
 }
+
+/** Every order of the signed-in user, following the cursor through all pages (for My Calendar). */
+export async function fetchAllMyOrders(): Promise<OrderItem[]> {
+  const all: OrderItem[] = []
+  let after: string | null = null
+  do {
+    const res = await fetchMyOrders(after)
+    if (!res.ok) throw new Error(`Failed to load orders (${res.status}).`)
+    const body = await res.json()
+    all.push(...(body.data ?? []))
+    after = body.meta?.nextCursor ?? null
+  } while (after)
+  return all
+}
