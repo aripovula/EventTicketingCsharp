@@ -1,14 +1,16 @@
 using EventTicketing.Api.Contracts;
+using EventTicketing.Api.Hubs;
 using EventTicketing.Api.Services;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
 
 namespace EventTicketing.Api.Controllers.V1;
 
 [ApiController]
 [Route("api/v1/events")]
-public class EventsController(EventsService eventsService, BookingService bookingService) : ControllerBase
+public class EventsController(EventsService eventsService, BookingService bookingService, IHubContext<TicketingHub> hub) : ControllerBase
 {
     /// <summary>Lists events with title search, sorting and keyset cursor pagination (meta.nextCursor).</summary>
     [HttpGet]
@@ -90,11 +92,13 @@ public class EventsController(EventsService eventsService, BookingService bookin
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
         var result = await bookingService.BookAsync(id, request, userId is null ? null : int.Parse(userId), cancellationToken);
-        return result.Status switch
-        {
-            BookingStatus.SoldOut => Conflict(new ApiEnvelope(null, [new ApiError("sold_out", "Sorry, this event just sold out.")])),
-            BookingStatus.EventNotFound => NotFound(new ApiEnvelope(null, [new ApiError("not_found", "Event not found.")])),
-            _ => CreatedAtAction(nameof(OrdersController.Get), "Orders", new { id = result.Order!.Id }, result.Order),
-        };
+        if (result.Status == BookingStatus.SoldOut)
+            return Conflict(new ApiEnvelope(null, [new ApiError("sold_out", "Sorry, this event just sold out.")]));
+        if (result.Status == BookingStatus.EventNotFound)
+            return NotFound(new ApiEnvelope(null, [new ApiError("not_found", "Event not found.")]));
+
+        // The seat is already taken, so tell open pages even if this request was cancelled.
+        await hub.Clients.All.SendAsync(TicketingEvents.BookingMade, id, CancellationToken.None);
+        return CreatedAtAction(nameof(OrdersController.Get), "Orders", new { id = result.Order!.Id }, result.Order);
     }
 }
