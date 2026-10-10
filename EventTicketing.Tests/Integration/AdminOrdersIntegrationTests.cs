@@ -74,6 +74,14 @@ public class AdminOrdersIntegrationTests(IntegrationTestFactory factory) : IClas
     }
 
     [Fact]
+    public async Task Summary_Anonymously_Returns401()
+    {
+        var response = await factory.CreateClient().GetAsync("/api/v1/admin/summary", TestContext.Current.CancellationToken);
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Fact]
     public async Task Summary_AsRegularUser_Returns403()
     {
         var response = await (await SignedInAsync("john@example.com")).GetAsync("/api/v1/admin/summary", TestContext.Current.CancellationToken);
