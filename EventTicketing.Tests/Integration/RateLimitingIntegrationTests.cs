@@ -33,4 +33,15 @@ public class RateLimitingIntegrationTests(IntegrationTestFactory factory) : ICla
         Assert.Contains("\"code\":\"rate_limited\"", await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
         Assert.InRange(int.Parse(response.Headers.GetValues("Retry-After").Single()), 1, 60);
     }
+
+    [Theory]
+    [InlineData("/health")]
+    [InlineData("/health/ready")]
+    public async Task HealthChecks_AreNeverRateLimited(string url)
+    {
+        var client = ClientWith("RateLimiting:GlobalPermitLimit", 1);
+
+        for (var i = 0; i < 3; i++)
+            Assert.Equal(HttpStatusCode.OK, (await client.GetAsync(url, TestContext.Current.CancellationToken)).StatusCode);
+    }
 }
