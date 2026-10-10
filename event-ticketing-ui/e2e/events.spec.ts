@@ -135,3 +135,16 @@ test('the home page updates a card live when its event is booked', async ({ page
 
   await expect(page.getByText('47 seats available')).toBeVisible()
 })
+
+test('the home page shows a newly created event live', async ({ page }) => {
+  const hub = await fakeHub(page)
+  let events = [jazz]
+  await page.route('**/api/v1/events?**', route => route.fulfill({ json: { data: events, errors: [], meta: { nextCursor: null } } }))
+  await page.goto('/')
+  await expect(page.getByText('Jazz Night')).toBeVisible()
+
+  events = [jazz, { ...jazz, id: 2, title: 'Brand New Gig' }]
+  await hub.push('EventCreated', 2)
+
+  await expect(page.getByText('Brand New Gig')).toBeVisible()
+})

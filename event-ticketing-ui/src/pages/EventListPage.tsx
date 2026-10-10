@@ -13,7 +13,7 @@ export default function EventListPage() {
   const [debouncedSearch, setDebouncedSearch] = useState('')
   const [sortType, setSortType] = useState<EventSort>('name')
   const searchInputRef = useRef<HTMLInputElement>(null)
-  const { events, setEvents, loading, loadingMore, sentinelRef } = useEventPages({ q: debouncedSearch, sort: sortType })
+  const { events, setEvents, reload, loading, loadingMore, sentinelRef } = useEventPages({ q: debouncedSearch, sort: sortType })
 
   // Search runs on the server, so wait for a pause in typing before asking for it.
   useEffect(() => {
@@ -29,7 +29,9 @@ export default function EventListPage() {
       .then(body => { if (body?.data) setEvents(prev => prev.map(e => (e.id === eventId ? body.data : e))) })
       .catch(() => {})
   }
+  // A new event could belong anywhere in the current search and sort, so start the list over.
   useHubEvents({
+    EventCreated: reload,
     BookingMade: refreshCard,
     EventUpdated: refreshCard,
     EventDeleted: eventId => setEvents(prev => prev.filter(e => e.id !== eventId)),

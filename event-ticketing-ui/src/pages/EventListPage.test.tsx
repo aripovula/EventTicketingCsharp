@@ -223,6 +223,18 @@ describe('EventListPage', () => {
       expect(fetchMock).toHaveBeenCalledTimes(1)
     })
 
+    it('reloads the list when an event is created', async () => {
+      const fetchMock = stubListThenEvent([makeEvent()])
+      renderPage()
+      await screen.findByText('Jazz Night')
+      fetchMock.mockImplementation(() => Promise.resolve(new Response(JSON.stringify(
+        { data: [makeEvent(), makeEvent({ id: 3, title: 'Brand New Gig' })], errors: [], meta: { nextCursor: null } }))))
+
+      act(() => hub.handlers.EventCreated(3))
+
+      expect(await screen.findByText('Brand New Gig')).toBeInTheDocument()
+    })
+
     it('removes a card when its event is deleted', async () => {
       stubListThenEvent([makeEvent(), makeEvent({ id: 2, title: 'Comedy Showcase' })])
       renderPage()
