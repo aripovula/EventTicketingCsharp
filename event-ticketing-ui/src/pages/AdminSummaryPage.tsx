@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { fetchSummary, type EventSummary } from '../api/admin'
+import { useHubEvents } from '../hooks/useHubEvents'
 import { formatPrice } from '../utils/formatPrice'
 
 export default function AdminSummaryPage() {
@@ -9,13 +10,17 @@ export default function AdminSummaryPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
 
-  useEffect(() => {
+  const loadSummary = useCallback(() => {
     fetchSummary()
       .then(res => { if (!res.ok) throw new Error(); return res.json() })
       .then(body => { setRows(body.data ?? []); setAsOf(new Date()) })
       .catch(() => setError(true))
       .finally(() => setLoading(false))
   }, [])
+
+  useEffect(() => { loadSummary() }, [loadSummary])
+  // Every booking changes the seat counts and revenue, so recount live.
+  useHubEvents({ BookingMade: loadSummary })
 
   return (
     <div>

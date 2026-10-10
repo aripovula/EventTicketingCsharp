@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
+import { fakeHub } from './fakeHub'
 
 async function signedInAs(page: Page, role: 'admin' | 'user') {
   await page.route('**/api/v1/auth/me', route =>
@@ -190,6 +191,22 @@ test('an admin opens the seat summary from the admin page', async ({ page }) => 
 
   await expect(page.getByRole('heading', { name: 'Seat summary' })).toBeVisible()
   await expect(page.getByRole('row').nth(1)).toContainText('$1,800.00')
+})
+
+test('the seat summary recounts live when a booking is made', async ({ page }) => {
+  await signedInAs(page, 'admin')
+  const hub = await fakeHub(page)
+  let sold = 72
+  await page.route('**/api/v1/admin/summary', route => route.fulfill({ json: { data: [
+    { eventId: 1, title: 'Jazz Night', totalSeats: 120, soldSeats: sold, remainingSeats: 120 - sold, revenueCents: sold * 2500 },
+  ], errors: [] } }))
+  await page.goto('/admin/summary')
+  await expect(page.getByRole('row').nth(1)).toContainText('$1,800.00')
+
+  sold = 73
+  await hub.push('BookingMade', 1)
+
+  await expect(page.getByRole('row').nth(1)).toContainText('$1,825.00')
 })
 
 test('an admin filters all orders by event', async ({ page }) => {
