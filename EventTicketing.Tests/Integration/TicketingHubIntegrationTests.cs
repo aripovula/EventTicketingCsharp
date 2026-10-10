@@ -115,4 +115,17 @@ public class TicketingHubIntegrationTests(IntegrationTestFactory factory) : ICla
         var id = (await response.Content.ReadFromJsonAsync<JsonElement>(TestContext.Current.CancellationToken)).GetProperty("data").GetProperty("id").GetInt32();
         Assert.Equal(id, await received.Task.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken));
     }
+
+    [Fact]
+    public async Task UpdatingAnEvent_PushesEventUpdatedWithItsId()
+    {
+        var eventId = await CreateEventAsync();
+        await using var connection = await ConnectAsync();
+        var received = new TaskCompletionSource<int>();
+        connection.On<int>("EventUpdated", received.SetResult);
+
+        await (await AdminAsync()).PutAsJsonAsync($"/api/v1/events/{eventId}", NewEventRequest(), TestContext.Current.CancellationToken);
+
+        Assert.Equal(eventId, await received.Task.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken));
+    }
 }

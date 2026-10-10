@@ -65,6 +65,7 @@ public class EventsController(EventsService eventsService, BookingService bookin
         if (!await eventsService.UpdateAsync(id, request, cancellationToken))
             return NotFound(new ApiEnvelope(null, [new ApiError("not_found", "Event not found.")]));
 
+        await hub.Clients.All.SendAsync(TicketingEvents.EventUpdated, id, CancellationToken.None);
         return NoContent();
     }
 
