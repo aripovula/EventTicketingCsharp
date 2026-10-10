@@ -96,4 +96,39 @@ describe('MyCalendarPage', () => {
     await userEvent.unhover(item)
     expect(screen.queryByRole('tooltip')).not.toBeInTheDocument()
   })
+
+  it('opens the booking details with a link to the order when clicked', async () => {
+    stubOrders()
+    renderAs(john)
+
+    await userEvent.click(await screen.findByText('Jazz Night'))
+
+    const popup = screen.getByRole('dialog', { name: 'Jazz Night' })
+    expect(popup).toHaveTextContent('Music')
+    expect(popup).toHaveTextContent('Blue Note Club')
+    expect(popup).toHaveTextContent('19:00 – 22:00')
+    expect(popup).toHaveTextContent('Order #42')
+    expect(popup).toHaveTextContent('$25.00')
+    expect(within(popup).getByRole('link', { name: 'View order' })).toHaveAttribute('href', '/orders/42')
+  })
+
+  it('closes the booking details with the close button', async () => {
+    stubOrders()
+    renderAs(john)
+    await userEvent.click(await screen.findByText('Jazz Night'))
+
+    await userEvent.click(screen.getByRole('button', { name: 'Close' }))
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  })
+
+  it('closes the booking details when clicking outside them', async () => {
+    stubOrders()
+    renderAs(john)
+    await userEvent.click(await screen.findByText('Jazz Night'))
+
+    await userEvent.click(screen.getByRole('heading', { name: 'My Calendar' }))
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  })
 })
