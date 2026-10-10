@@ -49,3 +49,19 @@ test('My Calendar shows booked events on their day', async ({ page }) => {
 
   await expect(page.getByText('Booked Gig')).toBeVisible()
 })
+
+test('hovering a booking on My Calendar shows its time', async ({ page }) => {
+  const start = new Date()
+  start.setHours(19, 0, 0, 0)
+  await page.route('**/api/v1/auth/me', route =>
+    route.fulfill({ json: { data: { userId: 1, name: 'John Doe', email: 'john@example.com', role: 'user' }, errors: [] } }))
+  await page.route('**/api/v1/auth/me/orders**', route => route.fulfill({ json: { data: [
+    { id: 42, eventId: 1, eventTitle: 'Booked Gig', eventVenue: 'Hall', eventType: 'Music', eventStartTime: start.toISOString(),
+      eventEndTime: new Date(start.getTime() + 3600000).toISOString(), email: 'john@example.com', priceCents: 2500, bookedAt: '2026-10-09T12:00:00Z' },
+  ], errors: [], meta: { nextCursor: null } } }))
+  await page.goto('/calendar')
+
+  await page.getByText('Booked Gig').hover()
+
+  await expect(page.getByRole('tooltip')).toHaveText('Booked Gig19:00 – 20:00')
+})

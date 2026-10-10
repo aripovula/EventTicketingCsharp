@@ -1,4 +1,5 @@
 import { render, screen, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { AuthContext, type User } from '../context/authContext'
 import { makeOrder } from '../test/orderFixtures'
@@ -6,10 +7,23 @@ import { colorForType } from '../utils/eventTypes'
 import MyCalendarPage from './MyCalendarPage'
 
 vi.mock('@fullcalendar/daygrid', () => ({ default: {} }))
+type StubEvent = { id: string; title: string; start: string; backgroundColor: string; extendedProps: object }
+type StubProps = { events: StubEvent[]; eventMouseEnter?: (arg: object) => void; eventMouseLeave?: () => void; eventClick?: (arg: object) => void }
 vi.mock('@fullcalendar/react', () => ({
-  default: ({ events }: { events: { id: string; title: string; start: string; backgroundColor: string }[] }) => (
+  default: ({ events, eventMouseEnter, eventMouseLeave, eventClick }: StubProps) => (
     <ul aria-label="calendar events">
-      {events.map(e => <li key={e.id} data-start={e.start} data-color={e.backgroundColor}>{e.title}</li>)}
+      {events.map(e => (
+        <li
+          key={e.id}
+          data-start={e.start}
+          data-color={e.backgroundColor}
+          onMouseEnter={ev => eventMouseEnter?.({ event: { extendedProps: e.extendedProps }, el: ev.currentTarget })}
+          onMouseLeave={() => eventMouseLeave?.()}
+          onClick={ev => eventClick?.({ event: { extendedProps: e.extendedProps }, el: ev.currentTarget })}
+        >
+          {e.title}
+        </li>
+      ))}
     </ul>
   ),
 }))
@@ -62,5 +76,24 @@ describe('MyCalendarPage', () => {
     renderAs(john)
 
     expect(await screen.findByText('Could not load your bookings.')).toBeInTheDocument()
+  })
+
+  function stubOrders() {
+    const start = new Date(2026, 10, 2, 19, 0)
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({ data: [
+      makeOrder({ eventStartTime: start.toISOString(), eventEndTime: new Date(2026, 10, 2, 22, 0).toISOString() }),
+    ], errors: [], meta: { nextCursor: null } }))))
+  }
+
+  it('shows the event time in a tooltip while hovering a booking', async () => {
+    stubOrders()
+    renderAs(john)
+    const item = await screen.findByText('Jazz Night')
+
+    await userEvent.hover(item)
+    expect(screen.getByRole('tooltip')).toHaveTextContent('Jazz Night19:00 – 22:00')
+
+    await userEvent.unhover(item)
+    expect(screen.queryByRole('tooltip')).not.toBeInTheDocument()
   })
 })
