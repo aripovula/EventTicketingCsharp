@@ -61,6 +61,11 @@ export default function EventDetailPage() {
         : `/orders/${order.id}`)
     } else if (res?.status === 409) {
       setBookingError('Sorry, this event just sold out.')
+    } else if (res?.status === 429) {
+      const wait = Number(res.headers.get('Retry-After'))
+      setBookingError(wait > 0
+        ? `Too many booking attempts. Please try again in ${wait} seconds.`
+        : 'Too many booking attempts. Please wait a minute and try again.')
     } else {
       setBookingError('Booking failed. Please try again.')
     }

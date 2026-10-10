@@ -165,6 +165,28 @@ describe('EventDetailPage', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('Sorry, this event just sold out.')
   })
 
+  it('asks the visitor to wait when booking too often', async () => {
+    stubEventThenBooking(new Response(JSON.stringify({ data: null, errors: [{ code: 'rate_limited' }] }), { status: 429, headers: { 'Retry-After': '40' } }))
+    renderPage()
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Buy ticket' }))
+    await userEvent.type(screen.getByLabelText('Email'), 'guest@example.com')
+    await userEvent.click(screen.getByRole('button', { name: 'Place order' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Too many booking attempts. Please try again in 40 seconds.')
+  })
+
+  it('asks for a minute when the wait is unknown', async () => {
+    stubEventThenBooking(new Response('{}', { status: 429 }))
+    renderPage()
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Buy ticket' }))
+    await userEvent.type(screen.getByLabelText('Email'), 'guest@example.com')
+    await userEvent.click(screen.getByRole('button', { name: 'Place order' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Too many booking attempts. Please wait a minute and try again.')
+  })
+
   it('reports other booking failures', async () => {
     stubEventThenBooking(new Response('oops', { status: 500 }))
     renderPage()
