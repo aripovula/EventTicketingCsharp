@@ -196,10 +196,19 @@ test('an admin filters all orders by event', async ({ page }) => {
   await signedInAs(page, 'admin')
   const order = { eventId: 1, eventVenue: 'Hall', eventType: 'Music', eventStartTime: '2026-11-02T23:00:00Z',
     eventEndTime: '2026-11-03T02:00:00Z', email: 'jane@example.com', priceCents: 2500, bookedAt: '2026-10-09T12:00:00Z' }
+  const event = { description: '', startTime: '2026-11-02T23:00:00Z', endTime: '2026-11-03T02:00:00Z', venue: 'Hall',
+    eventType: 'Music', totalSeats: 10, availableSeats: 5, priceCents: 2500, imageUrl: null }
+  await page.route('**/api/v1/events?**', route => route.fulfill({ json: { data: [
+    { ...event, id: 1, title: 'Jazz Night' }, { ...event, id: 7, title: 'Comedy Showcase' },
+  ], errors: [], meta: { nextCursor: null } } }))
   await page.route('**/api/v1/admin/orders', route => route.fulfill({ json: { data: [
-    { ...order, id: 42, eventTitle: 'Jazz Night' }, { ...order, id: 43, eventTitle: 'Comedy Showcase' },
+    { ...order, id: 42, eventTitle: 'Jazz Night' }, { ...order, id: 43, eventId: 7, eventTitle: 'Comedy Showcase' },
+  ], errors: [], meta: { nextCursor: null } } }))
+  await page.route('**/api/v1/admin/orders?eventId=7', route => route.fulfill({ json: { data: [
+    { ...order, id: 43, eventId: 7, eventTitle: 'Comedy Showcase' },
   ], errors: [], meta: { nextCursor: null } } }))
   await page.goto('/admin/orders')
+  await expect(page.getByRole('row')).toHaveCount(3)
 
   await page.getByRole('combobox', { name: 'Filter by event' }).selectOption('Comedy Showcase')
 

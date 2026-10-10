@@ -1,12 +1,29 @@
-import { render, screen, within } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
+import { makeEvent } from '../test/fixtures'
 import { makeOrder } from '../test/orderFixtures'
 import AdminOrdersPage from './AdminOrdersPage'
 
 class FakeIntersectionObserver {
   observe() {}
   disconnect() {}
+}
+
+const json = (data: unknown) => new Response(JSON.stringify({ data, errors: [], meta: { nextCursor: null } }))
+
+const comedyOrder = makeOrder({ id: 43, eventId: 7, eventTitle: 'Comedy Showcase', email: 'jane@example.com', priceCents: 1800 })
+
+/** Answers the events list and the admin orders list (eventId 7 → only order #43, any other filter → none). */
+function routeFetch({ events = [], orders = json([makeOrder(), comedyOrder]) }: { events?: ReturnType<typeof makeEvent>[]; orders?: Response } = {}) {
+  const fetchMock = vi.fn((url: string) => {
+    if (url.startsWith('/api/v1/events')) return Promise.resolve(json(events))
+    if (url.includes('eventId=7')) return Promise.resolve(json([comedyOrder]))
+    if (url.includes('eventId=')) return Promise.resolve(json([]))
+    return Promise.resolve(orders)
+  })
+  vi.stubGlobal('fetch', fetchMock)
+  return fetchMock
 }
 
 function renderPage() {
@@ -18,10 +35,7 @@ describe('AdminOrdersPage', () => {
   afterEach(() => vi.unstubAllGlobals())
 
   it('lists every order in a table', async () => {
-    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ data: [
-      makeOrder(), makeOrder({ id: 43, eventTitle: 'Comedy Showcase', email: 'jane@example.com', priceCents: 1800 }),
-    ], errors: [], meta: { nextCursor: null } })))
-    vi.stubGlobal('fetch', fetchMock)
+    const fetchMock = routeFetch()
     renderPage()
 
     const rows = within(await screen.findByRole('table')).getAllByRole('row')
@@ -34,46 +48,55 @@ describe('AdminOrdersPage', () => {
   })
 
   it('says when there are no orders yet', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({ data: [], errors: [], meta: { nextCursor: null } }))))
+    routeFetch({ orders: json([]) })
     renderPage()
 
     expect(await screen.findByText('No orders yet.')).toBeInTheDocument()
   })
 
   it('says when orders cannot be loaded', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('{}', { status: 403 })))
+    routeFetch({ orders: new Response('{}', { status: 403 }) })
     renderPage()
 
     expect(await screen.findByText('Failed to load orders.')).toBeInTheDocument()
   })
 
   it('links back to admin', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({ data: [], errors: [], meta: { nextCursor: null } }))))
+    routeFetch({ orders: json([]) })
     renderPage()
 
     expect(await screen.findByRole('link', { name: '← Back to admin' })).toHaveAttribute('href', '/admin')
   })
 
-  it('filters the table to one event', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({ data: [
-      makeOrder(), makeOrder({ id: 43, eventTitle: 'Comedy Showcase' }), makeOrder({ id: 44 }),
-    ], errors: [], meta: { nextCursor: null } }))))
+  it('asks the server for one event\'s orders when filtered', async () => {
+    const fetchMock = routeFetch({ events: [makeEvent({ id: 7, title: 'Comedy Showcase' })] })
     renderPage()
-    const table = await screen.findByRole('table')
+    await screen.findByRole('table')
 
-    await userEvent.selectOptions(screen.getByRole('combobox', { name: 'Filter by event' }), 'Jazz Night')
+    fetchMock.mockClear()
+    await userEvent.selectOptions(screen.getByRole('combobox', { name: 'Filter by event' }), 'Comedy Showcase')
 
-    const rows = within(table).getAllByRole('row').slice(1)
-    expect(rows.map(r => r.textContent)).toEqual([expect.stringContaining('#42'), expect.stringContaining('#44')])
+    expect(await screen.findByText('#43')).toBeInTheDocument()
+    expect(screen.queryByText('#42')).not.toBeInTheDocument()
+    expect(fetchMock).toHaveBeenCalledWith('/api/v1/admin/orders?eventId=7', { credentials: 'include' })
   })
 
-  it('offers each event once in the filter', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({ data: [
-      makeOrder(), makeOrder({ id: 43, eventTitle: 'Comedy Showcase' }), makeOrder({ id: 44 }),
-    ], errors: [], meta: { nextCursor: null } }))))
+  it('offers every event in the filter, alphabetically', async () => {
+    routeFetch({ events: [makeEvent({ id: 1, title: 'Jazz Night' }), makeEvent({ id: 9, title: 'Art Fair' })] })
     renderPage()
 
     const select = await screen.findByRole('combobox', { name: 'Filter by event' })
-    expect(within(select).getAllByRole('option').map(o => o.textContent)).toEqual(['All events', 'Comedy Showcase', 'Jazz Night'])
+    await waitFor(() =>
+      expect(within(select).getAllByRole('option').map(o => o.textContent)).toEqual(['All events', 'Art Fair', 'Jazz Night']))
+  })
+
+  it('says when the chosen event has no orders', async () => {
+    routeFetch({ events: [makeEvent({ id: 9, title: 'Art Fair' })] })
+    renderPage()
+    await screen.findByRole('table')
+
+    await userEvent.selectOptions(screen.getByRole('combobox', { name: 'Filter by event' }), 'Art Fair')
+
+    expect(await screen.findByText('No orders for this event.')).toBeInTheDocument()
   })
 })
