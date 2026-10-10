@@ -93,6 +93,7 @@ public class EventsController(EventsService eventsService, BookingService bookin
     [ProducesResponseType(typeof(ApiEnvelope<object>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ApiEnvelope<object>), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ApiEnvelope<object>), StatusCodes.Status409Conflict)]
+    [ProducesResponseType(typeof(ApiEnvelope<object>), StatusCodes.Status429TooManyRequests)]
     public async Task<IActionResult> Book(int id, BookingRequest request, CancellationToken cancellationToken)
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
