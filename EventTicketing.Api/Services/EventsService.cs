@@ -4,11 +4,15 @@ using EventTicketing.Api.Contracts;
 using EventTicketing.Api.Data;
 using EventTicketing.Api.Models;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Hybrid;
 
 namespace EventTicketing.Api.Services;
 
-public class EventsService(AppDbContext db)
+public class EventsService(AppDbContext db, HybridCache cache)
 {
+    /// <summary>Tag on every cached event-list page, so one call evicts them all.</summary>
+    public const string ListCacheTag = "events";
+
     // An expression (not a method) so EF Core translates it into the SELECT list.
     private static readonly Expression<Func<Event, EventResponse>> ToResponse = e => new EventResponse(
         e.Id, e.Title, e.Description, e.StartTime, e.EndTime, e.Venue, e.EventType,
@@ -16,6 +20,20 @@ public class EventsService(AppDbContext db)
 
     /// <returns>The page, or null when the cursor is malformed.</returns>
     public async Task<EventPage?> ListAsync(EventListQuery query, CancellationToken cancellationToken)
+    {
+        // Everyone loads the plain list pages; searches are too varied to be worth caching.
+        if (!string.IsNullOrWhiteSpace(query.Q))
+            return await QueryPageAsync(query, cancellationToken);
+
+        return await cache.GetOrCreateAsync(
+            $"events:sort:{query.Sort}:after:{query.After}:limit:{query.Limit}",
+            query,
+            (q, token) => new ValueTask<EventPage?>(QueryPageAsync(q, token)),
+            tags: [ListCacheTag],
+            cancellationToken: cancellationToken);
+    }
+
+    private async Task<EventPage?> QueryPageAsync(EventListQuery query, CancellationToken cancellationToken)
     {
         var events = db.Events.AsQueryable();
         if (!string.IsNullOrWhiteSpace(query.Q))
@@ -67,6 +85,7 @@ public class EventsService(AppDbContext db)
         };
         db.Events.Add(ev);
         await db.SaveChangesAsync(cancellationToken);
+        await EvictListPagesAsync();
 
         return ToResponseCompiled(ev);
     }
@@ -89,12 +108,22 @@ public class EventsService(AppDbContext db)
         ev.PriceCents = request.PriceCents;
         ev.ImageUrl = request.ImageUrl;
         await db.SaveChangesAsync(cancellationToken);
+        await EvictListPagesAsync();
         return true;
     }
 
     /// <returns>False when no event has the given id.</returns>
-    public async Task<bool> DeleteAsync(int id, CancellationToken cancellationToken) =>
-        await db.Events.Where(e => e.Id == id).ExecuteDeleteAsync(cancellationToken) > 0;
+    public async Task<bool> DeleteAsync(int id, CancellationToken cancellationToken)
+    {
+        if (await db.Events.Where(e => e.Id == id).ExecuteDeleteAsync(cancellationToken) == 0)
+            return false;
+
+        await EvictListPagesAsync();
+        return true;
+    }
+
+    // The change is already saved, so evict even if the request is cancelled meanwhile.
+    private ValueTask EvictListPagesAsync() => cache.RemoveByTagAsync(ListCacheTag, CancellationToken.None);
 
     public async Task<IReadOnlyList<EventSummary>> SummaryAsync(CancellationToken cancellationToken) =>
         await db.Events
