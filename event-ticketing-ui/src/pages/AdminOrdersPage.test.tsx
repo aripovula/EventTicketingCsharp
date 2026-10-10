@@ -1,9 +1,14 @@
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { makeEvent } from '../test/fixtures'
 import { makeOrder } from '../test/orderFixtures'
 import AdminOrdersPage from './AdminOrdersPage'
+
+const hub = vi.hoisted(() => ({ handlers: {} as Record<string, (eventId: number) => void> }))
+vi.mock('../hooks/useHubEvents', () => ({
+  useHubEvents: (handlers: Record<string, (eventId: number) => void>) => { hub.handlers = handlers },
+}))
 
 class FakeIntersectionObserver {
   observe() {}
@@ -98,5 +103,30 @@ describe('AdminOrdersPage', () => {
     await userEvent.selectOptions(screen.getByRole('combobox', { name: 'Filter by event' }), 'Art Fair')
 
     expect(await screen.findByText('No orders for this event.')).toBeInTheDocument()
+  })
+
+  it('shows a new order as soon as it is booked', async () => {
+    const fetchMock = routeFetch({ orders: json([makeOrder()]) })
+    renderPage()
+    await screen.findByText('#42')
+    fetchMock.mockImplementation((url: string) => Promise.resolve(
+      url.startsWith('/api/v1/events') ? json([]) : json([makeOrder({ id: 50 }), makeOrder()])))
+
+    act(() => hub.handlers.BookingMade(1))
+
+    expect(await screen.findByText('#50')).toBeInTheDocument()
+  })
+
+  it('ignores bookings for other events while filtered', async () => {
+    const fetchMock = routeFetch({ events: [makeEvent({ id: 7, title: 'Comedy Showcase' })] })
+    renderPage()
+    await screen.findByRole('table')
+    await userEvent.selectOptions(screen.getByRole('combobox', { name: 'Filter by event' }), 'Comedy Showcase')
+    await screen.findByText('#43')
+    fetchMock.mockClear()
+
+    act(() => hub.handlers.BookingMade(1))
+
+    expect(fetchMock).not.toHaveBeenCalled()
   })
 })

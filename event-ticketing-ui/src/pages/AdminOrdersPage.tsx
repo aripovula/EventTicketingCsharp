@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { fetchAllEvents, type EventItem } from '../api/events'
 import { fetchAllOrders, type OrderItem } from '../api/orders'
 import { useCursorPages } from '../hooks/useCursorPages'
+import { useHubEvents } from '../hooks/useHubEvents'
 import { formatPrice } from '../utils/formatPrice'
 
 export default function AdminOrdersPage() {
@@ -10,7 +11,9 @@ export default function AdminOrdersPage() {
   const [eventId, setEventId] = useState<number | null>(null)
   // The server filters, so the choice covers every order, not just the pages loaded so far.
   const fetchPage = useCallback((after: string | null) => fetchAllOrders(after, eventId), [eventId])
-  const { items: orders, loading, error, loadingMore, sentinelRef } = useCursorPages<OrderItem>(fetchPage)
+  const { items: orders, loading, error, loadingMore, sentinelRef, reload } = useCursorPages<OrderItem>(fetchPage)
+  // New orders arrive newest first, so a booking (for the chosen event, if any) reloads the first page.
+  useHubEvents({ BookingMade: bookedEventId => { if (eventId === null || bookedEventId === eventId) reload() } })
 
   useEffect(() => {
     fetchAllEvents()

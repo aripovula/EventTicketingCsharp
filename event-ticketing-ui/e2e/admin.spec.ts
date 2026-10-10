@@ -232,3 +232,20 @@ test('an admin filters all orders by event', async ({ page }) => {
   await expect(page.getByRole('row')).toHaveCount(2)
   await expect(page.getByRole('row').nth(1)).toContainText('#43')
 })
+
+test('all orders shows a new booking live', async ({ page }) => {
+  await signedInAs(page, 'admin')
+  const hub = await fakeHub(page)
+  const order = { eventId: 1, eventTitle: 'Jazz Night', eventVenue: 'Hall', eventType: 'Music', eventStartTime: '2026-11-02T23:00:00Z',
+    eventEndTime: '2026-11-03T02:00:00Z', email: 'jane@example.com', priceCents: 2500, bookedAt: '2026-10-09T12:00:00Z' }
+  let orders = [{ ...order, id: 42 }]
+  await page.route('**/api/v1/admin/orders', route => route.fulfill({ json: { data: orders, errors: [], meta: { nextCursor: null } } }))
+  await page.goto('/admin/orders')
+  await expect(page.getByRole('row')).toHaveCount(2)
+
+  orders = [{ ...order, id: 43, email: 'new@example.com' }, ...orders]
+  await hub.push('BookingMade', 1)
+
+  await expect(page.getByRole('row')).toHaveCount(3)
+  await expect(page.getByRole('row').nth(1)).toContainText('new@example.com')
+})
