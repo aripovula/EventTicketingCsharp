@@ -4,6 +4,7 @@ using EventTicketing.Api.Services;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.SignalR;
 
 namespace EventTicketing.Api.Controllers.V1;
@@ -87,6 +88,7 @@ public class EventsController(EventsService eventsService, BookingService bookin
 
     /// <summary>Books one seat for an event, as a guest or signed-in user. The seat is reserved atomically, so the last seat can never be sold twice.</summary>
     [HttpPost("{id:int}/bookings")]
+    [EnableRateLimiting(RateLimitingOptions.BookingPolicy)]
     [ProducesResponseType(typeof(ApiEnvelope<OrderResponse>), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ApiEnvelope<object>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ApiEnvelope<object>), StatusCodes.Status404NotFound)]

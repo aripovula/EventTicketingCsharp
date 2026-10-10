@@ -1,4 +1,5 @@
 using System.Net;
+using System.Net.Http.Json;
 using Microsoft.AspNetCore.Hosting;
 
 namespace EventTicketing.Tests.Integration;
@@ -43,5 +44,20 @@ public class RateLimitingIntegrationTests(IntegrationTestFactory factory) : ICla
 
         for (var i = 0; i < 3; i++)
             Assert.Equal(HttpStatusCode.OK, (await client.GetAsync(url, TestContext.Current.CancellationToken)).StatusCode);
+    }
+
+    [Fact]
+    public async Task BookingsOverTheBookingLimit_Return429WhileOtherRequestsStillWork()
+    {
+        var client = ClientWith("RateLimiting:BookingPermitLimit", 2);
+        // Event 1 is seeded with plenty of seats; two bookings use up the allowance.
+        for (var i = 0; i < 2; i++)
+            Assert.Equal(HttpStatusCode.Created, (await client.PostAsJsonAsync("/api/v1/events/1/bookings", new { email = "guest@example.com" }, TestContext.Current.CancellationToken)).StatusCode);
+
+        var booking = await client.PostAsJsonAsync("/api/v1/events/1/bookings", new { email = "guest@example.com" }, TestContext.Current.CancellationToken);
+        var browsing = await client.GetAsync("/api/v1/events/1", TestContext.Current.CancellationToken);
+
+        Assert.Equal(HttpStatusCode.TooManyRequests, booking.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, browsing.StatusCode);
     }
 }
