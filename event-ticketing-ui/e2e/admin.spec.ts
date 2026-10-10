@@ -164,3 +164,17 @@ test('clicking a calendar event opens details with a working edit link', async (
   await expect(page).toHaveURL('/admin/9/edit')
   await expect(page.getByLabel('Title')).toHaveValue('Popup Gig')
 })
+
+test('an admin opens all orders from the admin page', async ({ page }) => {
+  await signedInAs(page, 'admin')
+  await page.route('**/api/v1/admin/orders', route => route.fulfill({ json: { data: [
+    { id: 42, eventId: 1, eventTitle: 'Jazz Night', eventVenue: 'Blue Note Club', eventType: 'Music', eventStartTime: '2026-11-02T23:00:00Z',
+      eventEndTime: '2026-11-03T02:00:00Z', email: 'jane@example.com', priceCents: 2500, bookedAt: '2026-10-09T12:00:00Z' },
+  ], errors: [], meta: { nextCursor: null } } }))
+  await page.goto('/admin')
+
+  await page.getByRole('link', { name: 'All orders' }).click()
+
+  await expect(page.getByRole('heading', { name: 'All orders' })).toBeVisible()
+  await expect(page.getByRole('row').nth(1)).toContainText('jane@example.com')
+})

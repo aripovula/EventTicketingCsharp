@@ -167,4 +167,16 @@ public class AdminTests : E2ETestBase
         await popup.GetByRole(AriaRole.Link, new() { Name = "Edit" }).ClickAsync();
         await Expect(Page.GetByLabel("Title")).ToHaveValueAsync("Jazz Night");
     }
+
+    [Test]
+    public async Task AdminOpensAllOrders()
+    {
+        await SignInAsAdminAsync();
+        await Page.GotoAsync($"{BaseUrl}/admin");
+
+        await Page.GetByRole(AriaRole.Link, new() { Name = "All orders" }).ClickAsync();
+
+        await Expect(Page.GetByRole(AriaRole.Heading, new() { Name = "All orders" })).ToBeVisibleAsync();
+        await Expect(Page.GetByText("Failed to load orders.")).ToHaveCountAsync(0);
+    }
 }

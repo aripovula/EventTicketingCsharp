@@ -3,6 +3,7 @@ import RequireAdmin from './components/RequireAdmin'
 import { useAuth } from './context/useAuth'
 import AdminCalendarPage from './pages/AdminCalendarPage'
 import AdminEventFormPage from './pages/AdminEventFormPage'
+import AdminOrdersPage from './pages/AdminOrdersPage'
 import AdminPage from './pages/AdminPage'
 import EventDetailPage from './pages/EventDetailPage'
 import EventListPage from './pages/EventListPage'
@@ -74,6 +75,7 @@ function App() {
             <Route element={<RequireAdmin />}>
               <Route path="/admin" element={<AdminPage />} />
               <Route path="/admin/calendar" element={<AdminCalendarPage />} />
+              <Route path="/admin/orders" element={<AdminOrdersPage />} />
               <Route path="/admin/new" element={<AdminEventFormPage />} />
               <Route path="/admin/:id/edit" element={<AdminEventFormPage />} />
             </Route>

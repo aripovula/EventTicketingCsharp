@@ -35,6 +35,12 @@ export default function AdminPage() {
             Events Calendar
           </Link>
           <Link
+            to="/admin/orders"
+            className="border border-gray-300 text-gray-600 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors no-underline"
+          >
+            All orders
+          </Link>
+          <Link
             to="/admin/new"
             className="bg-cyan-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-cyan-700 transition-colors no-underline"
           >
