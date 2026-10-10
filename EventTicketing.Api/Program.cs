@@ -68,6 +68,12 @@ builder.Services.AddScoped<BookingService>();
 builder.Services.AddScoped<OrdersService>();
 builder.Services.AddSignalR();
 // Admin writes evict cached event pages by tag; the 2-minute expiry is the safety net if one is missed.
+// HybridCache picks up this distributed cache as its shared second level (L2).
+builder.Services.AddStackExchangeRedisCache(options =>
+{
+    options.Configuration = builder.Configuration.GetConnectionString("Redis");
+    options.InstanceName = builder.Configuration["Redis:InstanceName"] ?? "event-ticketing:";
+});
 builder.Services.AddHybridCache(options => options.DefaultEntryOptions = new HybridCacheEntryOptions
 {
     Expiration = TimeSpan.FromMinutes(2),

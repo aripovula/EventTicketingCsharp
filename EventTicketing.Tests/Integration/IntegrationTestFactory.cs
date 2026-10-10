@@ -14,6 +14,8 @@ public class IntegrationTestFactory : WebApplicationFactory<Program>, IAsyncLife
     {
         builder.UseSetting("ConnectionStrings:Default", _connectionString);
         builder.UseSetting("Jwt:SigningKey", "integration-test-signing-key-at-least-32-bytes");
+        // Each test host gets its own Redis key prefix, as it gets its own database.
+        builder.UseSetting("Redis:InstanceName", $"event-ticketing-test-{Guid.NewGuid():N}:");
     }
 
     public ValueTask InitializeAsync()
