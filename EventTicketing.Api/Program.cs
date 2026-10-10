@@ -6,6 +6,7 @@ using EventTicketing.Api.Middleware;
 using EventTicketing.Api.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Microsoft.Extensions.Caching.Hybrid;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
@@ -66,6 +67,12 @@ builder.Services.AddScoped<EventsService>();
 builder.Services.AddScoped<BookingService>();
 builder.Services.AddScoped<OrdersService>();
 builder.Services.AddSignalR();
+// Admin writes evict cached event pages by tag; the 2-minute expiry is the safety net if one is missed.
+builder.Services.AddHybridCache(options => options.DefaultEntryOptions = new HybridCacheEntryOptions
+{
+    Expiration = TimeSpan.FromMinutes(2),
+    LocalCacheExpiration = TimeSpan.FromMinutes(2),
+});
 builder.Services.AddHealthChecks()
     .AddDbContextCheck<AppDbContext>(name: "database", tags: ["ready"]);
 builder.Services.AddSwaggerGen(options =>
