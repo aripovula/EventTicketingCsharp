@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { type EventSort } from '../api/events'
+import { fetchEvent, type EventSort } from '../api/events'
 import { useEventPages } from '../hooks/useEventPages'
+import { useHubEvents } from '../hooks/useHubEvents'
 import { colorForType } from '../utils/eventTypes'
 import { formatPrice } from '../utils/formatPrice'
 
@@ -12,13 +13,27 @@ export default function EventListPage() {
   const [debouncedSearch, setDebouncedSearch] = useState('')
   const [sortType, setSortType] = useState<EventSort>('name')
   const searchInputRef = useRef<HTMLInputElement>(null)
-  const { events, loading, loadingMore, sentinelRef } = useEventPages({ q: debouncedSearch, sort: sortType })
+  const { events, setEvents, loading, loadingMore, sentinelRef } = useEventPages({ q: debouncedSearch, sort: sortType })
 
   // Search runs on the server, so wait for a pause in typing before asking for it.
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedSearch(searchTerm), 300)
     return () => clearTimeout(timer)
   }, [searchTerm])
+
+  // Live updates patch the loaded cards in place, so pages already scrolled into view stay put.
+  function refreshCard(eventId: number) {
+    if (!events.some(e => e.id === eventId)) return
+    fetchEvent(eventId)
+      .then(res => (res.ok ? res.json() : null))
+      .then(body => { if (body?.data) setEvents(prev => prev.map(e => (e.id === eventId ? body.data : e))) })
+      .catch(() => {})
+  }
+  useHubEvents({
+    BookingMade: refreshCard,
+    EventUpdated: refreshCard,
+    EventDeleted: eventId => setEvents(prev => prev.filter(e => e.id !== eventId)),
+  })
 
   const changeInputSize = (inputWidth: number, fontSize: number) => {
     searchInputRef.current!.style.width = `${inputWidth}px`

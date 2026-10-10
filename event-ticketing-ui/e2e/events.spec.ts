@@ -123,3 +123,15 @@ test('the detail page updates its seats live when someone books', async ({ page 
 
   await expect(page.getByText('47 of 120 seats available')).toBeVisible()
 })
+
+test('the home page updates a card live when its event is booked', async ({ page }) => {
+  const hub = await fakeHub(page)
+  await page.route('**/api/v1/events?**', route => route.fulfill({ json: { data: [jazz], errors: [], meta: { nextCursor: null } } }))
+  await page.route('**/api/v1/events/1', route => route.fulfill({ json: { data: { ...jazz, availableSeats: 47 }, errors: [] } }))
+  await page.goto('/')
+  await expect(page.getByText('48 seats available')).toBeVisible()
+
+  await hub.push('BookingMade', 1)
+
+  await expect(page.getByText('47 seats available')).toBeVisible()
+})

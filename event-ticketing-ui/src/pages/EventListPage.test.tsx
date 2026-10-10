@@ -3,6 +3,11 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import type { EventItem } from '../api/events'
 import { makeEvent } from '../test/fixtures'
+
+const hub = vi.hoisted(() => ({ handlers: {} as Record<string, (eventId: number) => void> }))
+vi.mock('../hooks/useHubEvents', () => ({
+  useHubEvents: (handlers: Record<string, (eventId: number) => void>) => { hub.handlers = handlers },
+}))
 import EventListPage from './EventListPage'
 
 function stubEvents(events: EventItem[]) {
@@ -176,5 +181,57 @@ describe('EventListPage', () => {
     await screen.findByRole('link', { name: 'Jazz Night' })
 
     expect(screen.queryByText('No events match your search.')).not.toBeInTheDocument()
+  })
+
+  describe('live updates', () => {
+    function stubListThenEvent(list: EventItem[], refreshed?: EventItem) {
+      const fetchMock = vi.fn((url: string) => Promise.resolve(new Response(JSON.stringify(
+        url.startsWith('/api/v1/events?')
+          ? { data: list, errors: [], meta: { nextCursor: null } }
+          : { data: refreshed, errors: [] }))))
+      vi.stubGlobal('fetch', fetchMock)
+      return fetchMock
+    }
+
+    it('refreshes the seats on a card when its event is booked', async () => {
+      stubListThenEvent([makeEvent({ availableSeats: 48 })], makeEvent({ availableSeats: 47 }))
+      renderPage()
+      await screen.findByText('48 seats available')
+
+      act(() => hub.handlers.BookingMade(1))
+
+      expect(await screen.findByText('47 seats available')).toBeInTheDocument()
+    })
+
+    it('refreshes a card when its event is edited', async () => {
+      stubListThenEvent([makeEvent()], makeEvent({ title: 'Jazz Night Deluxe' }))
+      renderPage()
+      await screen.findByText('Jazz Night')
+
+      act(() => hub.handlers.EventUpdated(1))
+
+      expect(await screen.findByText('Jazz Night Deluxe')).toBeInTheDocument()
+    })
+
+    it('ignores updates for events that are not on screen', async () => {
+      const fetchMock = stubListThenEvent([makeEvent()])
+      renderPage()
+      await screen.findByText('Jazz Night')
+
+      act(() => hub.handlers.BookingMade(99))
+
+      expect(fetchMock).toHaveBeenCalledTimes(1)
+    })
+
+    it('removes a card when its event is deleted', async () => {
+      stubListThenEvent([makeEvent(), makeEvent({ id: 2, title: 'Comedy Showcase' })])
+      renderPage()
+      await screen.findByText('Comedy Showcase')
+
+      act(() => hub.handlers.EventDeleted(2))
+
+      expect(screen.queryByText('Comedy Showcase')).not.toBeInTheDocument()
+      expect(screen.getByText('Jazz Night')).toBeInTheDocument()
+    })
   })
 })
