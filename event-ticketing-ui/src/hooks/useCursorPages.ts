@@ -2,7 +2,8 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 
 /**
  * Loads a cursor-paginated list ({ data, meta.nextCursor }). Put sentinelRef on an element under the
- * list; when it scrolls into view the next page is appended. fetchPage must be a stable callback.
+ * list; when it scrolls into view the next page is appended. fetchPage must be a stable callback;
+ * passing a new one (e.g. for a new filter) starts over from the first page.
  */
 export function useCursorPages<T>(fetchPage: (after: string | null) => Promise<Response>, enabled = true) {
   const [items, setItems] = useState<T[]>([])
@@ -11,6 +12,18 @@ export function useCursorPages<T>(fetchPage: (after: string | null) => Promise<R
   const [nextCursor, setNextCursor] = useState<string | null>(null)
   const [loadingMore, setLoadingMore] = useState(false)
   const sentinelRef = useRef<HTMLDivElement>(null)
+  // Bumped whenever fetchPage changes, so late responses for the old source are ignored.
+  const requestId = useRef(0)
+
+  // A new source starts over (React's "adjust state when a prop changes" pattern, no extra effect).
+  const [source, setSource] = useState(() => fetchPage)
+  if (source !== fetchPage) {
+    setSource(() => fetchPage)
+    setItems([])
+    setNextCursor(null)
+    setError(false)
+    setLoading(enabled)
+  }
 
   const load = useCallback(async (after: string | null) => {
     const res = await fetchPage(after)
@@ -21,17 +34,27 @@ export function useCursorPages<T>(fetchPage: (after: string | null) => Promise<R
 
   useEffect(() => {
     if (!enabled) return
+    const id = ++requestId.current
     load(null)
-      .then(({ data, next }) => { setItems(data); setNextCursor(next) })
-      .catch(() => setError(true))
-      .finally(() => setLoading(false))
+      .then(({ data, next }) => {
+        if (id !== requestId.current) return
+        setItems(data)
+        setNextCursor(next)
+      })
+      .catch(() => { if (id === requestId.current) setError(true) })
+      .finally(() => { if (id === requestId.current) setLoading(false) })
   }, [load, enabled])
 
   const loadMore = useCallback(() => {
     if (!nextCursor || loadingMore) return
+    const id = requestId.current
     setLoadingMore(true)
     load(nextCursor)
-      .then(({ data, next }) => { setItems(prev => [...prev, ...data]); setNextCursor(next) })
+      .then(({ data, next }) => {
+        if (id !== requestId.current) return
+        setItems(prev => [...prev, ...data])
+        setNextCursor(next)
+      })
       .catch(() => setError(true))
       .finally(() => setLoadingMore(false))
   }, [load, nextCursor, loadingMore])
