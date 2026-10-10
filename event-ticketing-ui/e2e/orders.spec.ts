@@ -23,3 +23,15 @@ test('a signed-in user sees their orders', async ({ page }) => {
   await expect(order).toContainText('Jazz Night')
   await expect(order).toContainText('Order #42 · $25.00')
 })
+
+test('a signed-in user opens My Calendar from the header', async ({ page }) => {
+  await page.route('**/api/v1/auth/me', route =>
+    route.fulfill({ json: { data: { userId: 1, name: 'John Doe', email: 'john@example.com', role: 'user' }, errors: [] } }))
+  await page.route('**/api/v1/auth/me/orders**', route => route.fulfill({ json: { data: [], errors: [], meta: { nextCursor: null } } }))
+  await page.goto('/')
+
+  await page.getByRole('banner').getByRole('link', { name: 'My Calendar' }).click()
+
+  await expect(page).toHaveURL('/calendar')
+  await expect(page.getByRole('heading', { name: 'My Calendar' })).toBeVisible()
+})

@@ -88,4 +88,17 @@ describe('App', () => {
 
     expect(screen.getByRole('banner').querySelector('a[href="/orders"]')).toHaveTextContent('My orders')
   })
+
+  it('links regular users to My Calendar', async () => {
+    renderApp(true)
+
+    expect(await screen.findByRole('link', { name: 'My Calendar' })).toHaveAttribute('href', '/calendar')
+  })
+
+  it('links admins to the events calendar instead', async () => {
+    renderApp(admin)
+
+    expect(await screen.findByRole('link', { name: 'Events Calendar' })).toHaveAttribute('href', '/admin/calendar')
+    expect(screen.queryByRole('link', { name: 'My Calendar' })).not.toBeInTheDocument()
+  })
 })
