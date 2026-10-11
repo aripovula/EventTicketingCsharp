@@ -101,6 +101,7 @@ builder.Services.AddScoped<IdempotencyService>();
 builder.Services.AddSignalR();
 builder.Services.AddSingleton<RabbitMqConnection>();
 builder.Services.AddSingleton<IMessagePublisher, RabbitMqPublisher>();
+builder.Services.AddHostedService<OutboxWorker>();
 // Admin writes evict cached event pages by tag; the 2-minute expiry is the safety net if one is missed.
 // HybridCache picks up this distributed cache as its shared second level (L2).
 builder.Services.AddStackExchangeRedisCache(options =>

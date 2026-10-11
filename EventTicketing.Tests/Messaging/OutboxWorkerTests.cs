@@ -3,6 +3,8 @@ using EventTicketing.Api.Messaging;
 using EventTicketing.Api.Models;
 using EventTicketing.Tests.Fakes;
 using EventTicketing.Tests.Integration;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.TestHost;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -10,8 +12,19 @@ using Microsoft.Extensions.Logging.Abstractions;
 namespace EventTicketing.Tests.Messaging;
 
 [Trait("Category", "Integration")]
-public class OutboxWorkerTests(IntegrationTestFactory factory) : IClassFixture<IntegrationTestFactory>
+public class OutboxWorkerTests(OutboxWorkerTests.HostWithoutWorker factory) : IClassFixture<OutboxWorkerTests.HostWithoutWorker>
 {
+    /// <summary>The app's own hosted worker would race these tests for the same rows, so this host runs without it.</summary>
+    public class HostWithoutWorker : IntegrationTestFactory
+    {
+        protected override void ConfigureWebHost(IWebHostBuilder builder)
+        {
+            base.ConfigureWebHost(builder);
+            builder.ConfigureTestServices(services =>
+                services.Remove(services.Single(d => d.ImplementationType == typeof(OutboxWorker))));
+        }
+    }
+
     private readonly FakeMessagePublisher _publisher = new();
 
     private AppDbContext CreateDb() =>
