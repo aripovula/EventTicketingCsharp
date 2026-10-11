@@ -118,4 +118,22 @@ public class OutboxWorkerTests(IntegrationTestFactory factory) : IClassFixture<I
     [InlineData(4, 40)]
     public void RetryDelay_DoublesAfterEachFailure(int attempts, int seconds) =>
         Assert.Equal(TimeSpan.FromSeconds(seconds), OutboxWorker.RetryDelay(attempts));
+
+    [Fact]
+    public async Task ProcessPending_ParksAMessageAfterItsLastFailedAttempt()
+    {
+        var message = await AddMessageAsync(m => m.Attempts = OutboxWorker.MaxAttempts - 1);
+        _publisher.FailWith = new InvalidOperationException("Broker unreachable");
+        await ProcessPendingAsync();
+        await CreateDb().OutboxMessages.Where(m => m.Id == message.Id)
+            .ExecuteUpdateAsync(s => s.SetProperty(m => m.NextAttemptAt, DateTime.UtcNow.AddSeconds(-1)), TestContext.Current.CancellationToken);
+        _publisher.FailWith = null;
+
+        await ProcessPendingAsync();
+
+        Assert.DoesNotContain(_publisher.Published, p => p.Payload == message.Payload);
+        var saved = await ReloadAsync(message);
+        Assert.Equal(OutboxWorker.MaxAttempts, saved.Attempts);
+        Assert.Null(saved.ProcessedAt);
+    }
 }

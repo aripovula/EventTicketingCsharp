@@ -15,6 +15,9 @@ public class OutboxWorker(IServiceScopeFactory scopeFactory, IMessagePublisher p
     private const int BatchSize = 20;
     private static readonly TimeSpan FirstRetryDelay = TimeSpan.FromSeconds(5);
 
+    /// <summary>After this many failed publishes a message is parked: left unprocessed for a person to inspect.</summary>
+    public const int MaxAttempts = 5;
+
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         while (!stoppingToken.IsCancellationRequested)
@@ -40,7 +43,8 @@ public class OutboxWorker(IServiceScopeFactory scopeFactory, IMessagePublisher p
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
         var messages = await db.OutboxMessages
-            .Where(m => m.ProcessedAt == null && (m.NextAttemptAt == null || m.NextAttemptAt <= DateTime.UtcNow))
+            .Where(m => m.ProcessedAt == null && m.Attempts < MaxAttempts
+                && (m.NextAttemptAt == null || m.NextAttemptAt <= DateTime.UtcNow))
             .OrderBy(m => m.Id)
             .Take(BatchSize)
             .ToListAsync(cancellationToken);
@@ -58,7 +62,10 @@ public class OutboxWorker(IServiceScopeFactory scopeFactory, IMessagePublisher p
                 // Back off exponentially (5s, 10s, 20s, ...) so a broker outage isn't hammered.
                 message.LastError = ex.Message[..Math.Min(ex.Message.Length, 2000)];
                 message.NextAttemptAt = DateTime.UtcNow + RetryDelay(message.Attempts);
-                logger.LogWarning(ex, "Publishing outbox message {MessageId} failed (attempt {Attempts})", message.Id, message.Attempts);
+                if (message.Attempts >= MaxAttempts)
+                    logger.LogError(ex, "Parked outbox message {MessageId} after {Attempts} failed attempts", message.Id, message.Attempts);
+                else
+                    logger.LogWarning(ex, "Publishing outbox message {MessageId} failed (attempt {Attempts})", message.Id, message.Attempts);
             }
 
             await db.SaveChangesAsync(cancellationToken);
