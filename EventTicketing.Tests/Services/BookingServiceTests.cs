@@ -17,7 +17,11 @@ public class BookingServiceTests(IntegrationTestFactory factory) : IClassFixture
     private AppDbContext CreateDb() =>
         factory.Services.CreateScope().ServiceProvider.GetRequiredService<AppDbContext>();
 
-    private BookingService CreateService() => new(CreateDb(), Options.Create(new RabbitMqOptions()));
+    private BookingService CreateService()
+    {
+        var db = CreateDb();
+        return new(db, Options.Create(new RabbitMqOptions()), new AuditLogger(db));
+    }
 
     private async Task<int> CreateEventAsync(int availableSeats)
     {
@@ -157,5 +161,19 @@ public class BookingServiceTests(IntegrationTestFactory factory) : IClassFixture
         await BookAsync(eventId);
 
         Assert.Empty(await QueuedConfirmationsAsync(eventId));
+    }
+
+    [Fact]
+    public async Task BookAsync_RecordsTheBooking()
+    {
+        var eventId = await CreateEventAsync(availableSeats: 3);
+
+        var result = await BookAsync(eventId);
+
+        var entry = await CreateDb().AuditLogs.SingleAsync(
+            a => a.Action == AuditAction.TicketBooked && a.EntityId == result.Order!.Id, TestContext.Current.CancellationToken);
+        Assert.Equal(("Order", "guest@example.com"), (entry.EntityType, entry.UserEmail));
+        Assert.Null(entry.UserId);
+        Assert.Equal(eventId, JsonDocument.Parse(entry.Details!).RootElement.GetProperty("eventId").GetInt32());
     }
 }

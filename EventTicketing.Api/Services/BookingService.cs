@@ -8,7 +8,7 @@ using Microsoft.Extensions.Options;
 
 namespace EventTicketing.Api.Services;
 
-public class BookingService(AppDbContext db, IOptions<RabbitMqOptions> rabbitMq)
+public class BookingService(AppDbContext db, IOptions<RabbitMqOptions> rabbitMq, AuditLogger audit)
 {
     public async Task<BookingResult> BookAsync(int eventId, BookingRequest request, int? userId, CancellationToken cancellationToken)
     {
@@ -50,6 +50,8 @@ public class BookingService(AppDbContext db, IOptions<RabbitMqOptions> rabbitMq)
             RoutingKey = BookingConfirmedMessage.RoutingKey,
             CreatedAt = DateTime.UtcNow,
         });
+        audit.Record(AuditAction.TicketBooked, "Order", order.Id, new AuditActor(userId, request.Email),
+            new { EventId = eventId, EventTitle = ev.Title, order.PriceCents });
         await db.SaveChangesAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
 

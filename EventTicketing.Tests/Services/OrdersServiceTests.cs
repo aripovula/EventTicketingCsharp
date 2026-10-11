@@ -35,7 +35,8 @@ public class OrdersServiceTests(IntegrationTestFactory factory) : IClassFixture<
         };
         db.Events.Add(ev);
         await db.SaveChangesAsync(TestContext.Current.CancellationToken);
-        var result = await new BookingService(CreateDb(), Options.Create(new RabbitMqOptions())).BookAsync(ev.Id, new BookingRequest { Email = email }, userId, TestContext.Current.CancellationToken);
+        var bookingDb = CreateDb();
+        var result = await new BookingService(bookingDb, Options.Create(new RabbitMqOptions()), new AuditLogger(bookingDb)).BookAsync(ev.Id, new BookingRequest { Email = email }, userId, TestContext.Current.CancellationToken);
         return result.Order!;
     }
 
