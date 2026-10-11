@@ -13,6 +13,7 @@ public class OutboxWorker(IServiceScopeFactory scopeFactory, IMessagePublisher p
 {
     private static readonly TimeSpan PollInterval = TimeSpan.FromSeconds(5);
     private const int BatchSize = 20;
+    private static readonly TimeSpan FirstRetryDelay = TimeSpan.FromSeconds(5);
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
@@ -39,17 +40,30 @@ public class OutboxWorker(IServiceScopeFactory scopeFactory, IMessagePublisher p
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
         var messages = await db.OutboxMessages
-            .Where(m => m.ProcessedAt == null)
+            .Where(m => m.ProcessedAt == null && (m.NextAttemptAt == null || m.NextAttemptAt <= DateTime.UtcNow))
             .OrderBy(m => m.Id)
             .Take(BatchSize)
             .ToListAsync(cancellationToken);
 
         foreach (var message in messages)
         {
-            await publisher.PublishAsync(message.Exchange, message.RoutingKey, message.Type, message.Payload, cancellationToken);
             message.Attempts++;
-            message.ProcessedAt = DateTime.UtcNow;
+            try
+            {
+                await publisher.PublishAsync(message.Exchange, message.RoutingKey, message.Type, message.Payload, cancellationToken);
+                message.ProcessedAt = DateTime.UtcNow;
+            }
+            catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
+            {
+                // Back off exponentially (5s, 10s, 20s, ...) so a broker outage isn't hammered.
+                message.LastError = ex.Message[..Math.Min(ex.Message.Length, 2000)];
+                message.NextAttemptAt = DateTime.UtcNow + RetryDelay(message.Attempts);
+                logger.LogWarning(ex, "Publishing outbox message {MessageId} failed (attempt {Attempts})", message.Id, message.Attempts);
+            }
+
             await db.SaveChangesAsync(cancellationToken);
         }
     }
+
+    public static TimeSpan RetryDelay(int attempts) => FirstRetryDelay * Math.Pow(2, attempts - 1);
 }

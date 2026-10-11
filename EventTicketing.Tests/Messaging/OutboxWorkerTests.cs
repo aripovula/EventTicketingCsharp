@@ -75,4 +75,47 @@ public class OutboxWorkerTests(IntegrationTestFactory factory) : IClassFixture<I
         var order = _publisher.Published.Select(p => p.Payload).ToList();
         Assert.True(order.IndexOf(first.Payload) < order.IndexOf(second.Payload));
     }
+
+    [Fact]
+    public async Task ProcessPending_WhenPublishFails_RecordsTheErrorAndSchedulesARetry()
+    {
+        var message = await AddMessageAsync();
+        _publisher.FailWith = new InvalidOperationException("Broker unreachable");
+
+        await ProcessPendingAsync();
+
+        var saved = await ReloadAsync(message);
+        Assert.Null(saved.ProcessedAt);
+        Assert.Equal((1, "Broker unreachable"), (saved.Attempts, saved.LastError));
+        Assert.InRange(saved.NextAttemptAt!.Value, DateTime.UtcNow.AddSeconds(3), DateTime.UtcNow.AddSeconds(6));
+    }
+
+    [Fact]
+    public async Task ProcessPending_WaitsForTheRetryTime()
+    {
+        var message = await AddMessageAsync(m => (m.Attempts, m.NextAttemptAt) = (1, DateTime.UtcNow.AddMinutes(1)));
+
+        await ProcessPendingAsync();
+
+        Assert.DoesNotContain(_publisher.Published, p => p.Payload == message.Payload);
+    }
+
+    [Fact]
+    public async Task ProcessPending_RetriesOnceTheRetryTimeHasPassed()
+    {
+        var message = await AddMessageAsync(m => (m.Attempts, m.NextAttemptAt) = (1, DateTime.UtcNow.AddSeconds(-1)));
+
+        await ProcessPendingAsync();
+
+        var saved = await ReloadAsync(message);
+        Assert.Equal(2, saved.Attempts);
+        Assert.NotNull(saved.ProcessedAt);
+    }
+
+    [Theory]
+    [InlineData(1, 5)]
+    [InlineData(2, 10)]
+    [InlineData(4, 40)]
+    public void RetryDelay_DoublesAfterEachFailure(int attempts, int seconds) =>
+        Assert.Equal(TimeSpan.FromSeconds(seconds), OutboxWorker.RetryDelay(attempts));
 }
