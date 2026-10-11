@@ -10,6 +10,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<Event> Events => Set<Event>();
     public DbSet<Order> Orders => Set<Order>();
     public DbSet<IdempotencyKey> IdempotencyKeys => Set<IdempotencyKey>();
+    public DbSet<OutboxMessage> OutboxMessages => Set<OutboxMessage>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -61,6 +62,17 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         modelBuilder.Entity<IdempotencyKey>()
             .Property(k => k.ResponseBody)
             .HasColumnType("jsonb");
+
+        modelBuilder.Entity<OutboxMessage>()
+            .Property(m => m.Payload)
+            .HasColumnType("jsonb");
+
+        // The worker's poll reads only unprocessed rows in id order; a partial index keeps that
+        // fast however many processed rows pile up.
+        modelBuilder.Entity<OutboxMessage>()
+            .HasIndex(m => m.Id)
+            .HasDatabaseName("ix_outbox_messages_pending")
+            .HasFilter("processed_at IS NULL");
     }
 
     public override int SaveChanges(bool acceptAllChangesOnSuccess)
