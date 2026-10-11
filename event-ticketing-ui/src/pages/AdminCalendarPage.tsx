@@ -51,7 +51,8 @@ export default function AdminCalendarPage() {
 
   function handleEventClick(arg: EventClickArg) {
     const rect = arg.el.getBoundingClientRect()
-    setPopup({ event: arg.event.extendedProps.event as EventItem, top: rect.bottom + 6, left: rect.left })
+    // Page coordinates, so a popup under a low calendar row can still be scrolled into view.
+    setPopup({ event: arg.event.extendedProps.event as EventItem, top: rect.bottom + window.scrollY + 6, left: rect.left + window.scrollX })
   }
 
   if (loading) return <p className="text-gray-500 text-center py-12">Loading...</p>
@@ -109,7 +110,7 @@ export default function AdminCalendarPage() {
           ref={popupRef}
           role="dialog"
           aria-label={popup.event.title}
-          className="fixed z-50 bg-white rounded-xl border border-gray-200 shadow-lg p-4 w-80"
+          className="absolute z-50 bg-white rounded-xl border border-gray-200 shadow-lg p-4 w-80"
           style={{ top: popup.top, left: popup.left }}
         >
           <div className="flex items-start justify-between gap-2 mb-2">

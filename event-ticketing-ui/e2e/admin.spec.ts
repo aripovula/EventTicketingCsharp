@@ -166,6 +166,24 @@ test('clicking a calendar event opens details with a working edit link', async (
   await expect(page.getByLabel('Title')).toHaveValue('Popup Gig')
 })
 
+test('a calendar popup that opens below the window can be scrolled to', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 300 })
+  await signedInAs(page, 'admin')
+  const start = new Date()
+  start.setHours(19, 0, 0, 0)
+  const event = { id: 10, title: 'Low Gig', description: '', startTime: start.toISOString(), endTime: new Date(start.getTime() + 3600000).toISOString(),
+    venue: 'Low Hall', eventType: 'Music', totalSeats: 10, availableSeats: 2, priceCents: 500, imageUrl: null }
+  await page.route('**/api/v1/events?**', route => route.fulfill({ json: { data: [event], errors: [], meta: { nextCursor: null } } }))
+  await page.route('**/api/v1/events/10', route => route.fulfill({ json: { data: event, errors: [] } }))
+  await page.goto('/admin/calendar')
+  await page.getByText('Low Gig – 2').click()
+
+  await page.getByRole('dialog', { name: 'Low Gig' }).getByRole('link', { name: 'Edit' }).click()
+
+  await expect(page).toHaveURL('/admin/10/edit')
+  await expect(page.getByLabel('Title')).toHaveValue('Low Gig')
+})
+
 test('an admin opens all orders from the admin page', async ({ page }) => {
   await signedInAs(page, 'admin')
   await page.route('**/api/v1/admin/orders', route => route.fulfill({ json: { data: [
