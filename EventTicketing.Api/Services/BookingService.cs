@@ -1,11 +1,14 @@
 using EventTicketing.Api.Contracts;
+using System.Text.Json;
 using EventTicketing.Api.Data;
+using EventTicketing.Api.Messaging;
 using EventTicketing.Api.Models;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 
 namespace EventTicketing.Api.Services;
 
-public class BookingService(AppDbContext db)
+public class BookingService(AppDbContext db, IOptions<RabbitMqOptions> rabbitMq)
 {
     public async Task<BookingResult> BookAsync(int eventId, BookingRequest request, int? userId, CancellationToken cancellationToken)
     {
@@ -33,8 +36,22 @@ public class BookingService(AppDbContext db)
             BookedAt = DateTime.UtcNow,
             GuestAccessTokenHash = guestToken is null ? null : SecureToken.Hash(guestToken),
         };
+        // The confirmation message commits or rolls back with the order, so a crash or a
+        // RabbitMQ outage can't leave a booking whose confirmation is never sent.
+        await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
         db.Orders.Add(order);
         await db.SaveChangesAsync(cancellationToken);
+        db.OutboxMessages.Add(new OutboxMessage
+        {
+            Type = nameof(BookingConfirmedMessage),
+            Payload = JsonSerializer.Serialize(new BookingConfirmedMessage(
+                order.Id, eventId, ev.Title, order.Email, order.PriceCents, order.BookedAt)),
+            Exchange = rabbitMq.Value.Exchange,
+            RoutingKey = BookingConfirmedMessage.RoutingKey,
+            CreatedAt = DateTime.UtcNow,
+        });
+        await db.SaveChangesAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
 
         return new BookingResult(BookingStatus.Booked,
             new OrderResponse(order.Id, eventId, ev.Title, ev.Venue, ev.EventType, ev.StartTime, ev.EndTime, order.Email, order.PriceCents, order.BookedAt, guestToken));

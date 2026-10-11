@@ -1,10 +1,13 @@
+using System.Text.Json;
 using EventTicketing.Api.Contracts;
 using EventTicketing.Api.Data;
+using EventTicketing.Api.Messaging;
 using EventTicketing.Api.Models;
 using EventTicketing.Api.Services;
 using EventTicketing.Tests.Integration;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 
 namespace EventTicketing.Tests.Services;
 
@@ -13,6 +16,8 @@ public class BookingServiceTests(IntegrationTestFactory factory) : IClassFixture
 {
     private AppDbContext CreateDb() =>
         factory.Services.CreateScope().ServiceProvider.GetRequiredService<AppDbContext>();
+
+    private BookingService CreateService() => new(CreateDb(), Options.Create(new RabbitMqOptions()));
 
     private async Task<int> CreateEventAsync(int availableSeats)
     {
@@ -33,11 +38,19 @@ public class BookingServiceTests(IntegrationTestFactory factory) : IClassFixture
         return ev.Id;
     }
 
+    private async Task<List<(OutboxMessage Row, BookingConfirmedMessage Message)>> QueuedConfirmationsAsync(int eventId) =>
+        (await CreateDb().OutboxMessages
+            .Where(m => m.Type == nameof(BookingConfirmedMessage))
+            .ToListAsync(TestContext.Current.CancellationToken))
+        .Select(row => (row, JsonSerializer.Deserialize<BookingConfirmedMessage>(row.Payload)!))
+        .Where(queued => queued.Item2.EventId == eventId)
+        .ToList();
+
     private async Task<int> AvailableSeatsAsync(int eventId) =>
         (await CreateDb().Events.SingleAsync(e => e.Id == eventId, TestContext.Current.CancellationToken)).AvailableSeats;
 
     private Task<BookingResult> BookAsync(int eventId) =>
-        new BookingService(CreateDb()).BookAsync(
+        CreateService().BookAsync(
             eventId, new BookingRequest { Email = "guest@example.com" }, null, TestContext.Current.CancellationToken);
 
     [Fact]
@@ -76,7 +89,7 @@ public class BookingServiceTests(IntegrationTestFactory factory) : IClassFixture
         var eventId = await CreateEventAsync(availableSeats: 5);
         var john = await CreateDb().Users.SingleAsync(u => u.Email == "john@example.com", TestContext.Current.CancellationToken);
 
-        var result = await new BookingService(CreateDb()).BookAsync(
+        var result = await CreateService().BookAsync(
             eventId, new BookingRequest { Email = "john@example.com" }, john.Id, TestContext.Current.CancellationToken);
 
         Assert.NotNull(result.Order);
@@ -116,11 +129,33 @@ public class BookingServiceTests(IntegrationTestFactory factory) : IClassFixture
         var eventId = await CreateEventAsync(availableSeats: 5);
         var john = await CreateDb().Users.SingleAsync(u => u.Email == "john@example.com", TestContext.Current.CancellationToken);
 
-        var result = await new BookingService(CreateDb()).BookAsync(
+        var result = await CreateService().BookAsync(
             eventId, new BookingRequest { Email = "john@example.com" }, john.Id, TestContext.Current.CancellationToken);
 
         Assert.Null(result.Order!.GuestAccessToken);
         var saved = await CreateDb().Orders.SingleAsync(o => o.Id == result.Order.Id, TestContext.Current.CancellationToken);
         Assert.Null(saved.GuestAccessTokenHash);
+    }
+
+    [Fact]
+    public async Task BookAsync_QueuesABookingConfirmedMessageWithTheOrder()
+    {
+        var eventId = await CreateEventAsync(availableSeats: 5);
+
+        var result = await BookAsync(eventId);
+
+        var (row, message) = Assert.Single(await QueuedConfirmationsAsync(eventId));
+        Assert.Equal((result.Order!.Id, "guest@example.com", 2500), (message.OrderId, message.Email, message.PriceCents));
+        Assert.Equal(("ticketing", "booking.confirmed"), (row.Exchange, row.RoutingKey));
+    }
+
+    [Fact]
+    public async Task BookAsync_WhenSoldOut_QueuesNoMessage()
+    {
+        var eventId = await CreateEventAsync(availableSeats: 0);
+
+        await BookAsync(eventId);
+
+        Assert.Empty(await QueuedConfirmationsAsync(eventId));
     }
 }

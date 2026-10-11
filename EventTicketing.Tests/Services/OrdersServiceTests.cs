@@ -1,10 +1,12 @@
 using EventTicketing.Api.Contracts;
 using EventTicketing.Api.Data;
+using EventTicketing.Api.Messaging;
 using EventTicketing.Api.Models;
 using EventTicketing.Api.Services;
 using EventTicketing.Tests.Integration;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 
 namespace EventTicketing.Tests.Services;
 
@@ -33,7 +35,7 @@ public class OrdersServiceTests(IntegrationTestFactory factory) : IClassFixture<
         };
         db.Events.Add(ev);
         await db.SaveChangesAsync(TestContext.Current.CancellationToken);
-        var result = await new BookingService(CreateDb()).BookAsync(ev.Id, new BookingRequest { Email = email }, userId, TestContext.Current.CancellationToken);
+        var result = await new BookingService(CreateDb(), Options.Create(new RabbitMqOptions())).BookAsync(ev.Id, new BookingRequest { Email = email }, userId, TestContext.Current.CancellationToken);
         return result.Order!;
     }
 
