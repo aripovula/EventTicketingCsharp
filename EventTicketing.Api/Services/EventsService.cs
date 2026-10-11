@@ -119,11 +119,17 @@ public class EventsService(AppDbContext db, HybridCache cache, AuditLogger audit
     }
 
     /// <returns>False when no event has the given id.</returns>
-    public async Task<bool> DeleteAsync(int id, CancellationToken cancellationToken)
+    public async Task<bool> DeleteAsync(int id, AuditActor actor, CancellationToken cancellationToken)
     {
-        if (await db.Events.Where(e => e.Id == id).ExecuteDeleteAsync(cancellationToken) == 0)
+        await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
+        // Read the title for the audit entry before the row is gone.
+        var title = await db.Events.Where(e => e.Id == id).Select(e => e.Title).SingleOrDefaultAsync(cancellationToken);
+        if (title is null || await db.Events.Where(e => e.Id == id).ExecuteDeleteAsync(cancellationToken) == 0)
             return false;
 
+        audit.Record(AuditAction.EventDeleted, "Event", id, actor, new { Title = title });
+        await db.SaveChangesAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
         await EvictListPagesAsync();
         return true;
     }

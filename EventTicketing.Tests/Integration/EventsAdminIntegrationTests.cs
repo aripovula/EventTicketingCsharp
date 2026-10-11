@@ -189,6 +189,17 @@ public class EventsAdminIntegrationTests(IntegrationTestFactory factory) : IClas
     }
 
     [Fact]
+    public async Task Delete_AsAdmin_RecordsWhoDeletedIt()
+    {
+        var admin = await SignedInAsync("admin@example.com");
+        var id = await CreateAsAdminAsync(admin, "Audited Farewell");
+
+        await admin.DeleteAsync($"/api/v1/events/{id}", TestContext.Current.CancellationToken);
+
+        AssertRecordedForAdmin(await AuditEntryAsync(AuditAction.EventDeleted, id), "Audited Farewell");
+    }
+
+    [Fact]
     public async Task Delete_UnknownEvent_Returns404()
     {
         var admin = await SignedInAsync("admin@example.com");

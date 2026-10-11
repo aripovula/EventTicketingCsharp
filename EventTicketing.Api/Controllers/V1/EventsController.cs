@@ -80,7 +80,7 @@ public class EventsController(EventsService eventsService, BookingService bookin
     [ProducesResponseType(typeof(ApiEnvelope<object>), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Delete(int id, CancellationToken cancellationToken)
     {
-        if (!await eventsService.DeleteAsync(id, cancellationToken))
+        if (!await eventsService.DeleteAsync(id, AuditActor.FromClaims(User), cancellationToken))
             return NotFound(new ApiEnvelope(null, [new ApiError("not_found", "Event not found.")]));
 
         await hub.Clients.All.SendAsync(TicketingEvents.EventDeleted, id, CancellationToken.None);
