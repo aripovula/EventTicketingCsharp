@@ -54,7 +54,8 @@ export default function MyCalendarPage() {
 
   function handleEventClick(arg: EventClickArg) {
     const rect = arg.el.getBoundingClientRect()
-    setPopup({ order: arg.event.extendedProps.order as OrderItem, top: rect.bottom + 6, left: rect.left })
+    // Page coordinates, so a popup under a low calendar row can still be scrolled into view.
+    setPopup({ order: arg.event.extendedProps.order as OrderItem, top: rect.bottom + window.scrollY + 6, left: rect.left + window.scrollX })
   }
 
   return (
@@ -94,7 +95,7 @@ export default function MyCalendarPage() {
           ref={popupRef}
           role="dialog"
           aria-label={popup.order.eventTitle}
-          className="fixed z-50 bg-white rounded-xl border border-gray-200 shadow-lg p-4 w-72"
+          className="absolute z-50 bg-white rounded-xl border border-gray-200 shadow-lg p-4 w-72"
           style={{ top: popup.top, left: popup.left }}
         >
           <div className="flex items-start justify-between gap-2 mb-2">
