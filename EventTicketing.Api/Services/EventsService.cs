@@ -8,7 +8,7 @@ using Microsoft.Extensions.Caching.Hybrid;
 
 namespace EventTicketing.Api.Services;
 
-public class EventsService(AppDbContext db, HybridCache cache)
+public class EventsService(AppDbContext db, HybridCache cache, AuditLogger audit)
 {
     /// <summary>Tag on every cached event-list page, so one call evicts them all.</summary>
     public const string ListCacheTag = "events";
@@ -68,7 +68,7 @@ public class EventsService(AppDbContext db, HybridCache cache)
     public Task<EventResponse?> GetAsync(int id, CancellationToken cancellationToken) =>
         db.Events.Where(e => e.Id == id).Select(ToResponse).SingleOrDefaultAsync(cancellationToken);
 
-    public async Task<EventResponse> CreateAsync(EventRequest request, CancellationToken cancellationToken)
+    public async Task<EventResponse> CreateAsync(EventRequest request, AuditActor actor, CancellationToken cancellationToken)
     {
         var ev = new Event
         {
@@ -83,8 +83,13 @@ public class EventsService(AppDbContext db, HybridCache cache)
             PriceCents = request.PriceCents,
             ImageUrl = request.ImageUrl,
         };
+        // The audit entry needs the new id, so save twice inside one transaction.
+        await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
         db.Events.Add(ev);
         await db.SaveChangesAsync(cancellationToken);
+        audit.Record(AuditAction.EventCreated, "Event", ev.Id, actor, new { ev.Title });
+        await db.SaveChangesAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
         await EvictListPagesAsync();
 
         return ToResponseCompiled(ev);

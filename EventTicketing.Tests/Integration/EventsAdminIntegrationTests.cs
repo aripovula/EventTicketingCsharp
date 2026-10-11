@@ -1,6 +1,11 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
+using EventTicketing.Api.Data;
+using EventTicketing.Api.Models;
+using EventTicketing.Api.Services;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace EventTicketing.Tests.Integration;
 
@@ -28,6 +33,20 @@ public class EventsAdminIntegrationTests(IntegrationTestFactory factory) : IClas
             "/api/v1/auth/login", new { email, password = "Password" }, TestContext.Current.CancellationToken);
         login.EnsureSuccessStatusCode();
         return client;
+    }
+
+    private async Task<AuditLog> AuditEntryAsync(string action, int eventId)
+    {
+        using var scope = factory.Services.CreateScope();
+        return await scope.ServiceProvider.GetRequiredService<AppDbContext>().AuditLogs
+            .SingleAsync(a => a.Action == action && a.EntityType == "Event" && a.EntityId == eventId, TestContext.Current.CancellationToken);
+    }
+
+    private static void AssertRecordedForAdmin(AuditLog entry, string title)
+    {
+        Assert.NotNull(entry.UserId);
+        Assert.Equal("admin@example.com", entry.UserEmail);
+        Assert.Equal(title, JsonDocument.Parse(entry.Details!).RootElement.GetProperty("title").GetString());
     }
 
     [Fact]
@@ -94,6 +113,14 @@ public class EventsAdminIntegrationTests(IntegrationTestFactory factory) : IClas
         var response = await admin.PostAsJsonAsync("/api/v1/events", NewEvent(title), TestContext.Current.CancellationToken);
         return JsonDocument.Parse(await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken))
             .RootElement.GetProperty("data").GetProperty("id").GetInt32();
+    }
+
+    [Fact]
+    public async Task Create_AsAdmin_RecordsWhoCreatedIt()
+    {
+        var id = await CreateAsAdminAsync(await SignedInAsync("admin@example.com"), "Audited Gig");
+
+        AssertRecordedForAdmin(await AuditEntryAsync(AuditAction.EventCreated, id), "Audited Gig");
     }
 
     [Fact]

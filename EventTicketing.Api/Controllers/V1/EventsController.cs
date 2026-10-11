@@ -49,7 +49,7 @@ public class EventsController(EventsService eventsService, BookingService bookin
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<IActionResult> Create(EventRequest request, CancellationToken cancellationToken)
     {
-        var ev = await eventsService.CreateAsync(request, cancellationToken);
+        var ev = await eventsService.CreateAsync(request, AuditActor.FromClaims(User), cancellationToken);
         await hub.Clients.All.SendAsync(TicketingEvents.EventCreated, ev.Id, CancellationToken.None);
         return CreatedAtAction(nameof(Get), new { id = ev.Id }, ev);
     }
