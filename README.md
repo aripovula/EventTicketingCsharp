@@ -24,3 +24,19 @@ For a guest booking, the remembered response includes the guest's order access t
 The check is read-then-write: the `[Idempotent]` filter looks the key up, finds nothing, lets the booking run, then stores the response. If two requests with the **same key** arrive at the same moment, both can pass the lookup before either has stored its response, and both book a seat. The second store then fails on the unique index on `(key, request_path)`, and we ignore that failure, so each caller gets its own (different) order.
 
 The window is narrow, but it is a real gap. The fix is to claim the key first: insert a pending row under the unique index *before* running the action, so the second request finds the claim and waits for (or replays) the first response instead of booking again.
+
+## Booking confirmations: transactional outbox + RabbitMQ
+
+When a booking succeeds, we tell the rest of the system with a `BookingConfirmedMessage` on RabbitMQ. Today one consumer logs it; a confirmation email or analytics would be more consumers.
+
+**Why RabbitMQ, not Kafka.** Confirmations are a work queue: each one must be handled once, acknowledged, and redelivered if the worker dies halfway. Per-message acknowledgements, durable queues and dead-letter exchanges are exactly that. We don't need to replay history, which is what Kafka is for. A new consumer binds its own queue to the `ticketing` topic exchange without touching booking code.
+
+**Why an outbox.** Publishing straight from the booking request has a gap: the order commits, then the app crashes (or RabbitMQ is down) before the publish, and the confirmation is lost. Instead, we save the message in an `outbox_messages` row in the **same database transaction** as the order: both commit or neither does. A background `OutboxWorker` then publishes pending rows.
+
+- The worker polls every 5 seconds and marks a row processed only after the broker **confirms** it (publisher confirms, persistent messages, and mandatory routing, so "no queue would receive this" is an error rather than a silent drop).
+- A failed publish is retried with exponential backoff (5s, 10s, 20s, 40s). After 5 failed attempts the row is **parked**: left unprocessed, with its last error, for a person to look at.
+- Delivery is at-least-once: a crash between the publish and saving the row sends the message again, so consumers must tolerate duplicates (the `OrderId` identifies one).
+
+**Consumer side.** `BookingConfirmationConsumer` acknowledges each message only after handling it. A message it can't read is rejected without requeueing, and the queue's dead-letter exchange (`ticketing.dlx`) moves it to `booking-confirmed.dead` for inspection instead of redelivering it forever.
+
+`GET /health/ready` checks RabbitMQ alongside PostgreSQL and Redis.
