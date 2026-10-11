@@ -40,3 +40,25 @@ When a booking succeeds, we tell the rest of the system with a `BookingConfirmed
 **Consumer side.** `BookingConfirmationConsumer` acknowledges each message only after handling it. A message it can't read is rejected without requeueing, and the queue's dead-letter exchange (`ticketing.dlx`) moves it to `booking-confirmed.dead` for inspection instead of redelivering it forever.
 
 `GET /health/ready` checks RabbitMQ alongside PostgreSQL and Redis.
+
+## Audit logging
+
+We keep an audit trail in the `audit_logs` table:
+
+| Action | Recorded when |
+|---|---|
+| `EventCreated`, `EventUpdated`, `EventDeleted` | an admin changes the catalogue |
+| `TicketBooked` | anyone books a ticket, guests included |
+| `UserLoggedIn` | a sign-in succeeds |
+| `UserLoginFailed` | a sign-in fails, for an unknown email or a wrong password |
+
+Each row records the action, the entity it touched (`entity_type`, `entity_id`), the acting user's id and email when we know them, a little context as `jsonb` (such as the event title), and `created_at`.
+
+- The audit row is saved in the **same transaction** as the change it records, so there is never a change without its entry, or an entry for a change that rolled back.
+- The table has no foreign keys, so the trail outlives the events and users it mentions.
+- We don't have an endpoint for reading the trail yet; we query it in PostgreSQL:
+
+```sql
+SELECT created_at, action, entity_type, entity_id, user_email, details
+FROM audit_logs ORDER BY id DESC LIMIT 20;
+```
