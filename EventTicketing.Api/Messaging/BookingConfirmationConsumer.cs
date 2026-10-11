@@ -52,7 +52,24 @@ public class BookingConfirmationConsumer(
 
     private async Task HandleAsync(IChannel channel, BasicDeliverEventArgs delivery)
     {
-        var message = JsonSerializer.Deserialize<BookingConfirmedMessage>(delivery.Body.Span)!;
+        BookingConfirmedMessage? message;
+        try
+        {
+            message = JsonSerializer.Deserialize<BookingConfirmedMessage>(delivery.Body.Span);
+        }
+        catch (JsonException)
+        {
+            message = null;
+        }
+
+        if (message is null)
+        {
+            // Redelivering can't fix an unreadable message, so reject it to the dead-letter queue.
+            logger.LogError("Dead-lettering an unreadable booking confirmation ({Bytes} bytes)", delivery.Body.Length);
+            await channel.BasicNackAsync(delivery.DeliveryTag, multiple: false, requeue: false);
+            return;
+        }
+
         logger.LogInformation("Booking confirmed: order {OrderId} for event {EventId} ({EventTitle})",
             message.OrderId, message.EventId, message.EventTitle);
         await channel.BasicAckAsync(delivery.DeliveryTag, multiple: false);

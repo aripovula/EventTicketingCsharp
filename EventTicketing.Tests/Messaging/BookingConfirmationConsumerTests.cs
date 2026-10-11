@@ -48,4 +48,16 @@ public sealed class BookingConfirmationConsumerTests : IAsyncDisposable
         // Closing the consumer's channel would put an unacknowledged message back on the queue.
         Assert.Equal(0u, await _rabbitMq.MessageCountAsync(_rabbitMq.Names.BookingConfirmedQueue));
     }
+
+    [Fact]
+    public async Task DeadLettersAnUnreadableMessage()
+    {
+        var consumer = await StartConsumerAsync();
+
+        await PublishAsync("not json");
+
+        await EventuallyAsync(async () => await _rabbitMq.MessageCountAsync(RabbitMqTopology.DeadLetterQueue(_rabbitMq.Names)) == 1);
+        await consumer.StopAsync(TestContext.Current.CancellationToken);
+        Assert.Equal(0u, await _rabbitMq.MessageCountAsync(_rabbitMq.Names.BookingConfirmedQueue));
+    }
 }

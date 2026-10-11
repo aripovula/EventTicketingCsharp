@@ -41,7 +41,9 @@ public sealed class TestRabbitMq : IAsyncDisposable
         await using (var channel = await OpenChannelAsync())
         {
             await channel.QueueDeleteAsync(Names.BookingConfirmedQueue);
+            await channel.QueueDeleteAsync(RabbitMqTopology.DeadLetterQueue(Names));
             await channel.ExchangeDeleteAsync(Names.Exchange);
+            await channel.ExchangeDeleteAsync(Names.DeadLetterExchange);
         }
 
         await Connection.DisposeAsync();
