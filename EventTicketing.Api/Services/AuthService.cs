@@ -13,11 +13,17 @@ public class AuthService(AppDbContext db, AuditLogger audit)
     {
         var user = await db.Users.SingleOrDefaultAsync(u => u.Email == request.Email, cancellationToken);
         if (user is null)
+        {
+            await RecordAsync(AuditAction.UserLoginFailed, null, new AuditActor(null, request.Email), cancellationToken);
             return null;
+        }
 
         var result = new PasswordHasher<User>().VerifyHashedPassword(user, user.PasswordHash, request.Password);
         if (result == PasswordVerificationResult.Failed)
+        {
+            await RecordAsync(AuditAction.UserLoginFailed, user.Id, new AuditActor(user.Id, user.Email), cancellationToken);
             return null;
+        }
 
         await RecordAsync(AuditAction.UserLoggedIn, user.Id, new AuditActor(user.Id, user.Email), cancellationToken);
         return new UserInfo(user.Id, user.Name, user.Email, user.Role);

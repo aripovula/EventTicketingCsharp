@@ -65,6 +65,28 @@ public class AuthServiceTests(IntegrationTestFactory factory) : IClassFixture<In
     }
 
     [Fact]
+    public async Task LoginAsync_RecordsAFailedSignInForAnUnknownEmail()
+    {
+        await CreateService().LoginAsync(new LoginRequest("stranger@example.com", "whatever"), TestContext.Current.CancellationToken);
+
+        var entry = Assert.Single(await AuditEntriesAsync(AuditAction.UserLoginFailed, "stranger@example.com"));
+        Assert.Null(entry.EntityId);
+        Assert.Null(entry.UserId);
+    }
+
+    [Fact]
+    public async Task LoginAsync_RecordsAFailedSignInForAWrongPassword()
+    {
+        var before = await AuditEntriesAsync(AuditAction.UserLoginFailed, "jane@example.com");
+
+        await CreateService().LoginAsync(new LoginRequest("jane@example.com", "wrong-password"), TestContext.Current.CancellationToken);
+
+        var after = await AuditEntriesAsync(AuditAction.UserLoginFailed, "jane@example.com");
+        Assert.Equal(before.Count + 1, after.Count);
+        Assert.NotNull(after[^1].UserId);
+    }
+
+    [Fact]
     public async Task RegisterAsync_CreatesARegularUserWhoCanThenSignIn()
     {
         var registered = await CreateService().RegisterAsync(
