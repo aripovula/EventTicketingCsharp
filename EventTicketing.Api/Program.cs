@@ -3,6 +3,7 @@ using System.Threading.RateLimiting;
 using EventTicketing.Api.Data;
 using EventTicketing.Api.Filters;
 using EventTicketing.Api.Hubs;
+using EventTicketing.Api.Messaging;
 using EventTicketing.Api.Middleware;
 using EventTicketing.Api.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -89,6 +90,7 @@ builder.Services.AddRateLimiter(options =>
                 QueueLimit = 0,
             }));
 });
+builder.Services.AddOptions<RabbitMqOptions>().Bind(builder.Configuration.GetSection(RabbitMqOptions.SectionName));
 builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<TokenService>();
 builder.Services.AddScoped<RefreshTokenService>();
