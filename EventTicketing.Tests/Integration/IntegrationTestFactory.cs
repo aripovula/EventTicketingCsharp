@@ -7,6 +7,11 @@ namespace EventTicketing.Tests.Integration;
 
 public class IntegrationTestFactory : WebApplicationFactory<Program>, IAsyncLifetime
 {
+    // Each test host would otherwise watch its appsettings files, and dozens of hosts exhaust
+    // Linux's per-user inotify limit (128 by default). Tests never change config files mid-run.
+    static IntegrationTestFactory() =>
+        Environment.SetEnvironmentVariable("DOTNET_hostBuilder__reloadConfigOnChange", "false");
+
     private readonly string _connectionString =
         $"Host=localhost;Database=event_ticketing_test_{Guid.NewGuid():N}";
 
