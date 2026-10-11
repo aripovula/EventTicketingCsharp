@@ -7,7 +7,7 @@ using Npgsql;
 
 namespace EventTicketing.Api.Services;
 
-public class AuthService(AppDbContext db)
+public class AuthService(AppDbContext db, AuditLogger audit)
 {
     public async Task<UserInfo?> LoginAsync(LoginRequest request, CancellationToken cancellationToken)
     {
@@ -19,7 +19,14 @@ public class AuthService(AppDbContext db)
         if (result == PasswordVerificationResult.Failed)
             return null;
 
+        await RecordAsync(AuditAction.UserLoggedIn, user.Id, new AuditActor(user.Id, user.Email), cancellationToken);
         return new UserInfo(user.Id, user.Name, user.Email, user.Role);
+    }
+
+    private async Task RecordAsync(string action, int? userId, AuditActor actor, CancellationToken cancellationToken)
+    {
+        audit.Record(action, "User", userId, actor);
+        await db.SaveChangesAsync(cancellationToken);
     }
 
     public async Task<UserInfo?> RegisterAsync(RegisterRequest request, CancellationToken cancellationToken)
