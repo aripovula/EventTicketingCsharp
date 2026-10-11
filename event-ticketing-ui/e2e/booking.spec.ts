@@ -55,3 +55,23 @@ test('booking too often asks the visitor to wait', async ({ page }) => {
 
   await expect(page.getByRole('dialog').getByRole('alert')).toHaveText('Too many booking attempts. Please try again in 30 seconds.')
 })
+
+test('a retried booking reuses its idempotency key', async ({ page }) => {
+  await page.route('**/api/v1/events/1', route => route.fulfill({ json: { data: event, errors: [] } }))
+  const keys: string[] = []
+  await page.route('**/api/v1/events/1/bookings', route => {
+    keys.push(route.request().headers()['idempotency-key'])
+    return route.fulfill({ status: 500, body: 'oops' })
+  })
+  await page.goto('/events/1')
+
+  await page.getByRole('button', { name: 'Buy ticket' }).click()
+  await page.getByRole('dialog').getByLabel('Email').fill('guest@example.com')
+  await page.getByRole('button', { name: 'Place order' }).click()
+  await expect(page.getByRole('dialog').getByRole('alert')).toBeVisible()
+  await page.getByRole('button', { name: 'Place order' }).click()
+
+  await expect.poll(() => keys.length).toBe(2)
+  expect(keys[0]).toMatch(/^[0-9a-f-]{36}$/)
+  expect(keys[1]).toBe(keys[0])
+})

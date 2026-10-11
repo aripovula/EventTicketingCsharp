@@ -15,6 +15,8 @@ export default function EventDetailPage() {
   const [loading, setLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
   const [modalOpen, setModalOpen] = useState(false)
+  // One key per booking attempt: retrying from the same modal can't book twice; reopening it starts afresh.
+  const [idempotencyKey, setIdempotencyKey] = useState('')
   const [bookingError, setBookingError] = useState<string | null>(null)
   const navigate = useNavigate()
   const { user } = useAuth()
@@ -52,7 +54,7 @@ export default function EventDetailPage() {
 
   async function handleConfirmBooking(email: string) {
     setBookingError(null)
-    const res = await bookEvent(event!.id, email).catch(() => null)
+    const res = await bookEvent(event!.id, email, idempotencyKey).catch(() => null)
     if (res?.ok) {
       const order = (await res.json()).data
       // Guests can only reach their order through the token, so it rides along in the link.
@@ -96,7 +98,7 @@ export default function EventDetailPage() {
               </p>
             </div>
             <button
-              onClick={() => setModalOpen(true)}
+              onClick={() => { setIdempotencyKey(crypto.randomUUID()); setModalOpen(true) }}
               disabled={soldOut}
               className="bg-cyan-600 text-white px-6 py-2.5 rounded-lg font-medium hover:bg-cyan-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
             >

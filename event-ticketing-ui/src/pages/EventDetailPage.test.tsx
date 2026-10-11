@@ -114,6 +114,32 @@ describe('EventDetailPage', () => {
     return fetchMock
   }
 
+  it('sends one idempotency key per booking attempt', async () => {
+    const fetchMock = stubEventThenBooking(new Response('oops', { status: 500 }))
+    fetchMock.mockImplementation((_: string, init?: RequestInit) => Promise.resolve(init?.method === 'POST'
+      ? new Response('oops', { status: 500 })
+      : new Response(JSON.stringify({ data: makeEvent(), errors: [] }))))
+    renderPage()
+    const keys = () => fetchMock.mock.calls
+      .filter(([, init]) => init?.method === 'POST')
+      .map(([, init]) => (init!.headers as Record<string, string>)['Idempotency-Key'])
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Buy ticket' }))
+    await userEvent.type(screen.getByLabelText('Email'), 'guest@example.com')
+    await userEvent.click(screen.getByRole('button', { name: 'Place order' }))
+    await userEvent.click(await screen.findByRole('button', { name: 'Place order' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Buy ticket' }))
+    await userEvent.type(screen.getByLabelText('Email'), 'guest@example.com')
+    await userEvent.click(screen.getByRole('button', { name: 'Place order' }))
+
+    await waitFor(() => expect(keys()).toHaveLength(3))
+    const [first, retry, reopened] = keys()
+    expect(first).toMatch(/^[0-9a-f-]{36}$/)
+    expect(retry).toBe(first)
+    expect(reopened).not.toBe(first)
+  })
+
   it('disables buying when sold out', async () => {
     stubEvent(makeEvent({ availableSeats: 0 }))
     renderPage()
