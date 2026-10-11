@@ -117,7 +117,8 @@ builder.Services.AddHybridCache(options => options.DefaultEntryOptions = new Hyb
 });
 builder.Services.AddHealthChecks()
     .AddDbContextCheck<AppDbContext>(name: "database", tags: ["ready"])
-    .AddRedis(builder.Configuration.GetConnectionString("Redis")!, name: "redis", tags: ["ready"]);
+    .AddRedis(builder.Configuration.GetConnectionString("Redis")!, name: "redis", tags: ["ready"])
+    .AddRabbitMQ(sp => sp.GetRequiredService<RabbitMqConnection>().GetAsync(CancellationToken.None), name: "rabbitmq", tags: ["ready"]);
 builder.Services.AddSwaggerGen(options =>
 {
     options.SwaggerDoc("v1", new OpenApiInfo

@@ -37,4 +37,16 @@ public class HealthCheckIntegrationTests(IntegrationTestFactory factory) : IClas
         Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
         Assert.Equal("Unhealthy", await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
     }
+
+    [Fact]
+    public async Task Readiness_WithRabbitMqUnreachable_ReturnsUnhealthy()
+    {
+        using var client = factory.WithWebHostBuilder(builder =>
+            builder.UseSetting("ConnectionStrings:RabbitMq", "amqp://localhost:1")).CreateClient();
+
+        var response = await client.GetAsync("/health/ready", TestContext.Current.CancellationToken);
+
+        Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
+        Assert.Equal("Unhealthy", await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
+    }
 }
