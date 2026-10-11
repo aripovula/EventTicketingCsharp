@@ -11,6 +11,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<Order> Orders => Set<Order>();
     public DbSet<IdempotencyKey> IdempotencyKeys => Set<IdempotencyKey>();
     public DbSet<OutboxMessage> OutboxMessages => Set<OutboxMessage>();
+    public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -73,6 +74,10 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             .HasIndex(m => m.Id)
             .HasDatabaseName("ix_outbox_messages_pending")
             .HasFilter("processed_at IS NULL");
+
+        modelBuilder.Entity<AuditLog>()
+            .Property(a => a.Details)
+            .HasColumnType("jsonb");
     }
 
     public override int SaveChanges(bool acceptAllChangesOnSuccess)
