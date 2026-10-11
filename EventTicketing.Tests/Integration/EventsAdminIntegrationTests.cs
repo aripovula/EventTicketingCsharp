@@ -137,6 +137,17 @@ public class EventsAdminIntegrationTests(IntegrationTestFactory factory) : IClas
     }
 
     [Fact]
+    public async Task Update_AsAdmin_RecordsWhoUpdatedIt()
+    {
+        var admin = await SignedInAsync("admin@example.com");
+        var id = await CreateAsAdminAsync(admin, "Before Audit");
+
+        await admin.PutAsJsonAsync($"/api/v1/events/{id}", NewEvent("After Audit"), TestContext.Current.CancellationToken);
+
+        AssertRecordedForAdmin(await AuditEntryAsync(AuditAction.EventUpdated, id), "After Audit");
+    }
+
+    [Fact]
     public async Task Update_UnknownEvent_Returns404()
     {
         var admin = await SignedInAsync("admin@example.com");

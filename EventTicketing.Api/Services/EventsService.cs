@@ -96,7 +96,7 @@ public class EventsService(AppDbContext db, HybridCache cache, AuditLogger audit
     }
 
     /// <returns>False when no event has the given id.</returns>
-    public async Task<bool> UpdateAsync(int id, EventRequest request, CancellationToken cancellationToken)
+    public async Task<bool> UpdateAsync(int id, EventRequest request, AuditActor actor, CancellationToken cancellationToken)
     {
         var ev = await db.Events.FindAsync([id], cancellationToken);
         if (ev is null)
@@ -112,6 +112,7 @@ public class EventsService(AppDbContext db, HybridCache cache, AuditLogger audit
         ev.AvailableSeats = request.AvailableSeats;
         ev.PriceCents = request.PriceCents;
         ev.ImageUrl = request.ImageUrl;
+        audit.Record(AuditAction.EventUpdated, "Event", id, actor, new { ev.Title });
         await db.SaveChangesAsync(cancellationToken);
         await EvictListPagesAsync();
         return true;

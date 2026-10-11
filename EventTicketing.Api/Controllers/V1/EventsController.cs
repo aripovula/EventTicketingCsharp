@@ -64,7 +64,7 @@ public class EventsController(EventsService eventsService, BookingService bookin
     [ProducesResponseType(typeof(ApiEnvelope<object>), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Update(int id, EventRequest request, CancellationToken cancellationToken)
     {
-        if (!await eventsService.UpdateAsync(id, request, cancellationToken))
+        if (!await eventsService.UpdateAsync(id, request, AuditActor.FromClaims(User), cancellationToken))
             return NotFound(new ApiEnvelope(null, [new ApiError("not_found", "Event not found.")]));
 
         await hub.Clients.All.SendAsync(TicketingEvents.EventUpdated, id, CancellationToken.None);
