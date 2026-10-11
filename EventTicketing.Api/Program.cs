@@ -98,6 +98,7 @@ builder.Services.AddScoped<EventsService>();
 builder.Services.AddScoped<BookingService>();
 builder.Services.AddScoped<OrdersService>();
 builder.Services.AddScoped<IdempotencyService>();
+builder.Services.AddScoped<AuditLogger>();
 builder.Services.AddSignalR();
 builder.Services.AddSingleton<RabbitMqConnection>();
 builder.Services.AddSingleton<IMessagePublisher, RabbitMqPublisher>();
