@@ -1,7 +1,10 @@
 using EventTicketing.Api.Data;
+using EventTicketing.Api.Messaging;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
+using RabbitMQ.Client;
 
 namespace EventTicketing.Tests.Integration;
 
@@ -15,6 +18,8 @@ public class IntegrationTestFactory : WebApplicationFactory<Program>, IAsyncLife
     private readonly string _connectionString =
         $"Host=localhost;Database=event_ticketing_test_{Guid.NewGuid():N}";
 
+    private readonly string _rabbitMqPrefix = $"test-{Guid.NewGuid():N}";
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseSetting("ConnectionStrings:Default", _connectionString);
@@ -24,6 +29,10 @@ public class IntegrationTestFactory : WebApplicationFactory<Program>, IAsyncLife
         builder.UseSetting("RateLimiting:GlobalPermitLimit", "100000");
         builder.UseSetting("RateLimiting:BookingPermitLimit", "100000");
         builder.UseSetting("Redis:InstanceName", $"event-ticketing-test-{Guid.NewGuid():N}:");
+        // Likewise its own RabbitMQ exchanges and queues, so hosts never consume each other's messages.
+        builder.UseSetting("RabbitMq:Exchange", $"{_rabbitMqPrefix}.ticketing");
+        builder.UseSetting("RabbitMq:DeadLetterExchange", $"{_rabbitMqPrefix}.ticketing.dlx");
+        builder.UseSetting("RabbitMq:BookingConfirmedQueue", $"{_rabbitMqPrefix}.booking-confirmed");
     }
 
     public ValueTask InitializeAsync()
@@ -40,6 +49,20 @@ public class IntegrationTestFactory : WebApplicationFactory<Program>, IAsyncLife
             await scope.ServiceProvider.GetRequiredService<AppDbContext>().Database.EnsureDeletedAsync();
         }
 
+        await DeleteRabbitMqTopologyAsync();
+
         await base.DisposeAsync();
+    }
+
+    private async Task DeleteRabbitMqTopologyAsync()
+    {
+        var names = Services.GetRequiredService<IOptions<RabbitMqOptions>>().Value;
+        var connection = await Services.GetRequiredService<RabbitMqConnection>().GetAsync(CancellationToken.None);
+        await using var channel = await connection.CreateChannelAsync();
+        // Deleting is idempotent, so hosts that never touched the broker are fine too.
+        await channel.QueueDeleteAsync(names.BookingConfirmedQueue);
+        await channel.QueueDeleteAsync(RabbitMqTopology.DeadLetterQueue(names));
+        await channel.ExchangeDeleteAsync(names.Exchange);
+        await channel.ExchangeDeleteAsync(names.DeadLetterExchange);
     }
 }
