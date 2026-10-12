@@ -7,6 +7,7 @@ using EventTicketing.Api.Services;
 using EventTicketing.Tests.Integration;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 
 namespace EventTicketing.Tests.Services;
@@ -37,7 +38,8 @@ public class OrdersServiceTests(IntegrationTestFactory factory) : IClassFixture<
         db.Events.Add(ev);
         await db.SaveChangesAsync(TestContext.Current.CancellationToken);
         var bookingDb = CreateDb();
-        var result = await new BookingService(bookingDb, Options.Create(new RabbitMqOptions()), new AuditLogger(bookingDb), new FakePaymentGateway())
+        var result = await new BookingService(bookingDb, Options.Create(new RabbitMqOptions()), new AuditLogger(bookingDb), new FakePaymentGateway(),
+            NullLogger<BookingService>.Instance)
             .BookAsync(ev.Id, new BookingRequest { Email = email, PaymentMethodId = FakePaymentGateway.ApprovedPaymentMethod }, userId, Guid.NewGuid().ToString(), TestContext.Current.CancellationToken);
         return result.Order!;
     }

@@ -9,7 +9,8 @@ using Microsoft.Extensions.Options;
 
 namespace EventTicketing.Api.Services;
 
-public class BookingService(AppDbContext db, IOptions<RabbitMqOptions> rabbitMq, AuditLogger audit, IPaymentGateway payments)
+public class BookingService(
+    AppDbContext db, IOptions<RabbitMqOptions> rabbitMq, AuditLogger audit, IPaymentGateway payments, ILogger<BookingService> logger)
 {
     /// <param name="idempotencyKey">Passed on to Stripe, so a retried request can't charge the card twice.</param>
     public async Task<BookingResult> BookAsync(int eventId, BookingRequest request, int? userId, string idempotencyKey, CancellationToken cancellationToken)
@@ -57,27 +58,50 @@ public class BookingService(AppDbContext db, IOptions<RabbitMqOptions> rabbitMq,
             GuestAccessTokenHash = guestToken is null ? null : SecureToken.Hash(guestToken),
             StripePaymentIntentId = paymentId,
         };
-        // The confirmation message commits or rolls back with the order, so a crash or a
-        // RabbitMQ outage can't leave a booking whose confirmation is never sent.
-        await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
-        db.Orders.Add(order);
-        await db.SaveChangesAsync(cancellationToken);
-        db.OutboxMessages.Add(new OutboxMessage
+        try
         {
-            Type = nameof(BookingConfirmedMessage),
-            Payload = JsonSerializer.Serialize(new BookingConfirmedMessage(
-                order.Id, eventId, ev.Title, order.Email, order.PriceCents, order.BookedAt)),
-            Exchange = rabbitMq.Value.Exchange,
-            RoutingKey = BookingConfirmedMessage.RoutingKey,
-            CreatedAt = DateTime.UtcNow,
-        });
-        audit.Record(AuditAction.TicketBooked, "Order", order.Id, new AuditActor(userId, request.Email),
-            new { EventId = eventId, EventTitle = ev.Title, order.PriceCents });
-        await db.SaveChangesAsync(cancellationToken);
-        await transaction.CommitAsync(cancellationToken);
+            // The confirmation message commits or rolls back with the order, so a crash or a
+            // RabbitMQ outage can't leave a booking whose confirmation is never sent.
+            await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
+            db.Orders.Add(order);
+            await db.SaveChangesAsync(cancellationToken);
+            db.OutboxMessages.Add(new OutboxMessage
+            {
+                Type = nameof(BookingConfirmedMessage),
+                Payload = JsonSerializer.Serialize(new BookingConfirmedMessage(
+                    order.Id, eventId, ev.Title, order.Email, order.PriceCents, order.BookedAt)),
+                Exchange = rabbitMq.Value.Exchange,
+                RoutingKey = BookingConfirmedMessage.RoutingKey,
+                CreatedAt = DateTime.UtcNow,
+            });
+            audit.Record(AuditAction.TicketBooked, "Order", order.Id, new AuditActor(userId, request.Email),
+                new { EventId = eventId, EventTitle = ev.Title, order.PriceCents });
+            await db.SaveChangesAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
+        }
+        catch
+        {
+            // The card is charged but there is no order: give the money and the seat back.
+            await RefundAsync(paymentId);
+            await ReleaseSeatAsync(eventId);
+            throw;
+        }
 
         return new BookingResult(BookingStatus.Booked,
             new OrderResponse(order.Id, eventId, ev.Title, ev.Venue, ev.EventType, ev.StartTime, ev.EndTime, order.Email, order.PriceCents, order.BookedAt, guestToken));
+    }
+
+    private async Task RefundAsync(string paymentId)
+    {
+        try
+        {
+            await payments.RefundAsync(paymentId, CancellationToken.None);
+        }
+        catch (Exception e)
+        {
+            // Don't hide the original failure; the charge has to be refunded by hand.
+            logger.LogError(e, "Refund of payment {PaymentId} failed; refund it manually", paymentId);
+        }
     }
 
     // Puts a reserved seat back on sale. It must happen even if the request was cancelled meanwhile.

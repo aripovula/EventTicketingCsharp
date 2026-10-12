@@ -9,6 +9,8 @@ using EventTicketing.Tests.Fakes;
 using EventTicketing.Tests.Integration;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 
 namespace EventTicketing.Tests.Services;
@@ -19,10 +21,11 @@ public class BookingServiceTests(IntegrationTestFactory factory) : IClassFixture
     private AppDbContext CreateDb() =>
         factory.Services.CreateScope().ServiceProvider.GetRequiredService<AppDbContext>();
 
-    private BookingService CreateService(IPaymentGateway? payments = null)
+    private BookingService CreateService(IPaymentGateway? payments = null, ILogger<BookingService>? logger = null)
     {
         var db = CreateDb();
-        return new(db, Options.Create(new RabbitMqOptions()), new AuditLogger(db), payments ?? new RecordingPaymentGateway());
+        return new(db, Options.Create(new RabbitMqOptions()), new AuditLogger(db), payments ?? new RecordingPaymentGateway(),
+            logger ?? NullLogger<BookingService>.Instance);
     }
 
     private static BookingRequest Request(string email) =>
@@ -230,4 +233,33 @@ public class BookingServiceTests(IntegrationTestFactory factory) : IClassFixture
         Assert.Equal(3, await AvailableSeatsAsync(eventId));
     }
 
+    // Longer than the email column, so saving the order fails after the card was charged.
+    private static BookingRequest UnsaveableRequest() => Request(new string('a', 200) + "@example.com");
+
+    [Fact]
+    public async Task BookAsync_WhenTheOrderCantBeSaved_RefundsAndPutsTheSeatBack()
+    {
+        var eventId = await CreateEventAsync(availableSeats: 3);
+        var payments = new RecordingPaymentGateway();
+
+        await Assert.ThrowsAsync<DbUpdateException>(() => CreateService(payments).BookAsync(
+            eventId, UnsaveableRequest(), null, "booking-key", TestContext.Current.CancellationToken));
+
+        Assert.Equal(["pi_test_1"], payments.Refunds);
+        Assert.Equal(3, await AvailableSeatsAsync(eventId));
+    }
+
+    [Fact]
+    public async Task BookAsync_WhenTheRefundFailsToo_LogsItAndThrowsTheOriginalError()
+    {
+        var eventId = await CreateEventAsync(availableSeats: 3);
+        var payments = new RecordingPaymentGateway { RefundFailsWith = new HttpRequestException("Stripe is down") };
+        var logger = new CollectingLogger<BookingService>();
+
+        await Assert.ThrowsAsync<DbUpdateException>(() => CreateService(payments, logger).BookAsync(
+            eventId, UnsaveableRequest(), null, "booking-key", TestContext.Current.CancellationToken));
+
+        Assert.Contains(logger.Messages, m => m.Contains("Refund of payment pi_test_1 failed"));
+        Assert.Equal(3, await AvailableSeatsAsync(eventId));
+    }
 }

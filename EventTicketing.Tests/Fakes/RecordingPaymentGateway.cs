@@ -14,6 +14,9 @@ public class RecordingPaymentGateway : IPaymentGateway
     // When set, every charge throws it, as if Stripe were unreachable.
     public Exception? FailWith { get; set; }
 
+    // When set, every refund throws it.
+    public Exception? RefundFailsWith { get; set; }
+
     public Task<string> ChargeAsync(int amountCents, string paymentMethodId, string idempotencyKey, CancellationToken cancellationToken)
     {
         if (FailWith is not null)
@@ -26,6 +29,8 @@ public class RecordingPaymentGateway : IPaymentGateway
 
     public Task RefundAsync(string paymentId, CancellationToken cancellationToken)
     {
+        if (RefundFailsWith is not null)
+            throw RefundFailsWith;
         Refunds.Add(paymentId);
         return Task.CompletedTask;
     }
