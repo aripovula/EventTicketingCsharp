@@ -99,4 +99,47 @@ public class BookingTests : E2ETestBase
             await Page.APIRequest.DeleteAsync($"{BaseUrl}/api/v1/events/{id}");
         }
     }
+
+    [Test]
+    public async Task ADeclinedCardIsExplainedAndTheSeatStaysOnSale()
+    {
+        await Page.GotoAsync($"{BaseUrl}/login");
+        await Page.GetByRole(AriaRole.Button, new() { Name = "Sign in" }).Nth(1).ClickAsync();
+        await Expect(Page).ToHaveURLAsync(new Regex("/$"));
+        var created = await Page.APIRequest.PostAsync($"{BaseUrl}/api/v1/events", new()
+        {
+            DataObject = new
+            {
+                title = $"E2E Declined {Guid.NewGuid():N}"[..22],
+                description = "Paid for with a declined card in an E2E test.",
+                startTime = DateTime.UtcNow.AddDays(52),
+                endTime = DateTime.UtcNow.AddDays(52).AddHours(2),
+                venue = "Test Hall",
+                eventType = "Other",
+                totalSeats = 10,
+                availableSeats = 10,
+                priceCents = 700,
+            },
+        });
+        var id = (await created.JsonAsync())!.Value.GetProperty("data").GetProperty("id").GetInt32();
+
+        try
+        {
+            // Without a Stripe key in the UI, the form offers Stripe's test cards; Stripe test
+            // mode and the API's fake gateway both decline this one.
+            await Page.GotoAsync($"{BaseUrl}/events/{id}");
+            await Page.GetByRole(AriaRole.Button, new() { Name = "Buy ticket" }).ClickAsync();
+            var dialog = Page.GetByRole(AriaRole.Dialog);
+            await dialog.GetByLabel("Visa 4000 0000 0000 0002 (declined)").CheckAsync();
+            await dialog.GetByRole(AriaRole.Button, new() { Name = "Place order" }).ClickAsync();
+
+            await Expect(dialog.GetByRole(AriaRole.Alert)).ToHaveTextAsync("Your card was declined.");
+            await Page.GotoAsync($"{BaseUrl}/events/{id}");
+            await Expect(Page.GetByText("10 of 10 seats available")).ToBeVisibleAsync();
+        }
+        finally
+        {
+            await Page.APIRequest.DeleteAsync($"{BaseUrl}/api/v1/events/{id}");
+        }
+    }
 }

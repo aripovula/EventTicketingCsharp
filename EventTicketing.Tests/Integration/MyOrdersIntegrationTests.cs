@@ -47,7 +47,7 @@ public class MyOrdersIntegrationTests(IntegrationTestFactory factory) : IClassFi
 
     private static async Task<int> BookAsync(HttpClient client, int eventId, string email)
     {
-        var response = await client.PostAsJsonAsync($"/api/v1/events/{eventId}/bookings", new { email }, TestContext.Current.CancellationToken);
+        var response = await client.PostAsJsonAsync($"/api/v1/events/{eventId}/bookings", new { email, paymentMethodId = "pm_card_visa" }, TestContext.Current.CancellationToken);
         return JsonDocument.Parse(await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken))
             .RootElement.GetProperty("data").GetProperty("id").GetInt32();
     }

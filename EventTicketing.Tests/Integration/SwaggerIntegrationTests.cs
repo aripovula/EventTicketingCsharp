@@ -154,7 +154,7 @@ public class SwaggerIntegrationTests(IntegrationTestFactory factory) : IClassFix
     {
         var op = await OperationAsync("/api/v1/events/{id}/bookings", "post");
 
-        Assert.Equal(["201", "400", "404", "409", "429"], StatusCodes(op));
+        Assert.Equal(["201", "400", "402", "404", "409", "429"], StatusCodes(op));
         Assert.Contains("OrderResponse", SuccessSchemaRef(op, "201"));
         Assert.Contains(op.GetProperty("parameters").EnumerateArray(), p => p.GetProperty("name").GetString() == "Idempotency-Key");
     }

@@ -83,7 +83,7 @@ public class TicketingHubIntegrationTests(IntegrationTestFactory factory) : ICla
         var received = new TaskCompletionSource<int>();
         connection.On<int>("BookingMade", received.SetResult);
 
-        await factory.CreateClient().PostAsJsonAsync($"/api/v1/events/{eventId}/bookings", new { email = "guest@example.com" }, TestContext.Current.CancellationToken);
+        await factory.CreateClient().PostAsJsonAsync($"/api/v1/events/{eventId}/bookings", new { email = "guest@example.com", paymentMethodId = "pm_card_visa" }, TestContext.Current.CancellationToken);
 
         Assert.Equal(eventId, await received.Task.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken));
     }
@@ -96,7 +96,7 @@ public class TicketingHubIntegrationTests(IntegrationTestFactory factory) : ICla
         var received = new TaskCompletionSource<int>();
         connection.On<int>("BookingMade", received.SetResult);
 
-        var response = await factory.CreateClient().PostAsJsonAsync($"/api/v1/events/{eventId}/bookings", new { email = "guest@example.com" }, TestContext.Current.CancellationToken);
+        var response = await factory.CreateClient().PostAsJsonAsync($"/api/v1/events/{eventId}/bookings", new { email = "guest@example.com", paymentMethodId = "pm_card_visa" }, TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
         await Task.Delay(500, TestContext.Current.CancellationToken);

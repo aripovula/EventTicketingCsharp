@@ -3,7 +3,9 @@ using EventTicketing.Api.Contracts;
 using EventTicketing.Api.Data;
 using EventTicketing.Api.Messaging;
 using EventTicketing.Api.Models;
+using EventTicketing.Api.Payments;
 using EventTicketing.Api.Services;
+using EventTicketing.Tests.Fakes;
 using EventTicketing.Tests.Integration;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -17,11 +19,14 @@ public class BookingServiceTests(IntegrationTestFactory factory) : IClassFixture
     private AppDbContext CreateDb() =>
         factory.Services.CreateScope().ServiceProvider.GetRequiredService<AppDbContext>();
 
-    private BookingService CreateService()
+    private BookingService CreateService(IPaymentGateway? payments = null)
     {
         var db = CreateDb();
-        return new(db, Options.Create(new RabbitMqOptions()), new AuditLogger(db));
+        return new(db, Options.Create(new RabbitMqOptions()), new AuditLogger(db), payments ?? new RecordingPaymentGateway());
     }
+
+    private static BookingRequest Request(string email) =>
+        new() { Email = email, PaymentMethodId = FakePaymentGateway.ApprovedPaymentMethod };
 
     private async Task<int> CreateEventAsync(int availableSeats)
     {
@@ -53,9 +58,9 @@ public class BookingServiceTests(IntegrationTestFactory factory) : IClassFixture
     private async Task<int> AvailableSeatsAsync(int eventId) =>
         (await CreateDb().Events.SingleAsync(e => e.Id == eventId, TestContext.Current.CancellationToken)).AvailableSeats;
 
-    private Task<BookingResult> BookAsync(int eventId) =>
-        CreateService().BookAsync(
-            eventId, new BookingRequest { Email = "guest@example.com" }, null, TestContext.Current.CancellationToken);
+    private Task<BookingResult> BookAsync(int eventId, IPaymentGateway? payments = null) =>
+        CreateService(payments).BookAsync(
+            eventId, Request("guest@example.com"), null, "booking-key", TestContext.Current.CancellationToken);
 
     [Fact]
     public async Task BookAsync_TakesOneSeat()
@@ -94,7 +99,7 @@ public class BookingServiceTests(IntegrationTestFactory factory) : IClassFixture
         var john = await CreateDb().Users.SingleAsync(u => u.Email == "john@example.com", TestContext.Current.CancellationToken);
 
         var result = await CreateService().BookAsync(
-            eventId, new BookingRequest { Email = "john@example.com" }, john.Id, TestContext.Current.CancellationToken);
+            eventId, Request("john@example.com"), john.Id, "booking-key", TestContext.Current.CancellationToken);
 
         Assert.NotNull(result.Order);
         Assert.Equal((eventId, "john@example.com", 2500), (result.Order.EventId, result.Order.Email, result.Order.PriceCents));
@@ -134,7 +139,7 @@ public class BookingServiceTests(IntegrationTestFactory factory) : IClassFixture
         var john = await CreateDb().Users.SingleAsync(u => u.Email == "john@example.com", TestContext.Current.CancellationToken);
 
         var result = await CreateService().BookAsync(
-            eventId, new BookingRequest { Email = "john@example.com" }, john.Id, TestContext.Current.CancellationToken);
+            eventId, Request("john@example.com"), john.Id, "booking-key", TestContext.Current.CancellationToken);
 
         Assert.Null(result.Order!.GuestAccessToken);
         var saved = await CreateDb().Orders.SingleAsync(o => o.Id == result.Order.Id, TestContext.Current.CancellationToken);
@@ -176,4 +181,53 @@ public class BookingServiceTests(IntegrationTestFactory factory) : IClassFixture
         Assert.Null(entry.UserId);
         Assert.Equal(eventId, JsonDocument.Parse(entry.Details!).RootElement.GetProperty("eventId").GetInt32());
     }
+
+    [Fact]
+    public async Task BookAsync_ChargesTheEventPriceWithTheIdempotencyKey()
+    {
+        var eventId = await CreateEventAsync(availableSeats: 3);
+        var payments = new RecordingPaymentGateway();
+
+        var result = await BookAsync(eventId, payments);
+
+        Assert.Equal((2500, FakePaymentGateway.ApprovedPaymentMethod, "booking-key"), Assert.Single(payments.Charges));
+        var saved = await CreateDb().Orders.SingleAsync(o => o.Id == result.Order!.Id, TestContext.Current.CancellationToken);
+        Assert.Equal("pi_test_1", saved.StripePaymentIntentId);
+    }
+
+    [Fact]
+    public async Task BookAsync_WhenSoldOut_NeverCharges()
+    {
+        var eventId = await CreateEventAsync(availableSeats: 0);
+        var payments = new RecordingPaymentGateway();
+
+        await BookAsync(eventId, payments);
+
+        Assert.Empty(payments.Charges);
+    }
+
+    [Fact]
+    public async Task BookAsync_WhenTheCardIsDeclined_PutsTheSeatBackAndSavesNoOrder()
+    {
+        var eventId = await CreateEventAsync(availableSeats: 3);
+
+        var result = await BookAsync(eventId, new RecordingPaymentGateway { DeclineWith = "Your card was declined." });
+
+        Assert.Equal((BookingStatus.PaymentDeclined, "Your card was declined."), (result.Status, result.Error));
+        Assert.Equal(3, await AvailableSeatsAsync(eventId));
+        Assert.False(await CreateDb().Orders.AnyAsync(o => o.EventId == eventId, TestContext.Current.CancellationToken));
+        Assert.Empty(await QueuedConfirmationsAsync(eventId));
+    }
+
+    [Fact]
+    public async Task BookAsync_WhenTheChargeFails_PutsTheSeatBackAndRethrows()
+    {
+        var eventId = await CreateEventAsync(availableSeats: 3);
+
+        await Assert.ThrowsAsync<HttpRequestException>(() =>
+            BookAsync(eventId, new RecordingPaymentGateway { FailWith = new HttpRequestException("Stripe is down") }));
+
+        Assert.Equal(3, await AvailableSeatsAsync(eventId));
+    }
+
 }

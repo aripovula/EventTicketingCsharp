@@ -47,7 +47,7 @@ public class OrdersIntegrationTests(IntegrationTestFactory factory) : IClassFixt
         }
         var list = JsonDocument.Parse(await factory.CreateClient().GetStringAsync("/api/v1/events?q=Orders%20API%20Event", TestContext.Current.CancellationToken));
         var eventId = list.RootElement.GetProperty("data")[0].GetProperty("id").GetInt32();
-        var booked = await client.PostAsJsonAsync($"/api/v1/events/{eventId}/bookings", new { email = "guest@example.com" }, TestContext.Current.CancellationToken);
+        var booked = await client.PostAsJsonAsync($"/api/v1/events/{eventId}/bookings", new { email = "guest@example.com", paymentMethodId = "pm_card_visa" }, TestContext.Current.CancellationToken);
         return JsonDocument.Parse(await booked.Content.ReadAsStringAsync(TestContext.Current.CancellationToken)).RootElement.GetProperty("data").Clone();
     }
 

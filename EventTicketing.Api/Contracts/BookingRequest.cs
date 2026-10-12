@@ -7,4 +7,11 @@ public record BookingRequest
     /// <summary>Where the ticket goes; required for guests and signed-in users alike.</summary>
     [Required, EmailAddress, MaxLength(200)]
     public string Email { get; init; } = string.Empty;
+
+    /// <summary>
+    /// The card to charge: a Stripe PaymentMethod id created in the browser by Stripe Elements
+    /// (in test mode, e.g. <c>pm_card_visa</c>). Card details never reach this API.
+    /// </summary>
+    [Required, MaxLength(255)]
+    public string PaymentMethodId { get; init; } = string.Empty;
 }

@@ -56,7 +56,7 @@ public class AdminOrdersIntegrationTests(IntegrationTestFactory factory) : IClas
             eventId = ev.Id;
         }
         var booked = await (await SignedInAsync("jane@example.com")).PostAsJsonAsync(
-            $"/api/v1/events/{eventId}/bookings", new { email = "jane@example.com" }, TestContext.Current.CancellationToken);
+            $"/api/v1/events/{eventId}/bookings", new { email = "jane@example.com", paymentMethodId = "pm_card_visa" }, TestContext.Current.CancellationToken);
         var orderId = JsonDocument.Parse(await booked.Content.ReadAsStringAsync(TestContext.Current.CancellationToken))
             .RootElement.GetProperty("data").GetProperty("id").GetInt32();
 
@@ -86,7 +86,7 @@ public class AdminOrdersIntegrationTests(IntegrationTestFactory factory) : IClas
             await db.SaveChangesAsync(TestContext.Current.CancellationToken);
             eventId = ev.Id;
         }
-        await factory.CreateClient().PostAsJsonAsync($"/api/v1/events/{eventId}/bookings", new { email = "guest@example.com" }, TestContext.Current.CancellationToken);
+        await factory.CreateClient().PostAsJsonAsync($"/api/v1/events/{eventId}/bookings", new { email = "guest@example.com", paymentMethodId = "pm_card_visa" }, TestContext.Current.CancellationToken);
         return eventId;
     }
 
@@ -150,8 +150,8 @@ public class AdminOrdersIntegrationTests(IntegrationTestFactory factory) : IClas
             eventId = ev.Id;
         }
         var guest = factory.CreateClient();
-        await guest.PostAsJsonAsync($"/api/v1/events/{eventId}/bookings", new { email = "a@example.com" }, TestContext.Current.CancellationToken);
-        await guest.PostAsJsonAsync($"/api/v1/events/{eventId}/bookings", new { email = "b@example.com" }, TestContext.Current.CancellationToken);
+        await guest.PostAsJsonAsync($"/api/v1/events/{eventId}/bookings", new { email = "a@example.com", paymentMethodId = "pm_card_visa" }, TestContext.Current.CancellationToken);
+        await guest.PostAsJsonAsync($"/api/v1/events/{eventId}/bookings", new { email = "b@example.com", paymentMethodId = "pm_card_visa" }, TestContext.Current.CancellationToken);
 
         var body = await (await SignedInAsync("admin@example.com")).GetStringAsync("/api/v1/admin/summary", TestContext.Current.CancellationToken);
 

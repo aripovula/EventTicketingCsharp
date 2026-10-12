@@ -55,7 +55,7 @@ public class BookingMessagingIntegrationTests(IntegrationTestFactory factory) : 
         // Both tests share this class's queues, so compare with the dead-letter count before booking.
         var deadBefore = await MessageCountAsync(RabbitMqTopology.DeadLetterQueue(Names));
         var response = await factory.CreateClient().PostAsJsonAsync(
-            "/api/v1/events/1/bookings", new { email = "guest@example.com" }, TestContext.Current.CancellationToken);
+            "/api/v1/events/1/bookings", new { email = "guest@example.com", paymentMethodId = "pm_card_visa" }, TestContext.Current.CancellationToken);
         var orderId = JsonDocument.Parse(await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken))
             .RootElement.GetProperty("data").GetProperty("id").GetInt32();
 

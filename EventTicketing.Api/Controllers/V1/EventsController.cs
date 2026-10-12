@@ -87,12 +87,13 @@ public class EventsController(EventsService eventsService, BookingService bookin
         return NoContent();
     }
 
-    /// <summary>Books one seat for an event, as a guest or signed-in user. The seat is reserved atomically, so the last seat can never be sold twice.</summary>
+    /// <summary>Books and pays for one seat, as a guest or signed-in user. The seat is reserved atomically before the card is charged, so the last seat can never be sold twice; a declined card returns 402 and puts the seat back.</summary>
     [HttpPost("{id:int}/bookings")]
     [EnableRateLimiting(RateLimitingOptions.BookingPolicy)]
     [Idempotent]
     [ProducesResponseType(typeof(ApiEnvelope<OrderResponse>), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ApiEnvelope<object>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ApiEnvelope<object>), StatusCodes.Status402PaymentRequired)]
     [ProducesResponseType(typeof(ApiEnvelope<object>), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ApiEnvelope<object>), StatusCodes.Status409Conflict)]
     [ProducesResponseType(typeof(ApiEnvelope<object>), StatusCodes.Status429TooManyRequests)]
@@ -104,11 +105,16 @@ public class EventsController(EventsService eventsService, BookingService bookin
         CancellationToken cancellationToken)
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        var result = await bookingService.BookAsync(id, request, userId is null ? null : int.Parse(userId), cancellationToken);
+        // Without a key from the client, this request still gets one, so Stripe can't charge it twice.
+        var result = await bookingService.BookAsync(
+            id, request, userId is null ? null : int.Parse(userId), idempotencyKey ?? Guid.NewGuid().ToString(), cancellationToken);
         if (result.Status == BookingStatus.SoldOut)
             return Conflict(new ApiEnvelope(null, [new ApiError("sold_out", "Sorry, this event just sold out.")]));
         if (result.Status == BookingStatus.EventNotFound)
             return NotFound(new ApiEnvelope(null, [new ApiError("not_found", "Event not found.")]));
+        if (result.Status == BookingStatus.PaymentDeclined)
+            return StatusCode(StatusCodes.Status402PaymentRequired,
+                new ApiEnvelope(null, [new ApiError("payment_declined", result.Error!)]));
 
         // The seat is already taken, so tell open pages even if this request was cancelled.
         await hub.Clients.All.SendAsync(TicketingEvents.BookingMade, id, CancellationToken.None);

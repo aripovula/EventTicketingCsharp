@@ -52,9 +52,9 @@ public class RateLimitingIntegrationTests(IntegrationTestFactory factory) : ICla
         var client = ClientWith("RateLimiting:BookingPermitLimit", 2);
         // Event 1 is seeded with plenty of seats; two bookings use up the allowance.
         for (var i = 0; i < 2; i++)
-            Assert.Equal(HttpStatusCode.Created, (await client.PostAsJsonAsync("/api/v1/events/1/bookings", new { email = "guest@example.com" }, TestContext.Current.CancellationToken)).StatusCode);
+            Assert.Equal(HttpStatusCode.Created, (await client.PostAsJsonAsync("/api/v1/events/1/bookings", new { email = "guest@example.com", paymentMethodId = "pm_card_visa" }, TestContext.Current.CancellationToken)).StatusCode);
 
-        var booking = await client.PostAsJsonAsync("/api/v1/events/1/bookings", new { email = "guest@example.com" }, TestContext.Current.CancellationToken);
+        var booking = await client.PostAsJsonAsync("/api/v1/events/1/bookings", new { email = "guest@example.com", paymentMethodId = "pm_card_visa" }, TestContext.Current.CancellationToken);
         var browsing = await client.GetAsync("/api/v1/events/1", TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.TooManyRequests, booking.StatusCode);

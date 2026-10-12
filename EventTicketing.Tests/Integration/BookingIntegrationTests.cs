@@ -3,6 +3,7 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using EventTicketing.Api.Data;
 using EventTicketing.Api.Models;
+using EventTicketing.Api.Payments;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -17,10 +18,20 @@ public class BookingIntegrationTests(IntegrationTestFactory factory) : IClassFix
     public async Task Book_WithMalformedEmail_Returns400ForEmail()
     {
         var response = await _client.PostAsJsonAsync(
-            "/api/v1/events/1/bookings", new { email = "not-an-email" }, TestContext.Current.CancellationToken);
+            "/api/v1/events/1/bookings", new { email = "not-an-email", paymentMethodId = "pm_card_visa" }, TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         Assert.Contains("\"field\":\"email\"", await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
+    }
+
+    [Fact]
+    public async Task Book_WithoutAPaymentMethod_Returns400ForPaymentMethodId()
+    {
+        var response = await _client.PostAsJsonAsync(
+            "/api/v1/events/1/bookings", new { email = "guest@example.com" }, TestContext.Current.CancellationToken);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Contains("\"field\":\"paymentMethodId\"", await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
     }
 
     private async Task<int> CreateEventAsync(int availableSeats)
@@ -44,7 +55,7 @@ public class BookingIntegrationTests(IntegrationTestFactory factory) : IClassFix
     }
 
     private Task<HttpResponseMessage> BookAsync(int eventId, HttpClient? client = null) =>
-        (client ?? _client).PostAsJsonAsync($"/api/v1/events/{eventId}/bookings", new { email = "guest@example.com" }, TestContext.Current.CancellationToken);
+        (client ?? _client).PostAsJsonAsync($"/api/v1/events/{eventId}/bookings", new { email = "guest@example.com", paymentMethodId = "pm_card_visa" }, TestContext.Current.CancellationToken);
 
     [Fact]
     public async Task Book_WithSeatsLeft_Returns201WithTheOrder()
@@ -68,6 +79,21 @@ public class BookingIntegrationTests(IntegrationTestFactory factory) : IClassFix
 
         Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
         Assert.Contains("\"code\":\"sold_out\"", await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
+    }
+
+    [Fact]
+    public async Task Book_WithADeclinedCard_Returns402AndKeepsTheSeat()
+    {
+        var eventId = await CreateEventAsync(availableSeats: 3);
+
+        var response = await _client.PostAsJsonAsync($"/api/v1/events/{eventId}/bookings",
+            new { email = "guest@example.com", paymentMethodId = FakePaymentGateway.DeclinedPaymentMethod }, TestContext.Current.CancellationToken);
+
+        Assert.Equal(HttpStatusCode.PaymentRequired, response.StatusCode);
+        Assert.Contains("\"code\":\"payment_declined\"", await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
+        using var scope = factory.Services.CreateScope();
+        var ev = await scope.ServiceProvider.GetRequiredService<AppDbContext>().Events.SingleAsync(e => e.Id == eventId, TestContext.Current.CancellationToken);
+        Assert.Equal(3, ev.AvailableSeats);
     }
 
     [Fact]

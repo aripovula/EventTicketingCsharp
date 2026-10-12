@@ -35,7 +35,7 @@ public class IdempotencyIntegrationTests(IntegrationTestFactory factory) : IClas
     {
         using var request = new HttpRequestMessage(HttpMethod.Post, $"/api/v1/events/{eventId}/bookings")
         {
-            Content = JsonContent.Create(new { email = "guest@example.com" }),
+            Content = JsonContent.Create(new { email = "guest@example.com", paymentMethodId = "pm_card_visa" }),
         };
         if (key is not null)
             request.Headers.Add("Idempotency-Key", key);
