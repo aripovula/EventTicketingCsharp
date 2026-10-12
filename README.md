@@ -62,3 +62,25 @@ Each row records the action, the entity it touched (`entity_type`, `entity_id`),
 SELECT created_at, action, entity_type, entity_id, user_email, details
 FROM audit_logs ORDER BY id DESC LIMIT 20;
 ```
+
+## Payments: Stripe Elements + PaymentIntents
+
+Booking a ticket charges a card through Stripe (test mode). The card number never touches our servers: Stripe Elements renders the card field in Stripe's own cross-origin iframe, and the browser sends us only a PaymentMethod id (`pm_…`). That keeps our API out of PCI DSS scope.
+
+The order of operations is what makes it safe:
+
+1. **Reserve the seat first**, with the atomic `UPDATE … WHERE available_seats > 0`. A buyer who loses the race for the last seat gets `409 sold_out` *before Stripe is called*, so there is no charge to undo.
+2. **Charge the card**: one PaymentIntent, created and confirmed in a single call. The booking's `Idempotency-Key` (or a fresh key when the client sends none) goes to Stripe as *its* idempotency key, so a retried request can't charge twice.
+3. **Save the order**, its outbox message and its audit entry in one transaction, with the PaymentIntent id on the order.
+
+When something fails, we compensate:
+
+- **Card declined** → we put the seat back and answer `402 payment_declined` with Stripe's message. The frontend then uses a new idempotency key, so trying another card isn't answered with the stored decline.
+- **Stripe unreachable** → we put the seat back and the request fails.
+- **Saving the order fails after the charge** → we refund the PaymentIntent and put the seat back. If the refund itself fails, we log an error for a person to refund by hand, and still report the original failure.
+
+Cards that need 3-D Secure are declined for now: we don't run Stripe's browser verification step.
+
+### Running without Stripe keys
+
+`Payments:Provider=Fake` swaps Stripe for a fake gateway that uses Stripe's own test ids: `pm_card_visa` is approved and `pm_card_chargeDeclined` is declined. The API refuses to start with the fake in Production. Without `VITE_STRIPE_PUBLISHABLE_KEY`, the booking form offers those two test cards instead of Stripe's card field. Integration tests and the CI E2E jobs run this way, so they need no Stripe secrets.
