@@ -161,6 +161,8 @@ jobs:
     env:
       PGUSER: postgres
       PGPASSWORD: postgres
+      # No Stripe keys in CI: the API approves test cards without calling Stripe.
+      Payments__Provider: Fake
     steps:
       - uses: actions/checkout@v4.2.2
 

@@ -24,6 +24,8 @@ public class IntegrationTestFactory : WebApplicationFactory<Program>, IAsyncLife
     {
         builder.UseSetting("ConnectionStrings:Default", _connectionString);
         builder.UseSetting("Jwt:SigningKey", "integration-test-signing-key-at-least-32-bytes");
+        // Never call Stripe from tests; CI has no Stripe keys.
+        builder.UseSetting("Payments:Provider", "Fake");
         // Each test host gets its own Redis key prefix, as it gets its own database.
         // Every TestServer request shares one client address, so lift the limits; rate-limit tests lower them.
         builder.UseSetting("RateLimiting:GlobalPermitLimit", "100000");

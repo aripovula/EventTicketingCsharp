@@ -5,6 +5,7 @@ using EventTicketing.Api.Filters;
 using EventTicketing.Api.Hubs;
 using EventTicketing.Api.Messaging;
 using EventTicketing.Api.Middleware;
+using EventTicketing.Api.Payments;
 using EventTicketing.Api.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
@@ -99,6 +100,23 @@ builder.Services.AddScoped<BookingService>();
 builder.Services.AddScoped<OrdersService>();
 builder.Services.AddScoped<IdempotencyService>();
 builder.Services.AddScoped<AuditLogger>();
+builder.Services.AddOptions<PaymentsOptions>()
+    .Bind(builder.Configuration.GetSection(PaymentsOptions.SectionName))
+    .Validate(p => p.Provider is PaymentsOptions.StripeProvider or PaymentsOptions.FakeProvider,
+        "Payments:Provider must be Stripe or Fake.")
+    .Validate<IHostEnvironment>((p, env) => p.Provider != PaymentsOptions.FakeProvider || !env.IsProduction(),
+        "Payments:Provider=Fake is not allowed in Production.")
+    .Validate<IOptions<StripeOptions>>((p, stripe) => p.Provider != PaymentsOptions.StripeProvider || !string.IsNullOrEmpty(stripe.Value.SecretKey),
+        "Stripe:SecretKey is required (set it with dotnet user-secrets or the Stripe__SecretKey env var), or set Payments:Provider=Fake outside Production.")
+    .ValidateOnStart();
+builder.Services.AddOptions<StripeOptions>().Bind(builder.Configuration.GetSection(StripeOptions.SectionName));
+builder.Services.AddSingleton<Stripe.IStripeClient>(sp => new Stripe.StripeClient(sp.GetRequiredService<IOptions<StripeOptions>>().Value.SecretKey));
+builder.Services.AddScoped<StripePaymentGateway>();
+builder.Services.AddSingleton<FakePaymentGateway>();
+builder.Services.AddScoped<IPaymentGateway>(sp =>
+    sp.GetRequiredService<IOptions<PaymentsOptions>>().Value.Provider == PaymentsOptions.FakeProvider
+        ? sp.GetRequiredService<FakePaymentGateway>()
+        : sp.GetRequiredService<StripePaymentGateway>());
 builder.Services.AddSignalR();
 builder.Services.AddSingleton<RabbitMqConnection>();
 builder.Services.AddSingleton<IMessagePublisher, RabbitMqPublisher>();
