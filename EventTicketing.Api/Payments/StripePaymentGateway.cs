@@ -15,6 +15,8 @@ public class StripePaymentGateway(IStripeClient stripe, IOptions<PaymentsOptions
                 Amount = amountCents,
                 Currency = options.Value.Currency,
                 PaymentMethod = paymentMethodId,
+                // Stripe only charges a saved card together with the customer it belongs to.
+                Customer = customerId,
                 PaymentMethodTypes = ["card"],
                 // Create and confirm in one call: the card is charged now, or the call fails.
                 Confirm = true,

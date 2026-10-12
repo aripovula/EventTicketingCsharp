@@ -85,4 +85,16 @@ public class StripePaymentGatewayTests
         Assert.Equal("/v1/refunds", handler.Request!.RequestUri!.AbsolutePath);
         Assert.Contains("payment_intent=pi_123", handler.RequestBody);
     }
+
+    [Fact]
+    public async Task Charge_WithASavedCard_ChargesItThroughItsCustomer()
+    {
+        var handler = new StubHandler(HttpStatusCode.OK, """{"id": "pi_123", "object": "payment_intent", "status": "succeeded"}""");
+
+        await Gateway(handler).ChargeAsync(2500, "pm_saved", "cus_123", "key-123", TestContext.Current.CancellationToken);
+
+        var form = WebUtility.UrlDecode(handler.RequestBody!);
+        Assert.Contains("payment_method=pm_saved", form);
+        Assert.Contains("customer=cus_123", form);
+    }
 }
