@@ -5,7 +5,7 @@ namespace EventTicketing.Api.Payments;
 
 public class StripePaymentGateway(IStripeClient stripe, IOptions<PaymentsOptions> options) : IPaymentGateway
 {
-    public async Task<string> ChargeAsync(int amountCents, string paymentMethodId, string idempotencyKey, CancellationToken cancellationToken)
+    public async Task<string> ChargeAsync(int amountCents, string paymentMethodId, string? customerId, string idempotencyKey, CancellationToken cancellationToken)
     {
         PaymentIntent intent;
         try

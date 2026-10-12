@@ -193,7 +193,7 @@ public class BookingServiceTests(IntegrationTestFactory factory) : IClassFixture
 
         var result = await BookAsync(eventId, payments);
 
-        Assert.Equal((2500, FakePaymentGateway.ApprovedPaymentMethod, "booking-key"), Assert.Single(payments.Charges));
+        Assert.Equal((2500, FakePaymentGateway.ApprovedPaymentMethod, (string?)null, "booking-key"), Assert.Single(payments.Charges));
         var saved = await CreateDb().Orders.SingleAsync(o => o.Id == result.Order!.Id, TestContext.Current.CancellationToken);
         Assert.Equal("pi_test_1", saved.StripePaymentIntentId);
     }

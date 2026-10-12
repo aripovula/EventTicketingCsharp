@@ -4,7 +4,7 @@ namespace EventTicketing.Tests.Fakes;
 
 public class RecordingPaymentGateway : IPaymentGateway
 {
-    public List<(int AmountCents, string PaymentMethodId, string IdempotencyKey)> Charges { get; } = [];
+    public List<(int AmountCents, string PaymentMethodId, string? CustomerId, string IdempotencyKey)> Charges { get; } = [];
 
     public List<string> Refunds { get; } = [];
 
@@ -17,13 +17,13 @@ public class RecordingPaymentGateway : IPaymentGateway
     // When set, every refund throws it.
     public Exception? RefundFailsWith { get; set; }
 
-    public Task<string> ChargeAsync(int amountCents, string paymentMethodId, string idempotencyKey, CancellationToken cancellationToken)
+    public Task<string> ChargeAsync(int amountCents, string paymentMethodId, string? customerId, string idempotencyKey, CancellationToken cancellationToken)
     {
         if (FailWith is not null)
             throw FailWith;
         if (DeclineWith is not null)
             throw new PaymentDeclinedException(DeclineWith);
-        Charges.Add((amountCents, paymentMethodId, idempotencyKey));
+        Charges.Add((amountCents, paymentMethodId, customerId, idempotencyKey));
         return Task.FromResult($"pi_test_{Charges.Count}");
     }
 

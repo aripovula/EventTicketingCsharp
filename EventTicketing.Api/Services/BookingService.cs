@@ -41,7 +41,7 @@ public class BookingService(
 
             try
             {
-                paymentId = await payments.ChargeAsync(ev.PriceCents, request.PaymentMethodId, idempotencyKey, cancellationToken);
+                paymentId = await payments.ChargeAsync(ev.PriceCents, request.PaymentMethodId, null, idempotencyKey, cancellationToken);
             }
             catch (PaymentDeclinedException e)
             {

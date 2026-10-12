@@ -8,7 +8,7 @@ public class FakePaymentGatewayTests
     public async Task Charge_ApprovesAnyOtherCard()
     {
         var paymentId = await new FakePaymentGateway().ChargeAsync(
-            2500, FakePaymentGateway.ApprovedPaymentMethod, "key-1", TestContext.Current.CancellationToken);
+            2500, FakePaymentGateway.ApprovedPaymentMethod, null, "key-1", TestContext.Current.CancellationToken);
 
         Assert.StartsWith("pi_fake_", paymentId);
     }
@@ -17,6 +17,6 @@ public class FakePaymentGatewayTests
     public async Task Charge_DeclinesStripesDeclineTestCard()
     {
         await Assert.ThrowsAsync<PaymentDeclinedException>(() => new FakePaymentGateway().ChargeAsync(
-            2500, FakePaymentGateway.DeclinedPaymentMethod, "key-1", TestContext.Current.CancellationToken));
+            2500, FakePaymentGateway.DeclinedPaymentMethod, null, "key-1", TestContext.Current.CancellationToken));
     }
 }

@@ -11,7 +11,7 @@ public class FakePaymentGateway : IPaymentGateway
 
     public const string DeclinedPaymentMethod = "pm_card_chargeDeclined";
 
-    public Task<string> ChargeAsync(int amountCents, string paymentMethodId, string idempotencyKey, CancellationToken cancellationToken)
+    public Task<string> ChargeAsync(int amountCents, string paymentMethodId, string? customerId, string idempotencyKey, CancellationToken cancellationToken)
     {
         if (paymentMethodId == DeclinedPaymentMethod)
             throw new PaymentDeclinedException("Your card was declined.");

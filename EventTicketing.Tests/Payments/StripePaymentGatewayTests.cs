@@ -28,7 +28,7 @@ public class StripePaymentGatewayTests
             Options.Create(new PaymentsOptions()));
 
     private static Task<string> ChargeAsync(StubHandler handler) =>
-        Gateway(handler).ChargeAsync(2500, "pm_card_visa", "key-123", TestContext.Current.CancellationToken);
+        Gateway(handler).ChargeAsync(2500, "pm_card_visa", null, "key-123", TestContext.Current.CancellationToken);
 
     [Fact]
     public async Task Charge_CreatesAndConfirmsAPaymentIntentWithTheIdempotencyKey()
