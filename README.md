@@ -65,7 +65,7 @@ FROM audit_logs ORDER BY id DESC LIMIT 20;
 
 ## Payments: Stripe Elements + PaymentIntents
 
-Booking a ticket charges a card through Stripe (test mode). The card number never touches our servers: Stripe Elements renders the card field in Stripe's own cross-origin iframe, and the browser sends us only a PaymentMethod id (`pm_…`). That keeps our API out of PCI DSS scope.
+Booking a paid ticket charges a card through Stripe (test mode). Free events ($0) skip payment altogether, and a paid price must be at least $0.50, the least Stripe can charge. The card number never touches our servers: Stripe Elements renders the card field in Stripe's own cross-origin iframe, and the browser sends us only a PaymentMethod id (`pm_…`). That keeps our API out of PCI DSS scope.
 
 The order of operations is what makes it safe:
 
