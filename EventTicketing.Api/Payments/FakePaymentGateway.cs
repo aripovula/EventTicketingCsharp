@@ -21,6 +21,13 @@ public class FakePaymentGateway : IPaymentGateway
 
     public Task RefundAsync(string paymentId, CancellationToken cancellationToken) => Task.CompletedTask;
 
+    // Saving keeps the test id, so a saved decline card is still declined when charged.
     public Task<SavedCard> SaveCardAsync(string? customerId, string email, string paymentMethodId, CancellationToken cancellationToken) =>
-        throw new NotImplementedException();
+        Task.FromResult(new SavedCard(
+            customerId ?? $"cus_fake_{Guid.NewGuid():N}",
+            paymentMethodId,
+            "visa",
+            paymentMethodId == DeclinedPaymentMethod ? "0002" : "4242",
+            12,
+            DateTime.UtcNow.Year + 3));
 }
