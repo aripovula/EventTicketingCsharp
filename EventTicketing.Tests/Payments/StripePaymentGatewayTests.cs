@@ -8,18 +8,21 @@ namespace EventTicketing.Tests.Payments;
 
 public class StripePaymentGatewayTests
 {
-    // Answers every Stripe API call with one canned response and remembers the request.
-    private sealed class StubHandler(HttpStatusCode status, string body) : HttpMessageHandler
+    // Answers Stripe API calls with canned responses, in order (the last one repeats), and remembers the requests.
+    private sealed class StubHandler(HttpStatusCode status, params string[] bodies) : HttpMessageHandler
     {
-        public HttpRequestMessage? Request { get; private set; }
+        public List<(HttpRequestMessage Request, string? Body)> Calls { get; } = [];
 
-        public string? RequestBody { get; private set; }
+        public HttpRequestMessage? Request => Calls[^1].Request;
+
+        public string? RequestBody => Calls[^1].Body;
 
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
-            Request = request;
-            RequestBody = request.Content is null ? null : await request.Content.ReadAsStringAsync(cancellationToken);
-            return new HttpResponseMessage(status) { Content = new StringContent(body, Encoding.UTF8, "application/json") };
+            var body = request.Content is null ? null : await request.Content.ReadAsStringAsync(cancellationToken);
+            Calls.Add((request, body));
+            var response = bodies[Math.Min(Calls.Count, bodies.Length) - 1];
+            return new HttpResponseMessage(status) { Content = new StringContent(response, Encoding.UTF8, "application/json") };
         }
     }
 
@@ -96,5 +99,48 @@ public class StripePaymentGatewayTests
         var form = WebUtility.UrlDecode(handler.RequestBody!);
         Assert.Contains("payment_method=pm_saved", form);
         Assert.Contains("customer=cus_123", form);
+    }
+
+    private const string AttachedCard = """
+        {"id": "pm_saved", "object": "payment_method", "type": "card",
+         "card": {"brand": "visa", "last4": "4242", "exp_month": 12, "exp_year": 2030}}
+        """;
+
+    [Fact]
+    public async Task SaveCard_ForANewCustomer_CreatesTheCustomerThenAttachesTheCard()
+    {
+        var handler = new StubHandler(HttpStatusCode.OK, """{"id": "cus_new", "object": "customer"}""", AttachedCard);
+
+        var card = await Gateway(handler).SaveCardAsync(null, "jane@example.com", "pm_card_visa", TestContext.Current.CancellationToken);
+
+        Assert.Equal(new SavedCard("cus_new", "pm_saved", "visa", "4242", 12, 2030), card);
+        Assert.Equal("/v1/customers", handler.Calls[0].Request.RequestUri!.AbsolutePath);
+        Assert.Contains("email=jane@example.com", WebUtility.UrlDecode(handler.Calls[0].Body!));
+        Assert.Equal("/v1/payment_methods/pm_card_visa/attach", handler.Calls[1].Request.RequestUri!.AbsolutePath);
+        Assert.Contains("customer=cus_new", handler.Calls[1].Body);
+    }
+
+    [Fact]
+    public async Task SaveCard_ForAnExistingCustomer_OnlyAttachesTheCard()
+    {
+        var handler = new StubHandler(HttpStatusCode.OK, AttachedCard);
+
+        var card = await Gateway(handler).SaveCardAsync("cus_123", "jane@example.com", "pm_card_visa", TestContext.Current.CancellationToken);
+
+        Assert.Equal("cus_123", card.CustomerId);
+        var call = Assert.Single(handler.Calls);
+        Assert.Equal("/v1/payment_methods/pm_card_visa/attach", call.Request.RequestUri!.AbsolutePath);
+    }
+
+    [Fact]
+    public async Task SaveCard_WhenTheCardIsRefused_ThrowsWithStripesMessage()
+    {
+        var handler = new StubHandler(HttpStatusCode.PaymentRequired,
+            """{"error": {"type": "card_error", "code": "card_declined", "message": "Your card was declined."}}""");
+
+        var exception = await Assert.ThrowsAsync<PaymentDeclinedException>(() =>
+            Gateway(handler).SaveCardAsync("cus_123", "jane@example.com", "pm_card_visa", TestContext.Current.CancellationToken));
+
+        Assert.Equal("Your card was declined.", exception.Message);
     }
 }
