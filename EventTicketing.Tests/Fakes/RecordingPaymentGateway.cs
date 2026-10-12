@@ -34,4 +34,7 @@ public class RecordingPaymentGateway : IPaymentGateway
         Refunds.Add(paymentId);
         return Task.CompletedTask;
     }
+
+    public Task<SavedCard> SaveCardAsync(string? customerId, string email, string paymentMethodId, CancellationToken cancellationToken) =>
+        throw new NotImplementedException();
 }

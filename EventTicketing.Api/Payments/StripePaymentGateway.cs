@@ -37,4 +37,7 @@ public class StripePaymentGateway(IStripeClient stripe, IOptions<PaymentsOptions
 
     public Task RefundAsync(string paymentId, CancellationToken cancellationToken) =>
         new RefundService(stripe).CreateAsync(new RefundCreateOptions { PaymentIntent = paymentId }, cancellationToken: cancellationToken);
+
+    public Task<SavedCard> SaveCardAsync(string? customerId, string email, string paymentMethodId, CancellationToken cancellationToken) =>
+        throw new NotImplementedException();
 }

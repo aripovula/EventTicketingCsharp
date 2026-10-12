@@ -20,4 +20,7 @@ public class FakePaymentGateway : IPaymentGateway
     }
 
     public Task RefundAsync(string paymentId, CancellationToken cancellationToken) => Task.CompletedTask;
+
+    public Task<SavedCard> SaveCardAsync(string? customerId, string email, string paymentMethodId, CancellationToken cancellationToken) =>
+        throw new NotImplementedException();
 }

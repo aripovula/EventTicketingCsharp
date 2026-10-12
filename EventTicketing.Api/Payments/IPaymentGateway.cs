@@ -13,4 +13,9 @@ public interface IPaymentGateway
 
     /// <summary>Refunds a charge in full.</summary>
     Task RefundAsync(string paymentId, CancellationToken cancellationToken);
+
+    /// <summary>Attaches the card to a Stripe customer so it can be charged again later.</summary>
+    /// <param name="customerId">The user's Stripe customer, or null to create one for <paramref name="email"/>.</param>
+    /// <exception cref="PaymentDeclinedException">The card was refused.</exception>
+    Task<SavedCard> SaveCardAsync(string? customerId, string email, string paymentMethodId, CancellationToken cancellationToken);
 }
