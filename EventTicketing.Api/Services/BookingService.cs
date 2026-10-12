@@ -28,22 +28,31 @@ public class BookingService(
         }
 
         var ev = await db.Events.SingleAsync(e => e.Id == eventId, cancellationToken);
-        // Charge only after the seat is ours: a buyer who loses the race for the last seat gets
-        // "sold out" before Stripe is called, so there's nothing to refund.
-        string paymentId;
-        try
+        // Free events need no card. Otherwise charge only after the seat is ours: a buyer who loses
+        // the race for the last seat gets "sold out" before Stripe is called, so there's nothing to refund.
+        string? paymentId = null;
+        if (ev.PriceCents > 0)
         {
-            paymentId = await payments.ChargeAsync(ev.PriceCents, request.PaymentMethodId, idempotencyKey, cancellationToken);
-        }
-        catch (PaymentDeclinedException e)
-        {
-            await ReleaseSeatAsync(eventId);
-            return new BookingResult(BookingStatus.PaymentDeclined, Error: e.Message);
-        }
-        catch
-        {
-            await ReleaseSeatAsync(eventId);
-            throw;
+            if (string.IsNullOrEmpty(request.PaymentMethodId))
+            {
+                await ReleaseSeatAsync(eventId);
+                return new BookingResult(BookingStatus.PaymentMethodRequired);
+            }
+
+            try
+            {
+                paymentId = await payments.ChargeAsync(ev.PriceCents, request.PaymentMethodId, idempotencyKey, cancellationToken);
+            }
+            catch (PaymentDeclinedException e)
+            {
+                await ReleaseSeatAsync(eventId);
+                return new BookingResult(BookingStatus.PaymentDeclined, Error: e.Message);
+            }
+            catch
+            {
+                await ReleaseSeatAsync(eventId);
+                throw;
+            }
         }
 
         // Guests have no account to find the order by, so they get a one-time lookup secret.
@@ -82,7 +91,8 @@ public class BookingService(
         catch
         {
             // The card is charged but there is no order: give the money and the seat back.
-            await RefundAsync(paymentId);
+            if (paymentId is not null)
+                await RefundAsync(paymentId);
             await ReleaseSeatAsync(eventId);
             throw;
         }

@@ -112,6 +112,9 @@ public class EventsController(EventsService eventsService, BookingService bookin
             return Conflict(new ApiEnvelope(null, [new ApiError("sold_out", "Sorry, this event just sold out.")]));
         if (result.Status == BookingStatus.EventNotFound)
             return NotFound(new ApiEnvelope(null, [new ApiError("not_found", "Event not found.")]));
+        if (result.Status == BookingStatus.PaymentMethodRequired)
+            return BadRequest(new ApiEnvelope(null,
+                [new ApiError("validation_failed", "A card is required for this event.", "paymentMethodId")]));
         if (result.Status == BookingStatus.PaymentDeclined)
             return StatusCode(StatusCodes.Status402PaymentRequired,
                 new ApiEnvelope(null, [new ApiError("payment_declined", result.Error!)]));

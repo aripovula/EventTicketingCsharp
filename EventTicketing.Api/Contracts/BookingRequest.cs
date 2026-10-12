@@ -11,7 +11,8 @@ public record BookingRequest
     /// <summary>
     /// The card to charge: a Stripe PaymentMethod id created in the browser by Stripe Elements
     /// (in test mode, e.g. <c>pm_card_visa</c>). Card details never reach this API.
+    /// Required for paid events; free events need none.
     /// </summary>
-    [Required, MaxLength(255)]
-    public string PaymentMethodId { get; init; } = string.Empty;
+    [MaxLength(255)]
+    public string? PaymentMethodId { get; init; }
 }

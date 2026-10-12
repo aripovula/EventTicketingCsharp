@@ -31,7 +31,7 @@ public class BookingServiceTests(IntegrationTestFactory factory) : IClassFixture
     private static BookingRequest Request(string email) =>
         new() { Email = email, PaymentMethodId = FakePaymentGateway.ApprovedPaymentMethod };
 
-    private async Task<int> CreateEventAsync(int availableSeats)
+    private async Task<int> CreateEventAsync(int availableSeats, int priceCents = 2500)
     {
         var db = CreateDb();
         var ev = new Event
@@ -43,7 +43,7 @@ public class BookingServiceTests(IntegrationTestFactory factory) : IClassFixture
             Venue = "Test Hall",
             TotalSeats = 10,
             AvailableSeats = availableSeats,
-            PriceCents = 2500,
+            PriceCents = priceCents,
         };
         db.Events.Add(ev);
         await db.SaveChangesAsync(TestContext.Current.CancellationToken);
@@ -260,6 +260,34 @@ public class BookingServiceTests(IntegrationTestFactory factory) : IClassFixture
             eventId, UnsaveableRequest(), null, "booking-key", TestContext.Current.CancellationToken));
 
         Assert.Contains(logger.Messages, m => m.Contains("Refund of payment pi_test_1 failed"));
+        Assert.Equal(3, await AvailableSeatsAsync(eventId));
+    }
+
+    [Fact]
+    public async Task BookAsync_ForAFreeEvent_BooksWithoutACard()
+    {
+        var eventId = await CreateEventAsync(availableSeats: 3, priceCents: 0);
+        var payments = new RecordingPaymentGateway();
+
+        var result = await CreateService(payments).BookAsync(
+            eventId, new BookingRequest { Email = "guest@example.com" }, null, "booking-key", TestContext.Current.CancellationToken);
+
+        Assert.Equal(BookingStatus.Booked, result.Status);
+        Assert.Empty(payments.Charges);
+        var saved = await CreateDb().Orders.SingleAsync(o => o.Id == result.Order!.Id, TestContext.Current.CancellationToken);
+        Assert.Null(saved.StripePaymentIntentId);
+        Assert.Equal(2, await AvailableSeatsAsync(eventId));
+    }
+
+    [Fact]
+    public async Task BookAsync_ForAPaidEventWithoutACard_AsksForOneAndKeepsTheSeat()
+    {
+        var eventId = await CreateEventAsync(availableSeats: 3);
+
+        var result = await CreateService().BookAsync(
+            eventId, new BookingRequest { Email = "guest@example.com" }, null, "booking-key", TestContext.Current.CancellationToken);
+
+        Assert.Equal(BookingStatus.PaymentMethodRequired, result.Status);
         Assert.Equal(3, await AvailableSeatsAsync(eventId));
     }
 }

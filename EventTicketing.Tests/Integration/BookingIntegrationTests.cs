@@ -25,7 +25,7 @@ public class BookingIntegrationTests(IntegrationTestFactory factory) : IClassFix
     }
 
     [Fact]
-    public async Task Book_WithoutAPaymentMethod_Returns400ForPaymentMethodId()
+    public async Task Book_PaidEventWithoutAPaymentMethod_Returns400ForPaymentMethodId()
     {
         var response = await _client.PostAsJsonAsync(
             "/api/v1/events/1/bookings", new { email = "guest@example.com" }, TestContext.Current.CancellationToken);
@@ -34,7 +34,7 @@ public class BookingIntegrationTests(IntegrationTestFactory factory) : IClassFix
         Assert.Contains("\"field\":\"paymentMethodId\"", await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
     }
 
-    private async Task<int> CreateEventAsync(int availableSeats)
+    private async Task<int> CreateEventAsync(int availableSeats, int priceCents = 2500)
     {
         using var scope = factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
@@ -47,7 +47,7 @@ public class BookingIntegrationTests(IntegrationTestFactory factory) : IClassFix
             Venue = "Test Hall",
             TotalSeats = 10,
             AvailableSeats = availableSeats,
-            PriceCents = 2500,
+            PriceCents = priceCents,
         };
         db.Events.Add(ev);
         await db.SaveChangesAsync(TestContext.Current.CancellationToken);
@@ -94,6 +94,17 @@ public class BookingIntegrationTests(IntegrationTestFactory factory) : IClassFix
         using var scope = factory.Services.CreateScope();
         var ev = await scope.ServiceProvider.GetRequiredService<AppDbContext>().Events.SingleAsync(e => e.Id == eventId, TestContext.Current.CancellationToken);
         Assert.Equal(3, ev.AvailableSeats);
+    }
+
+    [Fact]
+    public async Task Book_AFreeEventWithoutAPaymentMethod_Returns201()
+    {
+        var eventId = await CreateEventAsync(availableSeats: 3, priceCents: 0);
+
+        var response = await _client.PostAsJsonAsync(
+            $"/api/v1/events/{eventId}/bookings", new { email = "guest@example.com" }, TestContext.Current.CancellationToken);
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
     }
 
     [Fact]
