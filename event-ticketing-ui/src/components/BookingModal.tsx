@@ -9,13 +9,14 @@ type Props = {
   eventVenue: string
   priceCents: number
   savedEmail?: string
-  onConfirm: (email: string, paymentMethodId: string) => Promise<void>
+  /** paymentMethodId is null for a free event. */
+  onConfirm: (email: string, paymentMethodId: string | null) => Promise<void>
   onClose: () => void
   error: string | null
 }
 
 /** Turns the buyer's card into a Stripe PaymentMethod id, or an error to show. */
-type CreatePaymentMethod = () => Promise<{ id: string } | { error: string }>
+type CreatePaymentMethod = () => Promise<{ id: string | null } | { error: string }>
 
 const labelClass = 'block text-sm font-medium text-gray-700 mb-1'
 
@@ -28,6 +29,17 @@ const CARD_ELEMENT_OPTIONS = {
 }
 
 export default function BookingModal(props: Props) {
+  if (props.priceCents === 0) {
+    return (
+      <BookingForm
+        {...props}
+        ready
+        createPaymentMethod={async () => ({ id: null })}
+        paymentField={null}
+        note="This event is free, so no card is needed."
+      />
+    )
+  }
   return stripePromise
     ? <Elements stripe={stripePromise}><StripeBookingForm {...props} /></Elements>
     : <TestCardBookingForm {...props} />

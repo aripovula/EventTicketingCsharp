@@ -104,3 +104,22 @@ test('a declined card is explained, and another card can be tried', async ({ pag
   expect(attempts.map(a => a.card)).toEqual(['pm_card_chargeDeclined', 'pm_card_visa'])
   expect(attempts[1].key).not.toBe(attempts[0].key)
 })
+
+test('a free event is booked without a card', async ({ page }) => {
+  await page.route('**/api/v1/events/1', route => route.fulfill({ json: { data: { ...event, priceCents: 0 }, errors: [] } }))
+  let posted: unknown
+  await page.route('**/api/v1/events/1/bookings', route => {
+    posted = route.request().postDataJSON()
+    return route.fulfill({ status: 500, body: 'oops' })
+  })
+  await page.goto('/events/1')
+
+  await page.getByRole('button', { name: 'Buy ticket' }).click()
+  const dialog = page.getByRole('dialog')
+  await expect(dialog.getByText('This event is free, so no card is needed.')).toBeVisible()
+  await expect(dialog.getByRole('radio')).toHaveCount(0)
+  await dialog.getByLabel('Email').fill('guest@example.com')
+  await dialog.getByRole('button', { name: 'Place order' }).click()
+
+  await expect.poll(() => posted).toEqual({ email: 'guest@example.com', paymentMethodId: null })
+})

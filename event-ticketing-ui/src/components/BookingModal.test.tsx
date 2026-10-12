@@ -66,6 +66,16 @@ describe('BookingModal', () => {
     expect(screen.getByRole('alert')).toHaveTextContent('Sorry, this event just sold out.')
   })
 
+  it('books a free event without asking for a card', async () => {
+    const props = renderModal({ priceCents: 0, savedEmail: 'john@example.com' })
+
+    expect(screen.queryByRole('radio')).not.toBeInTheDocument()
+    expect(screen.getByText('This event is free, so no card is needed.')).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'Place order' }))
+
+    expect(props.onConfirm).toHaveBeenCalledWith('john@example.com', null)
+  })
+
   it('cancels without confirming', async () => {
     const props = renderModal()
 

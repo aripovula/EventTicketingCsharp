@@ -52,7 +52,7 @@ export default function EventDetailPage() {
 
   const soldOut = event.availableSeats === 0
 
-  async function handleConfirmBooking(email: string, paymentMethodId: string) {
+  async function handleConfirmBooking(email: string, paymentMethodId: string | null) {
     setBookingError(null)
     const res = await bookEvent(event!.id, email, paymentMethodId, idempotencyKey).catch(() => null)
     if (res?.ok) {
