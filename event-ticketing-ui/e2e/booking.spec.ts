@@ -79,3 +79,28 @@ test('a retried booking reuses its idempotency key', async ({ page }) => {
   expect(keys[0]).toMatch(/^[0-9a-f-]{36}$/)
   expect(keys[1]).toBe(keys[0])
 })
+
+test('a declined card is explained, and another card can be tried', async ({ page }) => {
+  await page.route('**/api/v1/events/1', route => route.fulfill({ json: { data: event, errors: [] } }))
+  const attempts: { key: string, card: string }[] = []
+  await page.route('**/api/v1/events/1/bookings', route => {
+    attempts.push({ key: route.request().headers()['idempotency-key'], card: route.request().postDataJSON().paymentMethodId })
+    return attempts.length === 1
+      ? route.fulfill({ status: 402, json: { data: null, errors: [{ code: 'payment_declined', detail: 'Your card was declined.' }] } })
+      : route.fulfill({ status: 500, body: 'oops' })
+  })
+  await page.goto('/events/1')
+
+  await page.getByRole('button', { name: 'Buy ticket' }).click()
+  const dialog = page.getByRole('dialog')
+  await dialog.getByLabel('Email').fill('guest@example.com')
+  await dialog.getByLabel('Visa 4000 0000 0000 0002 (declined)').check()
+  await dialog.getByRole('button', { name: 'Place order' }).click()
+  await expect(dialog.getByRole('alert')).toHaveText('Your card was declined.')
+  await dialog.getByLabel('Visa 4242 4242 4242 4242 (approved)').check()
+  await dialog.getByRole('button', { name: 'Place order' }).click()
+
+  await expect.poll(() => attempts.length).toBe(2)
+  expect(attempts.map(a => a.card)).toEqual(['pm_card_chargeDeclined', 'pm_card_visa'])
+  expect(attempts[1].key).not.toBe(attempts[0].key)
+})

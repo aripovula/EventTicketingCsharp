@@ -61,6 +61,11 @@ export default function EventDetailPage() {
       navigate(order.guestAccessToken
         ? `/orders/${order.id}?token=${encodeURIComponent(order.guestAccessToken)}`
         : `/orders/${order.id}`)
+    } else if (res?.status === 402) {
+      const body = await res.json().catch(() => null)
+      setBookingError(body?.errors?.[0]?.detail ?? 'Your card was declined.')
+      // The API remembers the decline under this key, so trying another card needs a new one.
+      setIdempotencyKey(crypto.randomUUID())
     } else if (res?.status === 409) {
       setBookingError('Sorry, this event just sold out.')
     } else if (res?.status === 429) {

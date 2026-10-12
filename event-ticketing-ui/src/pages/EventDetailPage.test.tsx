@@ -193,6 +193,28 @@ describe('EventDetailPage', () => {
     })))
   })
 
+  it('says why the card was declined and retries another card under a new key', async () => {
+    const fetchMock = stubEventThenBooking(new Response('{}'))
+    fetchMock.mockImplementation((_: string, init?: RequestInit) => Promise.resolve(init?.method === 'POST'
+      ? new Response(JSON.stringify({ data: null, errors: [{ code: 'payment_declined', detail: 'Your card was declined.' }] }), { status: 402 })
+      : new Response(JSON.stringify({ data: makeEvent(), errors: [] }))))
+    renderPage()
+    const keys = () => fetchMock.mock.calls
+      .filter(([, init]) => init?.method === 'POST')
+      .map(([, init]) => (init!.headers as Record<string, string>)['Idempotency-Key'])
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Buy ticket' }))
+    await userEvent.type(screen.getByLabelText('Email'), 'guest@example.com')
+    await userEvent.click(screen.getByLabelText('Visa 4000 0000 0000 0002 (declined)'))
+    await userEvent.click(screen.getByRole('button', { name: 'Place order' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Your card was declined.')
+    await userEvent.click(screen.getByLabelText('Visa 4242 4242 4242 4242 (approved)'))
+    await userEvent.click(screen.getByRole('button', { name: 'Place order' }))
+    await waitFor(() => expect(keys()).toHaveLength(2))
+    expect(keys()[1]).not.toBe(keys()[0])
+  })
+
   it('says when the last seat was just taken', async () => {
     stubEventThenBooking(new Response(JSON.stringify({ data: null, errors: [{ code: 'sold_out', detail: 'Sorry, this event just sold out.' }] }), { status: 409 }))
     renderPage()
