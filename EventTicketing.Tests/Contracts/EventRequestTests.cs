@@ -70,6 +70,22 @@ public class EventRequestTests
         Assert.NotEmpty(Validate(request));
     }
 
+    [Theory]
+    [InlineData(1)]
+    [InlineData(49)]
+    public void APaidPriceMustBeAtLeastStripesMinimumCharge(int price)
+    {
+        Assert.Equal(["PriceCents"], InvalidMembers(Valid() with { PriceCents = price }));
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(50)]
+    public void FreeAndFiftyCentPricesAreAllowed(int price)
+    {
+        Assert.Empty(Validate(Valid() with { PriceCents = price }));
+    }
+
     [Fact]
     public void ImageUrlMustBeAUrlWhenGiven()
     {

@@ -26,8 +26,11 @@ public record EventRequest : IValidatableObject
     [Range(0, 10_000)]
     public int AvailableSeats { get; init; }
 
+    /// <summary>0 for a free event; otherwise at least 50 cents, the least Stripe can charge.</summary>
     [Range(0, 10_000_000)]
     public int PriceCents { get; init; }
+
+    public const int MinimumPaidPriceCents = 50;
 
     [MaxLength(500), Url]
     public string? ImageUrl { get; init; }
@@ -38,5 +41,7 @@ public record EventRequest : IValidatableObject
             yield return new ValidationResult("End time must be after start time.", [nameof(EndTime)]);
         if (AvailableSeats > TotalSeats)
             yield return new ValidationResult("Available seats cannot exceed total seats.", [nameof(AvailableSeats)]);
+        if (PriceCents is > 0 and < MinimumPaidPriceCents)
+            yield return new ValidationResult("Price must be $0.00 (free) or at least $0.50.", [nameof(PriceCents)]);
     }
 }
