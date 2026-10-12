@@ -12,6 +12,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<IdempotencyKey> IdempotencyKeys => Set<IdempotencyKey>();
     public DbSet<OutboxMessage> OutboxMessages => Set<OutboxMessage>();
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
+    public DbSet<PaymentMethod> PaymentMethods => Set<PaymentMethod>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -78,6 +79,19 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         modelBuilder.Entity<AuditLog>()
             .Property(a => a.Details)
             .HasColumnType("jsonb");
+
+        modelBuilder.Entity<PaymentMethod>()
+            .HasOne(p => p.User)
+            .WithMany()
+            .HasForeignKey(p => p.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        // At most one default card per user.
+        modelBuilder.Entity<PaymentMethod>()
+            .HasIndex(p => p.UserId)
+            .HasDatabaseName("ix_payment_methods_user_id_default")
+            .IsUnique()
+            .HasFilter("is_default");
     }
 
     public override int SaveChanges(bool acceptAllChangesOnSuccess)
