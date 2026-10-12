@@ -31,13 +31,22 @@ describe('BookingModal', () => {
     expect(screen.getByLabelText('Email')).toHaveValue('john@example.com')
   })
 
-  it('confirms with the typed email', async () => {
+  it('confirms with the typed email and the approved test card', async () => {
     const props = renderModal()
 
     await userEvent.type(screen.getByLabelText('Email'), 'guest@example.com')
     await userEvent.click(screen.getByRole('button', { name: 'Place order' }))
 
-    expect(props.onConfirm).toHaveBeenCalledWith('guest@example.com')
+    expect(props.onConfirm).toHaveBeenCalledWith('guest@example.com', 'pm_card_visa')
+  })
+
+  it('pays with the declining test card when it is chosen', async () => {
+    const props = renderModal({ savedEmail: 'john@example.com' })
+
+    await userEvent.click(screen.getByLabelText('Visa 4000 0000 0000 0002 (declined)'))
+    await userEvent.click(screen.getByRole('button', { name: 'Place order' }))
+
+    expect(props.onConfirm).toHaveBeenCalledWith('john@example.com', 'pm_card_chargeDeclined')
   })
 
   it('disables the buttons while the order is being placed', async () => {

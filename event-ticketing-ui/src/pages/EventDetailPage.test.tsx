@@ -180,6 +180,19 @@ describe('EventDetailPage', () => {
     expect(await screen.findByText('Order page 43')).toBeInTheDocument()
   })
 
+  it('pays with the chosen test card', async () => {
+    const fetchMock = stubEventThenBooking(new Response('oops', { status: 500 }))
+    renderPage()
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Buy ticket' }))
+    await userEvent.type(screen.getByLabelText('Email'), 'guest@example.com')
+    await userEvent.click(screen.getByRole('button', { name: 'Place order' }))
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith('/api/v1/events/1/bookings', expect.objectContaining({
+      body: JSON.stringify({ email: 'guest@example.com', paymentMethodId: 'pm_card_visa' }),
+    })))
+  })
+
   it('says when the last seat was just taken', async () => {
     stubEventThenBooking(new Response(JSON.stringify({ data: null, errors: [{ code: 'sold_out', detail: 'Sorry, this event just sold out.' }] }), { status: 409 }))
     renderPage()

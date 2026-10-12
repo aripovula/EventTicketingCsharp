@@ -10,8 +10,10 @@ test('a guest books a seat and lands on the order confirmation', async ({ page }
   await page.route('**/api/v1/events/1', route =>
     route.fulfill({ json: { data: { ...event, availableSeats: booked ? 47 : 48 }, errors: [] } }))
   const order = { id: 42, eventId: 1, eventTitle: 'Jazz Night', eventVenue: 'Blue Note Club', eventStartTime: '2026-11-02T23:00:00Z', eventEndTime: '2026-11-03T02:00:00Z', email: 'guest@example.com', priceCents: 2500, bookedAt: '2026-10-09T12:00:00Z' }
+  let posted: unknown
   await page.route('**/api/v1/events/1/bookings', route => {
     booked = true
+    posted = route.request().postDataJSON()
     return route.fulfill({ status: 201, json: { data: { ...order, guestAccessToken: 'secret' }, errors: [] } })
   })
   await page.route('**/api/v1/orders/42', route =>
@@ -25,6 +27,8 @@ test('a guest books a seat and lands on the order confirmation', async ({ page }
   await page.getByRole('button', { name: 'Place order' }).click()
 
   await expect(page).toHaveURL('/orders/42?token=secret')
+  // No Stripe key in E2E runs, so the form pays with Stripe's approved test card.
+  expect(posted).toEqual({ email: 'guest@example.com', paymentMethodId: 'pm_card_visa' })
   await expect(page.getByRole('heading', { name: "You're going!" })).toBeVisible()
   await expect(page.getByText(/Order #42/)).toContainText('$25.00')
 })

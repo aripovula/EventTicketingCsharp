@@ -52,9 +52,9 @@ export default function EventDetailPage() {
 
   const soldOut = event.availableSeats === 0
 
-  async function handleConfirmBooking(email: string) {
+  async function handleConfirmBooking(email: string, paymentMethodId: string) {
     setBookingError(null)
-    const res = await bookEvent(event!.id, email, idempotencyKey).catch(() => null)
+    const res = await bookEvent(event!.id, email, paymentMethodId, idempotencyKey).catch(() => null)
     if (res?.ok) {
       const order = (await res.json()).data
       // Guests can only reach their order through the token, so it rides along in the link.
