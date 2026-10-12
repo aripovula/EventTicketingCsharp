@@ -235,6 +235,11 @@ namespace EventTicketing.Api.Data.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("price_cents");
 
+                    b.Property<string>("StripePaymentIntentId")
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("stripe_payment_intent_id");
+
                     b.Property<int?>("UserId")
                         .HasColumnType("integer")
                         .HasColumnName("user_id");

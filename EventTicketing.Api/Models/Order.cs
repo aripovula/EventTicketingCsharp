@@ -23,6 +23,10 @@ public class Order
 
     public DateTime BookedAt { get; set; }
 
+    // The Stripe PaymentIntent that paid for the ticket; null for orders placed before payments existed.
+    [MaxLength(255)]
+    public string? StripePaymentIntentId { get; set; }
+
     // SHA-256 of the lookup token a guest receives at booking time; null for signed-in bookings.
     [MaxLength(64)]
     public string? GuestAccessTokenHash { get; set; }
