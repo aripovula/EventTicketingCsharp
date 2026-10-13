@@ -121,5 +121,5 @@ test('a free event is booked without a card', async ({ page }) => {
   await dialog.getByLabel('Email').fill('guest@example.com')
   await dialog.getByRole('button', { name: 'Place order' }).click()
 
-  await expect.poll(() => posted).toEqual({ email: 'guest@example.com', paymentMethodId: null })
+  await expect.poll(() => posted).toEqual({ email: 'guest@example.com' })
 })

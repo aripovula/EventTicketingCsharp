@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { bookEvent } from '../api/bookings'
+import { bookEvent, type Payment } from '../api/bookings'
 import { fetchEvent, type EventItem } from '../api/events'
 import BookingModal from '../components/BookingModal'
 import { useAuth } from '../context/useAuth'
@@ -52,9 +52,9 @@ export default function EventDetailPage() {
 
   const soldOut = event.availableSeats === 0
 
-  async function handleConfirmBooking(email: string, paymentMethodId: string | null) {
+  async function handleConfirmBooking(email: string, payment: Payment) {
     setBookingError(null)
-    const res = await bookEvent(event!.id, email, paymentMethodId, idempotencyKey).catch(() => null)
+    const res = await bookEvent(event!.id, email, payment, idempotencyKey).catch(() => null)
     if (res?.ok) {
       const order = (await res.json()).data
       // Guests can only reach their order through the token, so it rides along in the link.

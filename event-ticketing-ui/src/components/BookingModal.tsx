@@ -1,4 +1,5 @@
 import { useState, type ReactNode } from 'react'
+import type { Payment } from '../api/bookings'
 import CardInput, { type CreatePaymentMethod } from '../payments/CardInput'
 import { formatPrice } from '../utils/formatPrice'
 
@@ -8,8 +9,7 @@ type Props = {
   eventVenue: string
   priceCents: number
   savedEmail?: string
-  /** paymentMethodId is null for a free event. */
-  onConfirm: (email: string, paymentMethodId: string | null) => Promise<void>
+  onConfirm: (email: string, payment: Payment) => Promise<void>
   onClose: () => void
   error: string | null
 }
@@ -56,12 +56,16 @@ function BookingForm({ eventTitle, eventDate, eventVenue, priceCents, savedEmail
     setCardError(null)
     setSubmitting(true)
     try {
-      const card = createPaymentMethod ? await createPaymentMethod() : { id: null }
+      if (!createPaymentMethod) {
+        await onConfirm(email, null)
+        return
+      }
+      const card = await createPaymentMethod()
       if ('error' in card) {
         setCardError(card.error)
         return
       }
-      await onConfirm(email, card.id)
+      await onConfirm(email, { paymentMethodId: card.id })
     } finally {
       setSubmitting(false)
     }

@@ -42,7 +42,7 @@ describe('BookingModal with Stripe', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Place order' }))
 
     expect(createPaymentMethod).toHaveBeenCalledWith({ type: 'card', card: {} })
-    expect(props.onConfirm).toHaveBeenCalledWith('john@example.com', 'pm_123')
+    expect(props.onConfirm).toHaveBeenCalledWith('john@example.com', { paymentMethodId: 'pm_123' })
   })
 
   it("shows Stripe's card error without placing the order", async () => {
