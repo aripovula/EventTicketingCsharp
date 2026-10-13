@@ -31,6 +31,7 @@ builder.Host.UseSerilog((ctx, config) => config
     .WriteTo.Console(new CompactJsonFormatter()));
 
 // One trace follows a request through its SQL and outgoing HTTP calls (Stripe, Blob Storage).
+// Traces are exported only where an OTLP endpoint is configured.
 builder.Services.AddOpenTelemetry()
     .ConfigureResource(resource => resource.AddService("event-ticketing-api"))
     .WithTracing(tracing =>
@@ -40,6 +41,8 @@ builder.Services.AddOpenTelemetry()
                 options.Filter = context => !context.Request.Path.StartsWithSegments("/health"))
             .AddHttpClientInstrumentation()
             .AddNpgsql();
+        if (builder.Configuration["OpenTelemetry:OtlpEndpoint"] is { Length: > 0 } endpoint)
+            tracing.AddOtlpExporter(options => options.Endpoint = new Uri(endpoint));
     });
 
 builder.Services.AddControllers(options => options.Filters.Add<EnvelopeResultFilter>())
