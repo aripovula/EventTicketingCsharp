@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using EventTicketing.Api.Contracts;
 using System.Text.Json;
 using EventTicketing.Api.Data;
@@ -97,6 +98,7 @@ public class BookingService(
                 Exchange = rabbitMq.Value.Exchange,
                 RoutingKey = BookingConfirmedMessage.RoutingKey,
                 CreatedAt = DateTime.UtcNow,
+                TraceParent = Activity.Current?.Id,
             });
             audit.Record(AuditAction.TicketBooked, "Order", order.Id, new AuditActor(userId, request.Email),
                 new { EventId = eventId, EventTitle = ev.Title, order.PriceCents });

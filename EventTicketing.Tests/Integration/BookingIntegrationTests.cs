@@ -1,7 +1,9 @@
+using System.Diagnostics;
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using EventTicketing.Api.Data;
+using EventTicketing.Api.Messaging;
 using EventTicketing.Api.Models;
 using EventTicketing.Api.Payments;
 using Microsoft.EntityFrameworkCore;
@@ -155,6 +157,29 @@ public class BookingIntegrationTests(IntegrationTestFactory factory) : IClassFix
     private static Task<HttpResponseMessage> BookWithTheSavedCardAsync(HttpClient client, int eventId) =>
         client.PostAsJsonAsync($"/api/v1/events/{eventId}/bookings",
             new { email = "holder@example.com", useSavedPaymentMethod = true }, TestContext.Current.CancellationToken);
+
+    [Fact]
+    public async Task Book_SavesTheRequestsTraceWithTheOutboxMessage()
+    {
+        var eventId = await CreateEventAsync(availableSeats: 3);
+        var traceId = ActivityTraceId.CreateRandom();
+        using var request = new HttpRequestMessage(HttpMethod.Post, $"/api/v1/events/{eventId}/bookings")
+        {
+            Content = JsonContent.Create(new { email = "guest@example.com", paymentMethodId = "pm_card_visa" }),
+        };
+        request.Headers.Add("traceparent", $"00-{traceId}-{ActivitySpanId.CreateRandom()}-01");
+
+        var response = await _client.SendAsync(request, TestContext.Current.CancellationToken);
+
+        var orderId = JsonDocument.Parse(await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken))
+            .RootElement.GetProperty("data").GetProperty("id").GetInt32();
+        using var scope = factory.Services.CreateScope();
+        var messages = await scope.ServiceProvider.GetRequiredService<AppDbContext>().OutboxMessages
+            .Where(m => m.TraceParent != null && m.TraceParent.Contains(traceId.ToString()))
+            .ToListAsync(TestContext.Current.CancellationToken);
+        var message = Assert.Single(messages);
+        Assert.Equal(orderId, JsonSerializer.Deserialize<BookingConfirmedMessage>(message.Payload)!.OrderId);
+    }
 
     [Fact]
     public async Task Book_WithTheSavedCard_Returns201()
