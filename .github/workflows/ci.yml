@@ -98,6 +98,15 @@ jobs:
         with:
           global-json-file: global.json
 
+      - uses: actions/setup-node@v4.4.0
+        with:
+          node-version-file: .tool-versions
+
+      - name: Start Azurite
+        run: |
+          nohup npx --yes --package=azurite@3.37.0 azurite-blob --blobHost 127.0.0.1 --inMemoryPersistence --skipApiVersionCheck > azurite.log 2>&1 &
+          timeout 60 bash -c 'until (echo > /dev/tcp/127.0.0.1/10000) 2>/dev/null; do sleep 1; done'
+
       - name: Backend integration tests
         run: dotnet test --project EventTicketing.Tests -- --filter-trait "Category=Integration"
 
@@ -184,6 +193,11 @@ jobs:
 
       - name: Generate JWT signing key
         run: echo "Jwt__SigningKey=$(openssl rand -base64 48)" >> "$GITHUB_ENV"
+
+      - name: Start Azurite
+        run: |
+          nohup npx --yes --package=azurite@3.37.0 azurite-blob --blobHost 127.0.0.1 --inMemoryPersistence --skipApiVersionCheck > azurite.log 2>&1 &
+          timeout 60 bash -c 'until (echo > /dev/tcp/127.0.0.1/10000) 2>/dev/null; do sleep 1; done'
 
       - name: Start .NET API
         run: nohup dotnet run --project EventTicketing.Api --no-build > api.log 2>&1 &
