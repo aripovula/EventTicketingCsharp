@@ -1,6 +1,5 @@
 import { useState, type ReactNode } from 'react'
-import { CardElement, Elements, useElements, useStripe } from '@stripe/react-stripe-js'
-import { stripePromise, TEST_CARDS } from '../payments/stripe'
+import CardInput, { type CreatePaymentMethod } from '../payments/CardInput'
 import { formatPrice } from '../utils/formatPrice'
 
 type Props = {
@@ -15,18 +14,7 @@ type Props = {
   error: string | null
 }
 
-/** Turns the buyer's card into a Stripe PaymentMethod id, or an error to show. */
-type CreatePaymentMethod = () => Promise<{ id: string | null } | { error: string }>
-
 const labelClass = 'block text-sm font-medium text-gray-700 mb-1'
-
-// Matches the Stripe card field to the app's other inputs.
-const CARD_ELEMENT_OPTIONS = {
-  style: {
-    base: { fontSize: '14px', color: '#111827', fontFamily: 'inherit', '::placeholder': { color: '#9ca3af' } },
-    invalid: { color: '#ef4444' },
-  },
-}
 
 export default function BookingModal(props: Props) {
   if (props.priceCents === 0) {
@@ -34,75 +22,23 @@ export default function BookingModal(props: Props) {
       <BookingForm
         {...props}
         ready
-        createPaymentMethod={async () => ({ id: null })}
+        createPaymentMethod={null}
         paymentField={null}
         note="This event is free, so no card is needed."
       />
     )
   }
-  return stripePromise
-    ? <Elements stripe={stripePromise}><StripeBookingForm {...props} /></Elements>
-    : <TestCardBookingForm {...props} />
-}
-
-function StripeBookingForm(props: Props) {
-  const stripe = useStripe()
-  const elements = useElements()
-
-  async function createPaymentMethod() {
-    const card = elements?.getElement(CardElement)
-    if (!stripe || !card) return { error: 'Payments are still loading. Please try again.' }
-    const { paymentMethod, error } = await stripe.createPaymentMethod({ type: 'card', card })
-    return paymentMethod ? { id: paymentMethod.id } : { error: error?.message ?? 'Your card details could not be checked.' }
-  }
-
   return (
-    <BookingForm
-      {...props}
-      ready={!!stripe}
-      createPaymentMethod={createPaymentMethod}
-      paymentField={
-        <div>
-          <span className={labelClass}>Card details</span>
-          <div className="rounded-lg border border-gray-300 px-3 py-2.5 focus-within:ring-2 focus-within:ring-cyan-400 transition">
-            <CardElement options={CARD_ELEMENT_OPTIONS} />
-          </div>
-        </div>
-      }
-      note={<>Your card details go straight to Stripe in a secure frame and never reach our server. Use test card <code>4242 4242 4242 4242</code>, any future expiry date and any CVC.</>}
-    />
-  )
-}
-
-function TestCardBookingForm(props: Props) {
-  const [card, setCard] = useState(TEST_CARDS[0].id)
-
-  return (
-    <BookingForm
-      {...props}
-      ready
-      createPaymentMethod={async () => ({ id: card })}
-      paymentField={
-        <fieldset>
-          <legend className={labelClass}>Test card</legend>
-          <div className="space-y-1">
-            {TEST_CARDS.map(c => (
-              <label key={c.id} className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
-                <input type="radio" name="test-card" value={c.id} checked={card === c.id} onChange={() => setCard(c.id)} />
-                {c.label}
-              </label>
-            ))}
-          </div>
-        </fieldset>
-      }
-      note={<>No Stripe key is set up here, so instead of a card form you pick one of Stripe&apos;s test cards.</>}
-    />
+    <CardInput>
+      {card => <BookingForm {...props} ready={card.ready} createPaymentMethod={card.createPaymentMethod} paymentField={card.field} note={card.note} />}
+    </CardInput>
   )
 }
 
 type BookingFormProps = Props & {
   ready: boolean
-  createPaymentMethod: CreatePaymentMethod
+  /** Null for a free event. */
+  createPaymentMethod: CreatePaymentMethod | null
   paymentField: ReactNode
   note: ReactNode
 }
@@ -120,7 +56,7 @@ function BookingForm({ eventTitle, eventDate, eventVenue, priceCents, savedEmail
     setCardError(null)
     setSubmitting(true)
     try {
-      const card = await createPaymentMethod()
+      const card = createPaymentMethod ? await createPaymentMethod() : { id: null }
       if ('error' in card) {
         setCardError(card.error)
         return
