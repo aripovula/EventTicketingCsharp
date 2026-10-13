@@ -1,4 +1,6 @@
+using System.Diagnostics;
 using EventTicketing.Api.Data;
+using EventTicketing.Api.Telemetry;
 using Microsoft.EntityFrameworkCore;
 
 namespace EventTicketing.Api.Messaging;
@@ -52,6 +54,12 @@ public class OutboxWorker(IServiceScopeFactory scopeFactory, IMessagePublisher p
         foreach (var message in messages)
         {
             message.Attempts++;
+            // The publish joins the trace of the request that saved the message; RabbitMQ.Client then
+            // carries it to the consumer in the message headers.
+            ActivityContext.TryParse(message.TraceParent, null, out var parent);
+            using var activity = Tracing.Source.StartActivity("outbox publish", ActivityKind.Internal, parent);
+            activity?.SetTag("outbox.message_id", message.Id);
+            activity?.SetTag("outbox.attempt", message.Attempts);
             try
             {
                 await publisher.PublishAsync(message.Exchange, message.RoutingKey, message.Type, message.Payload, cancellationToken);
@@ -60,6 +68,7 @@ public class OutboxWorker(IServiceScopeFactory scopeFactory, IMessagePublisher p
             catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
             {
                 // Back off exponentially (5s, 10s, 20s, ...) so a broker outage isn't hammered.
+                activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
                 message.LastError = ex.Message[..Math.Min(ex.Message.Length, 2000)];
                 message.NextAttemptAt = DateTime.UtcNow + RetryDelay(message.Attempts);
                 if (message.Attempts >= MaxAttempts)

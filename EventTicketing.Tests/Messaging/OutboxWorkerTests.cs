@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using EventTicketing.Api.Data;
 using EventTicketing.Api.Messaging;
 using EventTicketing.Api.Models;
@@ -65,6 +66,17 @@ public class OutboxWorkerTests(OutboxWorkerTests.HostWithoutWorker factory) : IC
         var saved = await ReloadAsync(message);
         Assert.NotNull(saved.ProcessedAt);
         Assert.Equal(1, saved.Attempts);
+    }
+
+    [Fact]
+    public async Task ProcessPending_PublishesInTheTraceThatSavedTheMessage()
+    {
+        var traceId = ActivityTraceId.CreateRandom();
+        var message = await AddMessageAsync(m => m.TraceParent = $"00-{traceId}-{ActivitySpanId.CreateRandom()}-01");
+
+        await ProcessPendingAsync();
+
+        Assert.Equal(traceId, _publisher.TraceIds[message.Payload]);
     }
 
     [Fact]
