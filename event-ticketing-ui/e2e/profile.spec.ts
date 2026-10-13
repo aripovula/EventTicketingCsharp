@@ -28,3 +28,28 @@ test('a signed-in user opens their profile from the header', async ({ page }) =>
   await expect(page).toHaveURL('/profile')
   await expect(page.getByText('No saved card yet.')).toBeVisible()
 })
+
+test('a signed-in user saves a card on the profile page', async ({ page }) => {
+  await signedIn(page)
+  let saved: unknown = null
+  await page.route('**/api/v1/auth/me/payment-method', route => {
+    if (route.request().method() === 'PUT') {
+      saved = visa
+      return route.fulfill({ json: { data: saved, errors: [] } })
+    }
+    return saved
+      ? route.fulfill({ json: { data: saved, errors: [] } })
+      : route.fulfill({ status: 404, json: { data: null, errors: [{ code: 'not_found', detail: 'No saved card.' }] } })
+  })
+  await page.goto('/profile')
+
+  await expect(page.getByText('No saved card yet.')).toBeVisible()
+  // No Stripe key in E2E runs, so the form offers Stripe's test cards.
+  await page.getByRole('button', { name: 'Save card' }).click()
+
+  await expect(page.getByRole('status')).toHaveText('Card saved.')
+  await expect(page.getByText('Visa ending in 4242')).toBeVisible()
+  await page.reload()
+  await expect(page.getByText('Visa ending in 4242')).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Replace card' })).toBeVisible()
+})
