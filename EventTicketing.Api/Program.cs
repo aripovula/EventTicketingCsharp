@@ -9,6 +9,7 @@ using EventTicketing.Api.Middleware;
 using EventTicketing.Api.Payments;
 using EventTicketing.Api.Services;
 using EventTicketing.Api.Storage;
+using EventTicketing.Api.Telemetry;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Caching.Hybrid;
@@ -16,6 +17,9 @@ using Microsoft.Extensions.Options;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
+using Npgsql;
+using OpenTelemetry.Resources;
+using OpenTelemetry.Trace;
 using Serilog;
 using Serilog.Formatting.Compact;
 
@@ -25,6 +29,18 @@ builder.Host.UseSerilog((ctx, config) => config
     .ReadFrom.Configuration(ctx.Configuration)
     .Enrich.FromLogContext()
     .WriteTo.Console(new CompactJsonFormatter()));
+
+// One trace follows a request through its SQL and outgoing HTTP calls (Stripe, Blob Storage).
+builder.Services.AddOpenTelemetry()
+    .ConfigureResource(resource => resource.AddService("event-ticketing-api"))
+    .WithTracing(tracing =>
+    {
+        tracing.AddSource(Tracing.SourceName)
+            .AddAspNetCoreInstrumentation(options =>
+                options.Filter = context => !context.Request.Path.StartsWithSegments("/health"))
+            .AddHttpClientInstrumentation()
+            .AddNpgsql();
+    });
 
 builder.Services.AddControllers(options => options.Filters.Add<EnvelopeResultFilter>())
     .ConfigureApiBehaviorOptions(options =>
