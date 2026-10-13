@@ -101,4 +101,16 @@ describe('App', () => {
     expect(await screen.findByRole('link', { name: 'Events Calendar' })).toHaveAttribute('href', '/admin/calendar')
     expect(screen.queryByRole('link', { name: 'My Calendar' })).not.toBeInTheDocument()
   })
+
+  it('links signed-in users to their profile', async () => {
+    renderApp(true)
+
+    expect(await screen.findByRole('link', { name: 'Profile' })).toHaveAttribute('href', '/profile')
+  })
+
+  it('hides the Profile link from signed-out visitors', () => {
+    renderApp()
+
+    expect(screen.queryByRole('link', { name: 'Profile' })).not.toBeInTheDocument()
+  })
 })

@@ -34,6 +34,11 @@ function HeaderNav() {
           {user.role === 'admin' ? 'Events Calendar' : 'My Calendar'}
         </Link>
       )}
+      {user && (
+        <Link to="/profile" className="text-sm text-gray-500 hover:text-cyan-600 transition-colors">
+          Profile
+        </Link>
+      )}
       {user?.role === 'admin' && (
         <Link to="/admin" className="text-sm text-gray-500 hover:text-cyan-600 transition-colors">
           Admin
