@@ -98,6 +98,7 @@ builder.Services.AddScoped<RefreshTokenService>();
 builder.Services.AddScoped<EventsService>();
 builder.Services.AddScoped<BookingService>();
 builder.Services.AddScoped<OrdersService>();
+builder.Services.AddScoped<PaymentMethodsService>();
 builder.Services.AddScoped<IdempotencyService>();
 builder.Services.AddScoped<AuditLogger>();
 builder.Services.AddOptions<PaymentsOptions>()
