@@ -1,3 +1,4 @@
+using Azure.Storage.Blobs;
 using EventTicketing.Api.Data;
 using EventTicketing.Api.Messaging;
 using Microsoft.AspNetCore.Hosting;
@@ -57,6 +58,7 @@ public class IntegrationTestFactory : WebApplicationFactory<Program>, IAsyncLife
         }
 
         await DeleteRabbitMqTopologyAsync();
+        await Services.GetRequiredService<BlobServiceClient>().GetBlobContainerClient(_blobContainer).DeleteIfExistsAsync();
 
         await base.DisposeAsync();
     }
