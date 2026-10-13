@@ -1,5 +1,6 @@
 using System.Text;
 using System.Threading.RateLimiting;
+using Azure.Storage.Blobs;
 using EventTicketing.Api.Data;
 using EventTicketing.Api.Filters;
 using EventTicketing.Api.Hubs;
@@ -124,6 +125,7 @@ builder.Services.AddOptions<BlobStorageOptions>()
     .Validate(o => !string.IsNullOrEmpty(o.ConnectionString),
         "AzureBlob:ConnectionString is required (set it with dotnet user-secrets, \"UseDevelopmentStorage=true\" for Azurite, or the AzureBlob__ConnectionString env var).")
     .ValidateOnStart();
+builder.Services.AddSingleton(sp => new BlobServiceClient(sp.GetRequiredService<IOptions<BlobStorageOptions>>().Value.ConnectionString));
 builder.Services.AddSignalR();
 builder.Services.AddSingleton<RabbitMqConnection>();
 builder.Services.AddSingleton<IMessagePublisher, RabbitMqPublisher>();
