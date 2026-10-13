@@ -81,6 +81,12 @@ When something fails, we compensate:
 
 Cards that need 3-D Secure are declined for now: we don't run Stripe's browser verification step.
 
+### Saved cards
+
+Signed-in users can save a card on their profile page (`PUT /api/v1/auth/me/payment-method`). We attach it to a Stripe Customer, which we create the first time a user saves a card. Stripe keeps the card itself. Our `payment_methods` table holds only the Stripe customer and PaymentMethod ids, plus the brand, last four digits and expiry we show. The API returns only those display fields, never the Stripe ids.
+
+The booking modal then offers "Visa ending in 4242" first. Choosing it sends `useSavedPaymentMethod: true` instead of a PaymentMethod id, and the server looks the card up by the signed-in user, so nobody can pay with someone else's card. Saving a new card keeps the old row but stops it being the default.
+
 ### Running without Stripe keys
 
 `Payments:Provider=Fake` swaps Stripe for a fake gateway that uses Stripe's own test ids: `pm_card_visa` is approved and `pm_card_chargeDeclined` is declined. The API refuses to start with the fake in Production. Without `VITE_STRIPE_PUBLISHABLE_KEY`, the booking form offers those two test cards instead of Stripe's card field. Integration tests and the CI E2E jobs run this way, so they need no Stripe secrets.
