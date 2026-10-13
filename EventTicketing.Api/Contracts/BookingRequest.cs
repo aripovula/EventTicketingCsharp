@@ -15,4 +15,7 @@ public record BookingRequest
     /// </summary>
     [MaxLength(255)]
     public string? PaymentMethodId { get; init; }
+
+    /// <summary>Pay with the signed-in user's saved card (see <c>PUT /api/v1/auth/me/payment-method</c>) instead of <see cref="PaymentMethodId"/>.</summary>
+    public bool UseSavedPaymentMethod { get; init; }
 }
