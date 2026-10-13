@@ -1,5 +1,6 @@
 using EventTicketing.Api.Contracts;
 using EventTicketing.Api.Services;
+using EventTicketing.Api.Storage;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -8,7 +9,7 @@ namespace EventTicketing.Api.Controllers.V1;
 [ApiController]
 [Authorize(Roles = "admin")]
 [Route("api/v1/admin")]
-public class AdminController(OrdersService ordersService, EventsService eventsService) : ControllerBase
+public class AdminController(OrdersService ordersService, EventsService eventsService, BlobImageStorage images) : ControllerBase
 {
     /// <summary>Lists every order, newest first, with cursor pagination (meta.nextCursor). Admin only.</summary>
     /// <param name="query">Cursor paging.</param>
@@ -37,4 +38,16 @@ public class AdminController(OrdersService ordersService, EventsService eventsSe
     {
         return Ok(await eventsService.SummaryAsync(cancellationToken));
     }
+
+    /// <summary>
+    /// Issues a write-only upload URL for one event image, valid for 5 minutes. The browser PUTs the
+    /// image straight to Blob Storage, then saves the returned imageUrl on the event. Admin only.
+    /// </summary>
+    [HttpPost("uploads/sas-url")]
+    [ProducesResponseType(typeof(ApiEnvelope<ImageUploadResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiEnvelope<object>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public IActionResult ImageUploadUrl(ImageUploadRequest request) =>
+        Ok(images.CreateUploadUrl(request.ContentType));
 }
