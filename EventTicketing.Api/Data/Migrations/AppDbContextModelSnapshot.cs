@@ -306,6 +306,11 @@ namespace EventTicketing.Api.Data.Migrations
                         .HasColumnType("character varying(200)")
                         .HasColumnName("routing_key");
 
+                    b.Property<string>("TraceParent")
+                        .HasMaxLength(55)
+                        .HasColumnType("character varying(55)")
+                        .HasColumnName("trace_parent");
+
                     b.Property<string>("Type")
                         .IsRequired()
                         .HasMaxLength(200)
