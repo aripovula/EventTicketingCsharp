@@ -20,6 +20,7 @@ using Microsoft.OpenApi;
 using Npgsql;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
+using RabbitMQ.Client;
 using Serilog;
 using Serilog.Formatting.Compact;
 
@@ -30,13 +31,14 @@ builder.Host.UseSerilog((ctx, config) => config
     .Enrich.FromLogContext()
     .WriteTo.Console(new CompactJsonFormatter()));
 
-// One trace follows a request through its SQL and outgoing HTTP calls (Stripe, Blob Storage).
-// Traces are exported only where an OTLP endpoint is configured.
+// One trace follows a booking from the HTTP request through its SQL, the Stripe call, the outbox
+// and RabbitMQ to the consumer. Traces are exported only where an OTLP endpoint is configured.
 builder.Services.AddOpenTelemetry()
     .ConfigureResource(resource => resource.AddService("event-ticketing-api"))
     .WithTracing(tracing =>
     {
         tracing.AddSource(Tracing.SourceName)
+            .AddSource(RabbitMQActivitySource.PublisherSourceName, RabbitMQActivitySource.SubscriberSourceName)
             .AddAspNetCoreInstrumentation(options =>
                 options.Filter = context => !context.Request.Path.StartsWithSegments("/health"))
             .AddHttpClientInstrumentation()

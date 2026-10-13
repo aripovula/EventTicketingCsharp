@@ -1,3 +1,5 @@
+using System.Collections.Concurrent;
+using System.Diagnostics;
 using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
@@ -63,6 +65,29 @@ public class BookingMessagingIntegrationTests(IntegrationTestFactory factory) : 
         await EventuallyAsync(async () => await MessageCountAsync(Names.BookingConfirmedQueue) == 0);
 
         Assert.Equal(deadBefore, await MessageCountAsync(RabbitMqTopology.DeadLetterQueue(Names)));
+    }
+
+    [Fact]
+    public async Task Consumer_HandlesTheMessageInTheBookingsTrace()
+    {
+        var delivered = new ConcurrentBag<ActivityTraceId>();
+        using var listener = new ActivityListener
+        {
+            ShouldListenTo = source => source.Name == RabbitMQActivitySource.SubscriberSourceName,
+            Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllDataAndRecorded,
+            ActivityStopped = activity => delivered.Add(activity.TraceId),
+        };
+        ActivitySource.AddActivityListener(listener);
+        var traceId = ActivityTraceId.CreateRandom();
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/api/v1/events/1/bookings")
+        {
+            Content = JsonContent.Create(new { email = "guest@example.com", paymentMethodId = "pm_card_visa" }),
+        };
+        request.Headers.Add("traceparent", $"00-{traceId}-{ActivitySpanId.CreateRandom()}-01");
+
+        await factory.CreateClient().SendAsync(request, TestContext.Current.CancellationToken);
+
+        await EventuallyAsync(() => Task.FromResult(delivered.Contains(traceId)));
     }
 
     [Fact]
