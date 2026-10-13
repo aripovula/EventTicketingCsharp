@@ -167,4 +167,15 @@ public class BookingIntegrationTests(IntegrationTestFactory factory) : IClassFix
 
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
     }
+
+    [Fact]
+    public async Task Book_WithTheSavedCardButNoneSaved_Returns400()
+    {
+        var eventId = await CreateEventAsync(availableSeats: 3);
+
+        var response = await BookWithTheSavedCardAsync(await SignedInNewUserAsync(), eventId);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Contains("\"field\":\"useSavedPaymentMethod\"", await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
+    }
 }
