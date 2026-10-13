@@ -90,3 +90,27 @@ The booking modal then offers "Visa ending in 4242" first. Choosing it sends `us
 ### Running without Stripe keys
 
 `Payments:Provider=Fake` swaps Stripe for a fake gateway that uses Stripe's own test ids: `pm_card_visa` is approved and `pm_card_chargeDeclined` is declined. The API refuses to start with the fake in Production. Without `VITE_STRIPE_PUBLISHABLE_KEY`, the booking form offers those two test cards instead of Stripe's card field. Integration tests and the CI E2E jobs run this way, so they need no Stripe secrets.
+
+## Image uploads: write-only SAS URLs
+
+Event images never pass through our API. When an admin picks an image, the browser asks `POST /api/v1/admin/uploads/sas-url` for an upload slot and then PUTs the file straight to Azure Blob Storage. The API stays stateless: it does no multipart parsing, writes no temp files and doesn't stream uploads through its memory.
+
+The upload URL is a SAS (shared access signature) URL, limited on purpose:
+
+- **Write-only.** It can create and write that one blob, but it can't read, list or delete anything.
+- **Short-lived.** It stops working after 5 minutes.
+- **Named by us.** The blob name is a fresh GUID plus an extension for the content type, so a client can't choose a name that overwrites another image. We accept only JPEG, PNG, WebP and GIF.
+
+The images container allows anonymous reads of single blobs, so the stored `imageUrl` works in an `<img>` tag. Listing the container is still refused.
+
+A SAS URL can't cap the file size, so the browser rejects images over 5 MB before asking for a slot. An admin calling the API directly could upload something bigger.
+
+Locally we run [Azurite](https://github.com/Azure/Azurite), Microsoft's Blob Storage emulator, without Docker:
+
+```bash
+npm install -g azurite@3.37.0
+azurite-blob --silent --location ~/.azurite --skipApiVersionCheck &
+dotnet user-secrets set "AzureBlob:ConnectionString" "UseDevelopmentStorage=true" --project EventTicketing.Api
+```
+
+On startup the API creates the container. In Development it also adds a CORS rule so the Vite dev server's origin may PUT to the emulator (`AzureBlob:CorsOrigins`). Integration tests and CI use a real Azurite too, with a throwaway container per test host.
