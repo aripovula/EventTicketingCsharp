@@ -9,6 +9,7 @@ public enum BookingStatus
     EventNotFound,
     PaymentDeclined,
     PaymentMethodRequired,
+    NoSavedPaymentMethod,
 }
 
 /// <param name="Error">Why the card was declined, safe to show the buyer.</param>

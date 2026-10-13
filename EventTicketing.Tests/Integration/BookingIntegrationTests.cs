@@ -142,4 +142,29 @@ public class BookingIntegrationTests(IntegrationTestFactory factory) : IClassFix
             .RootElement.GetProperty("data").GetProperty("id").GetInt32();
         Assert.Equal($"/api/v1/orders/{orderId}", response.Headers.Location?.AbsolutePath);
     }
+
+    private async Task<HttpClient> SignedInNewUserAsync()
+    {
+        var client = factory.CreateClient();
+        var email = $"{Guid.NewGuid():N}@example.com";
+        await client.PostAsJsonAsync("/api/v1/auth/register", new { name = "Card Holder", email, password = "Password1" }, TestContext.Current.CancellationToken);
+        await client.PostAsJsonAsync("/api/v1/auth/login", new { email, password = "Password1" }, TestContext.Current.CancellationToken);
+        return client;
+    }
+
+    private static Task<HttpResponseMessage> BookWithTheSavedCardAsync(HttpClient client, int eventId) =>
+        client.PostAsJsonAsync($"/api/v1/events/{eventId}/bookings",
+            new { email = "holder@example.com", useSavedPaymentMethod = true }, TestContext.Current.CancellationToken);
+
+    [Fact]
+    public async Task Book_WithTheSavedCard_Returns201()
+    {
+        var eventId = await CreateEventAsync(availableSeats: 3);
+        var client = await SignedInNewUserAsync();
+        await client.PutAsJsonAsync("/api/v1/auth/me/payment-method", new { paymentMethodId = "pm_card_visa" }, TestContext.Current.CancellationToken);
+
+        var response = await BookWithTheSavedCardAsync(client, eventId);
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+    }
 }

@@ -33,7 +33,22 @@ public class BookingService(
         string? paymentId = null;
         if (ev.PriceCents > 0)
         {
-            if (string.IsNullOrEmpty(request.PaymentMethodId))
+            var paymentMethodId = request.PaymentMethodId;
+            string? customerId = null;
+            if (request.UseSavedPaymentMethod)
+            {
+                var saved = userId is null ? null : await db.PaymentMethods
+                    .Where(p => p.UserId == userId && p.IsDefault)
+                    .Select(p => new { p.StripePaymentMethodId, p.StripeCustomerId })
+                    .SingleOrDefaultAsync(cancellationToken);
+                if (saved is null)
+                {
+                    await ReleaseSeatAsync(eventId);
+                    return new BookingResult(BookingStatus.NoSavedPaymentMethod);
+                }
+                (paymentMethodId, customerId) = (saved.StripePaymentMethodId, saved.StripeCustomerId);
+            }
+            else if (string.IsNullOrEmpty(paymentMethodId))
             {
                 await ReleaseSeatAsync(eventId);
                 return new BookingResult(BookingStatus.PaymentMethodRequired);
@@ -41,7 +56,7 @@ public class BookingService(
 
             try
             {
-                paymentId = await payments.ChargeAsync(ev.PriceCents, request.PaymentMethodId, null, idempotencyKey, cancellationToken);
+                paymentId = await payments.ChargeAsync(ev.PriceCents, paymentMethodId, customerId, idempotencyKey, cancellationToken);
             }
             catch (PaymentDeclinedException e)
             {

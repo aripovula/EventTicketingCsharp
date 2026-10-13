@@ -290,4 +290,55 @@ public class BookingServiceTests(IntegrationTestFactory factory) : IClassFixture
         Assert.Equal(BookingStatus.PaymentMethodRequired, result.Status);
         Assert.Equal(3, await AvailableSeatsAsync(eventId));
     }
+
+    private async Task<int> CreateUserWithSavedCardAsync()
+    {
+        var db = CreateDb();
+        var user = new User { Name = "Card Holder", Email = $"{Guid.NewGuid():N}@example.com", PasswordHash = "unused" };
+        db.Users.Add(user);
+        db.PaymentMethods.Add(new PaymentMethod
+        {
+            User = user,
+            StripeCustomerId = "cus_saved",
+            StripePaymentMethodId = "pm_saved",
+            Brand = "visa",
+            Last4 = "4242",
+            ExpMonth = 12,
+            ExpYear = 2030,
+            IsDefault = true,
+        });
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+        return user.Id;
+    }
+
+    [Fact]
+    public async Task BookAsync_WithTheSavedCard_ChargesItThroughItsCustomer()
+    {
+        var eventId = await CreateEventAsync(availableSeats: 3);
+        var userId = await CreateUserWithSavedCardAsync();
+        var payments = new RecordingPaymentGateway();
+
+        var result = await CreateService(payments).BookAsync(
+            eventId, new BookingRequest { Email = "holder@example.com", UseSavedPaymentMethod = true }, userId, "booking-key",
+            TestContext.Current.CancellationToken);
+
+        Assert.Equal(BookingStatus.Booked, result.Status);
+        Assert.Equal((2500, "pm_saved", "cus_saved", "booking-key"), Assert.Single(payments.Charges));
+    }
+
+    [Fact]
+    public async Task BookAsync_WithTheSavedCardButNoneSaved_ReportsItAndKeepsTheSeat()
+    {
+        var eventId = await CreateEventAsync(availableSeats: 3);
+        var payments = new RecordingPaymentGateway();
+
+        // A guest has no saved card either.
+        var result = await CreateService(payments).BookAsync(
+            eventId, new BookingRequest { Email = "guest@example.com", UseSavedPaymentMethod = true }, null, "booking-key",
+            TestContext.Current.CancellationToken);
+
+        Assert.Equal(BookingStatus.NoSavedPaymentMethod, result.Status);
+        Assert.Empty(payments.Charges);
+        Assert.Equal(3, await AvailableSeatsAsync(eventId));
+    }
 }
