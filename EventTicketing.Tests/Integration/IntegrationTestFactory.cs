@@ -20,6 +20,8 @@ public class IntegrationTestFactory : WebApplicationFactory<Program>, IAsyncLife
 
     private readonly string _rabbitMqPrefix = $"test-{Guid.NewGuid():N}";
 
+    private readonly string _blobContainer = $"test-{Guid.NewGuid():N}";
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseSetting("ConnectionStrings:Default", _connectionString);
@@ -35,6 +37,9 @@ public class IntegrationTestFactory : WebApplicationFactory<Program>, IAsyncLife
         builder.UseSetting("RabbitMq:Exchange", $"{_rabbitMqPrefix}.ticketing");
         builder.UseSetting("RabbitMq:DeadLetterExchange", $"{_rabbitMqPrefix}.ticketing.dlx");
         builder.UseSetting("RabbitMq:BookingConfirmedQueue", $"{_rabbitMqPrefix}.booking-confirmed");
+        // Azurite, with a container per host.
+        builder.UseSetting("AzureBlob:ConnectionString", "UseDevelopmentStorage=true");
+        builder.UseSetting("AzureBlob:ContainerName", _blobContainer);
     }
 
     public ValueTask InitializeAsync()

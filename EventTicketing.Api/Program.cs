@@ -7,6 +7,7 @@ using EventTicketing.Api.Messaging;
 using EventTicketing.Api.Middleware;
 using EventTicketing.Api.Payments;
 using EventTicketing.Api.Services;
+using EventTicketing.Api.Storage;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Caching.Hybrid;
@@ -118,6 +119,11 @@ builder.Services.AddScoped<IPaymentGateway>(sp =>
     sp.GetRequiredService<IOptions<PaymentsOptions>>().Value.Provider == PaymentsOptions.FakeProvider
         ? sp.GetRequiredService<FakePaymentGateway>()
         : sp.GetRequiredService<StripePaymentGateway>());
+builder.Services.AddOptions<BlobStorageOptions>()
+    .Bind(builder.Configuration.GetSection(BlobStorageOptions.SectionName))
+    .Validate(o => !string.IsNullOrEmpty(o.ConnectionString),
+        "AzureBlob:ConnectionString is required (set it with dotnet user-secrets, \"UseDevelopmentStorage=true\" for Azurite, or the AzureBlob__ConnectionString env var).")
+    .ValidateOnStart();
 builder.Services.AddSignalR();
 builder.Services.AddSingleton<RabbitMqConnection>();
 builder.Services.AddSingleton<IMessagePublisher, RabbitMqPublisher>();

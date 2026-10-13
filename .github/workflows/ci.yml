@@ -163,6 +163,8 @@ jobs:
       PGPASSWORD: postgres
       # No Stripe keys in CI: the API approves test cards without calling Stripe.
       Payments__Provider: Fake
+      # Azurite's well-known development account, not a secret.
+      AzureBlob__ConnectionString: UseDevelopmentStorage=true
     steps:
       - uses: actions/checkout@v4.2.2
 
