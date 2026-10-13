@@ -118,6 +118,22 @@ public class AuthController(
         return Ok(new ApiEnvelope(page.Items, [], new { nextCursor = page.NextCursor }));
     }
 
+    /// <summary>Returns the signed-in user's saved card (brand, last 4 digits, expiry), which bookings can pay with.</summary>
+    [Authorize]
+    [HttpGet("me/payment-method")]
+    [ProducesResponseType(typeof(ApiEnvelope<PaymentMethodResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ApiEnvelope<object>), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> MyPaymentMethod(CancellationToken cancellationToken)
+    {
+        var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        var card = await paymentMethods.GetDefaultAsync(userId, cancellationToken);
+        if (card is null)
+            return NotFound(new ApiEnvelope(null, [new ApiError("not_found", "No saved card.")]));
+
+        return Ok(card);
+    }
+
     /// <summary>Saves a card to the signed-in user's Stripe customer and makes it the saved card, replacing any earlier one. A refused card returns 402.</summary>
     [Authorize]
     [HttpPut("me/payment-method")]

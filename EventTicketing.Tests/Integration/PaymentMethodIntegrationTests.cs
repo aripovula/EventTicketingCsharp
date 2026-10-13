@@ -46,6 +46,40 @@ public class PaymentMethodIntegrationTests(IntegrationTestFactory factory) : ICl
     }
 
     [Fact]
+    public async Task Get_WithoutSigningIn_Returns401()
+    {
+        var response = await factory.CreateClient().GetAsync(Url, TestContext.Current.CancellationToken);
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Get_BeforeACardIsSaved_Returns404()
+    {
+        var client = await SignedInNewUserAsync();
+
+        var response = await client.GetAsync(Url, TestContext.Current.CancellationToken);
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        Assert.Equal("not_found", (await BodyAsync(response)).GetProperty("errors")[0].GetProperty("code").GetString());
+    }
+
+    [Fact]
+    public async Task Get_ReturnsTheLatestSavedCard()
+    {
+        var client = await SignedInNewUserAsync();
+        await client.PutAsJsonAsync(Url, new { paymentMethodId = "pm_card_visa" }, TestContext.Current.CancellationToken);
+        await client.PutAsJsonAsync(Url, new { paymentMethodId = "pm_card_chargeDeclined" }, TestContext.Current.CancellationToken);
+
+        var response = await client.GetAsync(Url, TestContext.Current.CancellationToken);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var card = (await BodyAsync(response)).GetProperty("data");
+        Assert.Equal("0002", card.GetProperty("last4").GetString());
+        Assert.Equal(12, card.GetProperty("expMonth").GetInt32());
+    }
+
+    [Fact]
     public async Task Put_WithoutAPaymentMethod_Returns400()
     {
         var client = await SignedInNewUserAsync();
