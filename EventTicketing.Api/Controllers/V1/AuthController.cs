@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using EventTicketing.Api.Contracts;
+using EventTicketing.Api.Payments;
 using EventTicketing.Api.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -14,6 +15,7 @@ public class AuthController(
     TokenService tokenService,
     RefreshTokenService refreshTokens,
     OrdersService ordersService,
+    PaymentMethodsService paymentMethods,
     IOptions<JwtOptions> jwtOptions,
     IWebHostEnvironment env) : ControllerBase
 {
@@ -114,6 +116,27 @@ public class AuthController(
             return BadRequest(new ApiEnvelope(null, [new ApiError("invalid_cursor", "The page cursor is invalid.", "after")]));
 
         return Ok(new ApiEnvelope(page.Items, [], new { nextCursor = page.NextCursor }));
+    }
+
+    /// <summary>Saves a card to the signed-in user's Stripe customer and makes it the saved card, replacing any earlier one. A refused card returns 402.</summary>
+    [Authorize]
+    [HttpPut("me/payment-method")]
+    [ProducesResponseType(typeof(ApiEnvelope<PaymentMethodResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiEnvelope<object>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ApiEnvelope<object>), StatusCodes.Status402PaymentRequired)]
+    public async Task<IActionResult> SaveMyPaymentMethod(SavePaymentMethodRequest request, CancellationToken cancellationToken)
+    {
+        var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        var email = User.FindFirstValue(ClaimTypes.Email)!;
+        try
+        {
+            return Ok(await paymentMethods.SaveDefaultAsync(userId, email, request.PaymentMethodId, cancellationToken));
+        }
+        catch (PaymentDeclinedException e)
+        {
+            return StatusCode(StatusCodes.Status402PaymentRequired, new ApiEnvelope(null, [new ApiError("payment_declined", e.Message)]));
+        }
     }
 
     private void AppendAccessTokenCookie(UserInfo user)
