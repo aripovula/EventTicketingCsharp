@@ -12,6 +12,7 @@ import LoginPage from './pages/LoginPage'
 import MyCalendarPage from './pages/MyCalendarPage'
 import MyOrdersPage from './pages/MyOrdersPage'
 import OrderConfirmationPage from './pages/OrderConfirmationPage'
+import ProfilePage from './pages/ProfilePage'
 import RegisterPage from './pages/RegisterPage'
 
 function HeaderNav() {
@@ -71,6 +72,7 @@ function App() {
             <Route path="/orders" element={<MyOrdersPage />} />
             <Route path="/calendar" element={<MyCalendarPage />} />
             <Route path="/orders/:id" element={<OrderConfirmationPage />} />
+            <Route path="/profile" element={<ProfilePage />} />
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />
             <Route element={<RequireAdmin />}>
