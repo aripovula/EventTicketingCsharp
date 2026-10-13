@@ -33,6 +33,17 @@ public class PaymentMethodsServiceTests(IntegrationTestFactory factory) : IClass
         await CreateDb().PaymentMethods.Where(p => p.UserId == userId).OrderBy(p => p.Id).ToListAsync(TestContext.Current.CancellationToken);
 
     [Fact]
+    public async Task GetDefaultAsync_WithoutASavedCard_ReturnsNull()
+    {
+        var userId = await CreateUserAsync();
+
+        var card = await new PaymentMethodsService(CreateDb(), new RecordingPaymentGateway())
+            .GetDefaultAsync(userId, TestContext.Current.CancellationToken);
+
+        Assert.Null(card);
+    }
+
+    [Fact]
     public async Task SaveDefaultAsync_FirstCard_CreatesACustomerAndSavesOnlyIdsAndDisplayFields()
     {
         var userId = await CreateUserAsync();

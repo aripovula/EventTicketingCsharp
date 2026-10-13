@@ -8,6 +8,12 @@ namespace EventTicketing.Api.Services;
 
 public class PaymentMethodsService(AppDbContext db, IPaymentGateway payments)
 {
+    public Task<PaymentMethodResponse?> GetDefaultAsync(int userId, CancellationToken cancellationToken) =>
+        db.PaymentMethods
+            .Where(p => p.UserId == userId && p.IsDefault)
+            .Select(p => new PaymentMethodResponse(p.Brand, p.Last4, p.ExpMonth, p.ExpYear))
+            .SingleOrDefaultAsync(cancellationToken);
+
     /// <summary>Saves the card to the user's Stripe customer and makes it the card bookings use.</summary>
     /// <exception cref="PaymentDeclinedException">Stripe refused the card.</exception>
     public async Task<PaymentMethodResponse> SaveDefaultAsync(int userId, string email, string paymentMethodId, CancellationToken cancellationToken)
