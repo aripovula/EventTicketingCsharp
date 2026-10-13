@@ -63,6 +63,18 @@ public class TracingIntegrationTests(TracingIntegrationTests.HostWithSpans facto
     }
 
     [Fact]
+    public async Task RequestSpan_CarriesTheCorrelationId()
+    {
+        var (traceId, request) = TracedRequest("/api/v1/events/1");
+        request.Headers.Add("X-Correlation-ID", "trace-me-123");
+
+        await factory.CreateClient().SendAsync(request, TestContext.Current.CancellationToken);
+
+        var spans = await EventuallySpansOfAsync(traceId, s => s.Any(a => a.Kind == ActivityKind.Server));
+        Assert.Equal("trace-me-123", spans.Single(s => s.Kind == ActivityKind.Server).GetTagItem("correlation_id"));
+    }
+
+    [Fact]
     public async Task HealthChecks_AreNotTraced()
     {
         var (traceId, request) = TracedRequest("/health");
