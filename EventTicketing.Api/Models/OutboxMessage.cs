@@ -39,4 +39,8 @@ public class OutboxMessage
 
     [MaxLength(2000)]
     public string? LastError { get; set; }
+
+    // The W3C traceparent of the request that saved the message, so publishing it continues that trace.
+    [MaxLength(55)]
+    public string? TraceParent { get; set; }
 }
