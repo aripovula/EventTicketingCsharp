@@ -114,3 +114,28 @@ dotnet user-secrets set "AzureBlob:ConnectionString" "UseDevelopmentStorage=true
 ```
 
 On startup the API creates the container. In Development it also adds a CORS rule so the Vite dev server's origin may PUT to the emulator (`AzureBlob:CorsOrigins`). Integration tests and CI use a real Azurite too, with a throwaway container per test host.
+
+## Tracing: one trace from the request to the consumer
+
+We use OpenTelemetry to trace each request: the ASP.NET Core request, its PostgreSQL commands (Npgsql) and its outgoing HTTP calls (Stripe, Azure Blob Storage). Health checks aren't traced.
+
+A booking's trace doesn't stop when the response goes out. The confirmation goes through the outbox, so the publish happens seconds later on a background worker, with no request around it. To keep it in the same trace:
+
+1. `BookingService` saves the request's W3C `traceparent` on the outbox row (`outbox_messages.trace_parent`), in the same transaction as the order.
+2. `OutboxWorker` starts its "outbox publish" span with that saved context as its parent.
+3. RabbitMQ.Client (7.x) traces the publish itself and writes the `traceparent` into the AMQP message headers. On the consumer side it starts the "deliver" span in the same trace, linked to the publish.
+
+So in Jaeger one booking shows up as one trace: the request and its SQL, then the outbox publish, the RabbitMQ publish and the consumer's delivery.
+
+Logs and traces point at each other. Every log line written inside a span carries its trace and span ids (`@tr` and `@sp` in the compact JSON), and the request span carries the `correlation_id` tag.
+
+Traces are exported over OTLP only when `OpenTelemetry:OtlpEndpoint` is set. Development sets it to `http://localhost:4317`. Locally we run Jaeger's single binary, without Docker:
+
+```bash
+mkdir -p ~/.local/opt ~/.local/bin
+curl -sSL https://github.com/jaegertracing/jaeger/releases/download/v2.21.0/jaeger-2.21.0-linux-amd64.tar.gz | tar xz -C ~/.local/opt
+ln -sf ~/.local/opt/jaeger-2.21.0-linux-amd64/jaeger ~/.local/bin/jaeger
+jaeger &   # OTLP on :4317/:4318, UI on http://localhost:16686
+```
+
+Jaeger keeps traces in memory, so they're gone when it stops. Tests and CI don't export anything. The tests check the trace ids instead, with an in-memory exporter or an `ActivityListener`.
