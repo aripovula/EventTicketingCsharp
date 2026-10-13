@@ -35,6 +35,16 @@ public class RecordingPaymentGateway : IPaymentGateway
         return Task.CompletedTask;
     }
 
-    public Task<SavedCard> SaveCardAsync(string? customerId, string email, string paymentMethodId, CancellationToken cancellationToken) =>
-        throw new NotImplementedException();
+    public List<(string? CustomerId, string Email, string PaymentMethodId)> SavedCards { get; } = [];
+
+    // When set, saving a card is declined with this message.
+    public string? DeclineSaveWith { get; set; }
+
+    public Task<SavedCard> SaveCardAsync(string? customerId, string email, string paymentMethodId, CancellationToken cancellationToken)
+    {
+        if (DeclineSaveWith is not null)
+            throw new PaymentDeclinedException(DeclineSaveWith);
+        SavedCards.Add((customerId, email, paymentMethodId));
+        return Task.FromResult(new SavedCard(customerId ?? $"cus_test_{SavedCards.Count}", $"{paymentMethodId}_saved", "visa", "4242", 12, 2030));
+    }
 }
