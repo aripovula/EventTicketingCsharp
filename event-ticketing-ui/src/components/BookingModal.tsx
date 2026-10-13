@@ -1,6 +1,8 @@
 import { useState, type ReactNode } from 'react'
 import type { Payment } from '../api/bookings'
+import type { SavedCard } from '../api/paymentMethod'
 import CardInput, { type CreatePaymentMethod } from '../payments/CardInput'
+import { formatCard, formatCardExpiry } from '../utils/formatCard'
 import { formatPrice } from '../utils/formatPrice'
 
 type Props = {
@@ -9,6 +11,8 @@ type Props = {
   eventVenue: string
   priceCents: number
   savedEmail?: string
+  /** The signed-in user's saved card, offered first when there is one. */
+  savedCard?: SavedCard | null
   onConfirm: (email: string, payment: Payment) => Promise<void>
   onClose: () => void
   error: string | null
@@ -43,8 +47,11 @@ type BookingFormProps = Props & {
   note: ReactNode
 }
 
-function BookingForm({ eventTitle, eventDate, eventVenue, priceCents, savedEmail, onConfirm, onClose, error, ready, createPaymentMethod, paymentField, note }: BookingFormProps) {
+function BookingForm({ eventTitle, eventDate, eventVenue, priceCents, savedEmail, savedCard, onConfirm, onClose, error, ready, createPaymentMethod, paymentField, note }: BookingFormProps) {
   const [email, setEmail] = useState(savedEmail ?? '')
+  // Free events take no card, so there is nothing to choose between.
+  const offerSavedCard = !!savedCard && !!createPaymentMethod
+  const [useSavedCard, setUseSavedCard] = useState(offerSavedCard)
   const [submitting, setSubmitting] = useState(false)
   const [cardError, setCardError] = useState<string | null>(null)
 
@@ -58,6 +65,10 @@ function BookingForm({ eventTitle, eventDate, eventVenue, priceCents, savedEmail
     try {
       if (!createPaymentMethod) {
         await onConfirm(email, null)
+        return
+      }
+      if (useSavedCard) {
+        await onConfirm(email, { useSavedPaymentMethod: true })
         return
       }
       const card = await createPaymentMethod()
@@ -96,14 +107,30 @@ function BookingForm({ eventTitle, eventDate, eventVenue, priceCents, savedEmail
             />
           </div>
 
-          {paymentField}
+          {offerSavedCard && (
+            <fieldset>
+              <legend className={labelClass}>Pay with</legend>
+              <div className="space-y-1">
+                <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+                  <input type="radio" name="card-choice" checked={useSavedCard} onChange={() => setUseSavedCard(true)} />
+                  {formatCard(savedCard!)} (expires {formatCardExpiry(savedCard!)})
+                </label>
+                <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+                  <input type="radio" name="card-choice" checked={!useSavedCard} onChange={() => setUseSavedCard(false)} />
+                  A different card
+                </label>
+              </div>
+            </fieldset>
+          )}
+
+          {!useSavedCard && paymentField}
 
           {shownError && <p role="alert" className="text-sm text-red-500">{shownError}</p>}
 
           <div className="flex gap-3 pt-2">
             <button
               type="submit"
-              disabled={submitting || !ready}
+              disabled={submitting || !(ready || useSavedCard)}
               className="bg-cyan-600 text-white px-5 py-2 rounded-lg text-sm font-medium hover:bg-cyan-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
             >
               {submitting ? 'Placing order…' : 'Place order'}
@@ -118,7 +145,7 @@ function BookingForm({ eventTitle, eventDate, eventVenue, priceCents, savedEmail
             </button>
           </div>
 
-          <p className="text-xs text-gray-500 leading-relaxed">{note}</p>
+          {!useSavedCard && <p className="text-xs text-gray-500 leading-relaxed">{note}</p>}
         </form>
       </div>
     </div>

@@ -123,3 +123,26 @@ test('a free event is booked without a card', async ({ page }) => {
 
   await expect.poll(() => posted).toEqual({ email: 'guest@example.com' })
 })
+
+test('a signed-in user pays with their saved card', async ({ page }) => {
+  await page.route('**/api/v1/auth/me', route =>
+    route.fulfill({ json: { data: { userId: 1, name: 'John Doe', email: 'john@example.com', role: 'user' }, errors: [] } }))
+  await page.route('**/api/v1/auth/me/payment-method', route =>
+    route.fulfill({ json: { data: { brand: 'visa', last4: '4242', expMonth: 12, expYear: 2029 }, errors: [] } }))
+  await page.route('**/api/v1/events/1', route => route.fulfill({ json: { data: event, errors: [] } }))
+  let posted: unknown
+  await page.route('**/api/v1/events/1/bookings', route => {
+    posted = route.request().postDataJSON()
+    return route.fulfill({ status: 409, json: { data: null, errors: [{ code: 'sold_out', detail: 'Sorry, this event just sold out.' }] } })
+  })
+  await page.goto('/events/1')
+
+  await page.getByRole('button', { name: 'Buy ticket' }).click()
+  const dialog = page.getByRole('dialog')
+  await expect(dialog.getByLabel('Visa ending in 4242 (expires 12/2029)')).toBeChecked()
+  await expect(dialog.getByText('Test card', { exact: true })).toBeHidden()
+  await dialog.getByRole('button', { name: 'Place order' }).click()
+
+  await expect(dialog.getByRole('alert')).toBeVisible()
+  expect(posted).toEqual({ email: 'john@example.com', useSavedPaymentMethod: true })
+})

@@ -11,8 +11,12 @@ vi.mock('../hooks/useHubEvents', () => ({
   useHubEvents: (handlers: Record<string, (eventId: number) => void>) => { hub.handlers = handlers },
 }))
 
+const noSavedCard = () => new Response(JSON.stringify({ data: null, errors: [] }), { status: 404 })
+
 function stubEvent(event: EventItem) {
-  const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ data: event, errors: [] })))
+  const fetchMock = vi.fn((url: string) => Promise.resolve(url === '/api/v1/auth/me/payment-method'
+    ? noSavedCard()
+    : new Response(JSON.stringify({ data: event, errors: [] }))))
   vi.stubGlobal('fetch', fetchMock)
   return fetchMock
 }
@@ -104,10 +108,12 @@ describe('EventDetailPage', () => {
     expect(await screen.findByText('Something went wrong. Please try again.')).toBeInTheDocument()
   })
 
-  function stubEventThenBooking(bookingResponse: Response, seatsAfter = 47) {
+  function stubEventThenBooking(bookingResponse: Response, seatsAfter = 47, savedCard: object | null = null) {
     let booked = false
-    const fetchMock = vi.fn((_: string, init?: RequestInit) => {
+    const fetchMock = vi.fn((url: string, init?: RequestInit) => {
       if (init?.method === 'POST') { booked = true; return Promise.resolve(bookingResponse) }
+      if (url === '/api/v1/auth/me/payment-method')
+        return Promise.resolve(savedCard ? new Response(JSON.stringify({ data: savedCard, errors: [] })) : noSavedCard())
       return Promise.resolve(new Response(JSON.stringify({ data: makeEvent({ availableSeats: booked ? seatsAfter : 48 }), errors: [] })))
     })
     vi.stubGlobal('fetch', fetchMock)
@@ -191,6 +197,28 @@ describe('EventDetailPage', () => {
     await waitFor(() => expect(fetchMock).toHaveBeenCalledWith('/api/v1/events/1/bookings', expect.objectContaining({
       body: JSON.stringify({ email: 'guest@example.com', paymentMethodId: 'pm_card_visa' }),
     })))
+  })
+
+  it("pays with a signed-in user's saved card", async () => {
+    const fetchMock = stubEventThenBooking(new Response('oops', { status: 500 }), 47, { brand: 'visa', last4: '4242', expMonth: 12, expYear: 2029 })
+    renderPage(1, { userId: 1, name: 'John Doe', email: 'john@example.com', role: 'user' })
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Buy ticket' }))
+    expect(await screen.findByLabelText('Visa ending in 4242 (expires 12/2029)')).toBeChecked()
+    await userEvent.click(screen.getByRole('button', { name: 'Place order' }))
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith('/api/v1/events/1/bookings', expect.objectContaining({
+      body: JSON.stringify({ email: 'john@example.com', useSavedPaymentMethod: true }),
+    })))
+  })
+
+  it("doesn't look up a saved card for guests", async () => {
+    const fetchMock = stubEvent(makeEvent())
+    renderPage()
+
+    await screen.findByRole('button', { name: 'Buy ticket' })
+
+    expect(fetchMock).not.toHaveBeenCalledWith('/api/v1/auth/me/payment-method', expect.anything())
   })
 
   it('says why the card was declined and retries another card under a new key', async () => {

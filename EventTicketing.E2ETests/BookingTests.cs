@@ -142,4 +142,56 @@ public class BookingTests : E2ETestBase
             await Page.APIRequest.DeleteAsync($"{BaseUrl}/api/v1/events/{id}");
         }
     }
+
+    [Test]
+    public async Task AUserSavesACardThenBooksWithIt()
+    {
+        await Page.GotoAsync($"{BaseUrl}/login");
+        await Page.GetByRole(AriaRole.Button, new() { Name = "Sign in" }).Nth(1).ClickAsync();
+        await Expect(Page).ToHaveURLAsync(new Regex("/$"));
+        var created = await Page.APIRequest.PostAsync($"{BaseUrl}/api/v1/events", new()
+        {
+            DataObject = new
+            {
+                title = $"E2E Saved Card {Guid.NewGuid():N}"[..24],
+                description = "Paid for with a saved card in an E2E test.",
+                startTime = DateTime.UtcNow.AddDays(54),
+                endTime = DateTime.UtcNow.AddDays(54).AddHours(2),
+                venue = "Test Hall",
+                eventType = "Other",
+                totalSeats = 10,
+                availableSeats = 10,
+                priceCents = 700,
+            },
+        });
+        var id = (await created.JsonAsync())!.Value.GetProperty("data").GetProperty("id").GetInt32();
+
+        try
+        {
+            // A new account, so the demo accounts' bookings in other tests never meet a saved card.
+            var email = $"e2e-{Guid.NewGuid():N}@example.com";
+            await Page.APIRequest.PostAsync($"{BaseUrl}/api/v1/auth/register", new() { DataObject = new { name = "Card Holder", email, password = "Password1" } });
+            await Page.APIRequest.PostAsync($"{BaseUrl}/api/v1/auth/login", new() { DataObject = new { email, password = "Password1" } });
+
+            await Page.GotoAsync($"{BaseUrl}/profile");
+            await Page.GetByRole(AriaRole.Button, new() { Name = "Save card" }).ClickAsync();
+            await Expect(Page.GetByRole(AriaRole.Status)).ToHaveTextAsync("Card saved.");
+            await Expect(Page.GetByText("Visa ending in 4242")).ToBeVisibleAsync();
+
+            await Page.GotoAsync($"{BaseUrl}/events/{id}");
+            await Page.GetByRole(AriaRole.Button, new() { Name = "Buy ticket" }).ClickAsync();
+            await Expect(Page.GetByRole(AriaRole.Dialog).GetByLabel(new Regex("^Visa ending in 4242"))).ToBeCheckedAsync();
+            await Page.GetByRole(AriaRole.Button, new() { Name = "Place order" }).ClickAsync();
+
+            await Expect(Page).ToHaveURLAsync(new Regex("/orders/\\d+$"));
+            await Expect(Page.GetByRole(AriaRole.Heading, new() { Name = "You're going!" })).ToBeVisibleAsync();
+        }
+        finally
+        {
+            await Page.GotoAsync($"{BaseUrl}/login");
+            await Page.GetByRole(AriaRole.Button, new() { Name = "Sign in" }).Nth(1).ClickAsync();
+            await Expect(Page).ToHaveURLAsync(new Regex("/$"));
+            await Page.APIRequest.DeleteAsync($"{BaseUrl}/api/v1/events/{id}");
+        }
+    }
 }

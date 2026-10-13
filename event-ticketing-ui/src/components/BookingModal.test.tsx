@@ -76,6 +76,34 @@ describe('BookingModal', () => {
     expect(props.onConfirm).toHaveBeenCalledWith('john@example.com', null)
   })
 
+  const savedCard = { brand: 'visa', last4: '4242', expMonth: 12, expYear: 2029 }
+
+  it('offers the saved card first and pays with it', async () => {
+    const props = renderModal({ savedEmail: 'john@example.com', savedCard })
+
+    expect(screen.getByLabelText('Visa ending in 4242 (expires 12/2029)')).toBeChecked()
+    expect(screen.queryByText('Test card')).not.toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'Place order' }))
+
+    expect(props.onConfirm).toHaveBeenCalledWith('john@example.com', { useSavedPaymentMethod: true })
+  })
+
+  it('pays with a different card when asked', async () => {
+    const props = renderModal({ savedEmail: 'john@example.com', savedCard })
+
+    await userEvent.click(screen.getByLabelText('A different card'))
+    await userEvent.click(screen.getByLabelText('Visa 4000 0000 0000 0002 (declined)'))
+    await userEvent.click(screen.getByRole('button', { name: 'Place order' }))
+
+    expect(props.onConfirm).toHaveBeenCalledWith('john@example.com', { paymentMethodId: 'pm_card_chargeDeclined' })
+  })
+
+  it('does not offer the saved card for a free event', () => {
+    renderModal({ priceCents: 0, savedCard })
+
+    expect(screen.queryByRole('radio')).not.toBeInTheDocument()
+  })
+
   it('cancels without confirming', async () => {
     const props = renderModal()
 

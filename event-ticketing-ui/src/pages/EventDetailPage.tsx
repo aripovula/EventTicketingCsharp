@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { bookEvent, type Payment } from '../api/bookings'
 import { fetchEvent, type EventItem } from '../api/events'
+import { fetchMyPaymentMethod, type SavedCard } from '../api/paymentMethod'
 import BookingModal from '../components/BookingModal'
 import { useAuth } from '../context/useAuth'
 import { useHubEvents } from '../hooks/useHubEvents'
@@ -18,6 +19,7 @@ export default function EventDetailPage() {
   // One key per booking attempt: retrying from the same modal can't book twice; reopening it starts afresh.
   const [idempotencyKey, setIdempotencyKey] = useState('')
   const [bookingError, setBookingError] = useState<string | null>(null)
+  const [savedCard, setSavedCard] = useState<SavedCard | null>(null)
   const navigate = useNavigate()
   const { user } = useAuth()
 
@@ -33,6 +35,15 @@ export default function EventDetailPage() {
   }, [id])
 
   useEffect(() => { loadEvent() }, [loadEvent])
+
+  // A signed-in user's saved card is offered in the booking modal; guests have none.
+  useEffect(() => {
+    if (!user) return
+    fetchMyPaymentMethod()
+      .then(res => (res.ok ? res.json() : null))
+      .then(body => setSavedCard(body?.data ?? null))
+      .catch(() => {})
+  }, [user])
 
   // Live updates: seats and details change under the visitor's feet; a deleted event sends them home.
   useHubEvents({
@@ -120,6 +131,7 @@ export default function EventDetailPage() {
           eventVenue={event.venue}
           priceCents={event.priceCents}
           savedEmail={user?.email}
+          savedCard={user ? savedCard : null}
           onConfirm={handleConfirmBooking}
           onClose={() => { setModalOpen(false); setBookingError(null) }}
           error={bookingError}
