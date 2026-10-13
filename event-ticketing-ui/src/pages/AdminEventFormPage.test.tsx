@@ -43,7 +43,7 @@ describe('AdminEventFormPage', () => {
   it('has every event field', () => {
     renderPage()
 
-    for (const label of ['Title', 'Venue', 'Description', 'Image URL', 'Start time', 'End time',
+    for (const label of ['Title', 'Venue', 'Description', 'Image', 'Start time', 'End time',
       'Event type', 'Total seats', 'Available seats', 'Price ($)']) {
       expect(screen.getByLabelText(label)).toBeInTheDocument()
     }
@@ -174,5 +174,75 @@ describe('AdminEventFormPage', () => {
     submitForm()
 
     expect(await screen.findByRole('alert')).toHaveTextContent('Failed to update event (500). Please try again.')
+  })
+
+  const slot = { uploadUrl: 'http://blob.test/images/abc.png?sig=1', imageUrl: 'http://blob.test/images/abc.png', expiresAt: '2026-10-12T20:05:00Z' }
+
+  const poster = () => new File([new Uint8Array(3)], 'poster.png', { type: 'image/png' })
+
+  type Answer = () => Response | Promise<Response>
+
+  function stubUpload({ sas = (() => new Response(JSON.stringify({ data: slot, errors: [] }))) as Answer, put = (() => new Response(null, { status: 201 })) as Answer } = {}) {
+    const fetchMock = vi.fn((url: string, init?: RequestInit) => {
+      if (url === '/api/v1/admin/uploads/sas-url') return Promise.resolve(sas())
+      if (url === slot.uploadUrl) return Promise.resolve(put())
+      return Promise.resolve(new Response(JSON.stringify({ data: { id: 9 }, errors: [] }), { status: init?.method === 'POST' ? 201 : 200 }))
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    return fetchMock
+  }
+
+  it('uploads the chosen image, previews it and saves its URL with the event', async () => {
+    const fetchMock = stubUpload()
+    renderPage()
+
+    await userEvent.upload(screen.getByLabelText('Image'), poster())
+    expect(await screen.findByRole('img', { name: 'Event image preview' })).toHaveAttribute('src', slot.imageUrl)
+    await fillForm()
+    submitForm()
+
+    expect(await screen.findByText('Admin page')).toBeInTheDocument()
+    const [, init] = fetchMock.mock.calls.find(([url]) => url === '/api/v1/events')!
+    expect(JSON.parse(init!.body as string).imageUrl).toBe(slot.imageUrl)
+  })
+
+  it('says why an upload failed and keeps the form usable', async () => {
+    stubUpload({ put: () => new Response(null, { status: 403 }) })
+    renderPage()
+
+    await userEvent.upload(screen.getByLabelText('Image'), poster())
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('The upload failed (403). Please try again.')
+    expect(screen.queryByRole('img', { name: 'Event image preview' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Create event' })).toBeEnabled()
+  })
+
+  it('disables saving while the image uploads', async () => {
+    let finish: (response: Response) => void = () => {}
+    stubUpload({ put: () => new Promise<Response>(resolve => { finish = resolve }) })
+    renderPage()
+
+    await userEvent.upload(screen.getByLabelText('Image'), poster())
+
+    expect(await screen.findByText('Uploading…')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Create event' })).toBeDisabled()
+    finish(new Response(null, { status: 201 }))
+    expect(await screen.findByRole('img', { name: 'Event image preview' })).toBeInTheDocument()
+  })
+
+  it('removes the image from an edited event', async () => {
+    const fetchMock = stubEditThenSave(new Response(null, { status: 204 }))
+    fetchMock.mockImplementation((_url: string, init?: RequestInit) => Promise.resolve(init?.method === 'PUT'
+      ? new Response(null, { status: 204 })
+      : new Response(JSON.stringify({ data: makeEvent({ id: 7, imageUrl: slot.imageUrl }), errors: [] }))))
+    renderEdit()
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Remove image' }))
+    expect(screen.queryByRole('img', { name: 'Event image preview' })).not.toBeInTheDocument()
+    submitForm()
+
+    expect(await screen.findByText('Admin page')).toBeInTheDocument()
+    const [, init] = fetchMock.mock.calls.find(([, i]) => i?.method === 'PUT')!
+    expect(JSON.parse(init!.body as string).imageUrl).toBeNull()
   })
 })

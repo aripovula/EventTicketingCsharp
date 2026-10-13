@@ -97,6 +97,49 @@ public class AdminTests : E2ETestBase
         }
     }
 
+    // A 1×1 transparent PNG.
+    private static readonly byte[] Png = Convert.FromBase64String(
+        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=");
+
+    [Test]
+    public async Task AdminUploadsAnEventImageThatTheEventPageShows()
+    {
+        await SignInAsAdminAsync();
+        var title = $"E2E Image {Guid.NewGuid():N}"[..19];
+        await Page.GotoAsync($"{BaseUrl}/admin/new");
+
+        // The browser PUTs the file to Azurite with the API's write-only URL.
+        await Page.GetByLabel("Image").SetInputFilesAsync(new FilePayload { Name = "poster.png", MimeType = "image/png", Buffer = Png });
+        await Expect(Page.GetByRole(AriaRole.Img, new() { Name = "Event image preview" })).ToBeVisibleAsync();
+        await Page.GetByLabel("Title").FillAsync(title);
+        await Page.GetByLabel("Venue").FillAsync("Test Hall");
+        await Page.GetByLabel("Description").FillAsync("Has an image uploaded by an E2E test.");
+        await Page.GetByLabel("Start time").FillAsync(DateTime.Now.AddDays(41).ToString("yyyy-MM-dd'T'19:00"));
+        await Page.GetByLabel("End time").FillAsync(DateTime.Now.AddDays(41).ToString("yyyy-MM-dd'T'22:00"));
+        await Page.GetByLabel("Total seats").FillAsync("50");
+        await Page.GetByLabel("Available seats").FillAsync("50");
+        await Page.GetByLabel("Price ($)").FillAsync("5");
+        await Page.GetByRole(AriaRole.Button, new() { Name = "Create event" }).ClickAsync();
+
+        try
+        {
+            await Expect(Page).ToHaveURLAsync(new Regex("/admin$"));
+            var search = await Page.APIRequest.GetAsync($"{BaseUrl}/api/v1/events?q={Uri.EscapeDataString(title)}");
+            var id = (await search.JsonAsync())!.Value.GetProperty("data")[0].GetProperty("id").GetInt32();
+            await Page.GotoAsync($"{BaseUrl}/events/{id}");
+
+            var image = Page.GetByRole(AriaRole.Img, new() { Name = title });
+            await Expect(image).ToBeVisibleAsync();
+            await Expect(image).ToHaveJSPropertyAsync("naturalWidth", 1);
+        }
+        finally
+        {
+            var search = await Page.APIRequest.GetAsync($"{BaseUrl}/api/v1/events?q={Uri.EscapeDataString(title)}");
+            foreach (var ev in (await search.JsonAsync())!.Value.GetProperty("data").EnumerateArray())
+                await Page.APIRequest.DeleteAsync($"{BaseUrl}/api/v1/events/{ev.GetProperty("id").GetInt32()}");
+        }
+    }
+
     [Test]
     public async Task AdminEditsAnEventThroughTheForm()
     {

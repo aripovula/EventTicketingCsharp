@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { createEvent, fetchEvent, updateEvent } from '../api/events'
+import { IMAGE_TYPES, uploadImage } from '../api/uploads'
 import { eventToForm, toEventInput, type EventFormData } from '../utils/eventForm'
 import { EVENT_TYPES } from '../utils/eventTypes'
 
@@ -28,11 +29,30 @@ export default function AdminEventFormPage() {
   const [loading, setLoading] = useState(isEdit)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [submitError, setSubmitError] = useState<string | null>(null)
+  const [uploading, setUploading] = useState(false)
+  const [uploadError, setUploadError] = useState<string | null>(null)
   const navigate = useNavigate()
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target
     setForm(prev => ({ ...prev, [name]: value }))
+  }
+
+  async function handleImageChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setUploading(true)
+    setUploadError(null)
+    try {
+      const imageUrl = await uploadImage(file)
+      setForm(prev => ({ ...prev, imageUrl }))
+    } catch (err) {
+      setUploadError(err instanceof Error ? err.message : 'The upload failed. Please try again.')
+    } finally {
+      setUploading(false)
+      // Lets the admin pick the same file again after an error.
+      e.target.value = ''
+    }
   }
 
   useEffect(() => {
@@ -93,8 +113,30 @@ export default function AdminEventFormPage() {
           </div>
 
           <div>
-            <label htmlFor="imageUrl" className={labelClass}>Image URL</label>
-            <input id="imageUrl" name="imageUrl" type="url" value={form.imageUrl} onChange={handleChange} maxLength={500} className={inputClass} />
+            <label htmlFor="image" className={labelClass}>Image</label>
+            <input
+              id="image"
+              type="file"
+              accept={IMAGE_TYPES.join(',')}
+              onChange={handleImageChange}
+              disabled={uploading}
+              className="block text-sm text-gray-600 file:mr-3 file:rounded-lg file:border file:border-gray-300 file:bg-white file:px-3 file:py-1.5 file:text-sm file:text-gray-700 hover:file:bg-gray-50"
+            />
+            <p className="text-xs text-gray-500 mt-1">JPEG, PNG, WebP or GIF, up to 5 MB.</p>
+            {uploading && <p className="text-sm text-gray-500 mt-1">Uploading…</p>}
+            {uploadError && <p role="alert" className="text-sm text-red-500 mt-1">{uploadError}</p>}
+            {form.imageUrl && (
+              <div className="mt-2 flex items-end gap-3">
+                <img src={form.imageUrl} alt="Event image preview" className="h-32 w-auto rounded-lg object-cover border border-gray-200" />
+                <button
+                  type="button"
+                  onClick={() => setForm(prev => ({ ...prev, imageUrl: '' }))}
+                  className="text-sm text-gray-500 hover:text-red-600 transition-colors"
+                >
+                  Remove image
+                </button>
+              </div>
+            )}
           </div>
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
@@ -134,7 +176,7 @@ export default function AdminEventFormPage() {
           )}
 
           <div className="flex gap-3 pt-2">
-            <button type="submit" className="bg-cyan-600 text-white px-5 py-2 rounded-lg text-sm font-medium hover:bg-cyan-700 transition-colors">
+            <button type="submit" disabled={uploading} className="bg-cyan-600 text-white px-5 py-2 rounded-lg text-sm font-medium hover:bg-cyan-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
               {isEdit ? 'Save changes' : 'Create event'}
             </button>
             <Link to="/admin" className="border border-gray-300 text-gray-600 px-5 py-2 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors no-underline">
