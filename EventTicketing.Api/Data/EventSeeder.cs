@@ -231,13 +231,13 @@ public static class EventSeeder
     {
         if (db.Events.Any()) return;
 
-        var firstDay = today.AddDays(1);
+        var schedule = DemoSchedule(today);
         db.Events.AddRange(Events.Select(e => new Event
         {
             Title = e.Title,
             Description = e.Description,
-            StartTime = ToUtc(firstDay.AddDays(e.Day), e.Start),
-            EndTime = ToUtc(firstDay.AddDays(e.EndDay), e.End),
+            StartTime = schedule[e.Title].StartTime,
+            EndTime = schedule[e.Title].EndTime,
             Venue = e.Venue,
             EventType = e.EventType,
             TotalSeats = e.TotalSeats,
@@ -246,6 +246,14 @@ public static class EventSeeder
             ImageUrl = e.ImageUrl,
         }));
         db.SaveChanges();
+    }
+
+    /// <summary>When each demo event (by title) takes place if the demo starts tomorrow, in UTC.</summary>
+    public static IReadOnlyDictionary<string, (DateTime StartTime, DateTime EndTime)> DemoSchedule(DateOnly today)
+    {
+        var firstDay = today.AddDays(1);
+        return Events.ToDictionary(e => e.Title,
+            e => (ToUtc(firstDay.AddDays(e.Day), e.Start), ToUtc(firstDay.AddDays(e.EndDay), e.End)));
     }
 
     private static DateTime ToUtc(DateOnly day, TimeOnly time) =>
