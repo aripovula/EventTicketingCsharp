@@ -1,0 +1,51 @@
+name: Release
+
+# Pushing a tag such as v1.2.0 builds the artifact that infra/cloud-init.yaml downloads onto the demo VM:
+# the API published self-contained for linux-x64, with the built React app in its wwwroot.
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build and publish the release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4.2.2
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - uses: actions/setup-node@v4.4.0
+        with:
+          node-version-file: .tool-versions
+
+      - name: Install frontend deps
+        run: npm ci
+        working-directory: event-ticketing-ui
+
+      # The publishable key is public by design (it ships in the browser bundle), so it's a
+      # repository variable, not a secret.
+      - name: Build the frontend
+        run: npm run build
+        working-directory: event-ticketing-ui
+        env:
+          VITE_STRIPE_PUBLISHABLE_KEY: ${{ vars.STRIPE_PUBLISHABLE_KEY }}
+
+      # Self-contained, so the VM needs no .NET runtime installed.
+      - name: Publish the API
+        run: dotnet publish EventTicketing.Api -c Release -r linux-x64 --self-contained -o out
+
+      - name: Package
+        run: |
+          cp -r event-ticketing-ui/dist/. out/wwwroot/
+          tar -czf eventticketing-linux-x64.tar.gz -C out .
+
+      - name: Create the GitHub release
+        run: gh release create "$GITHUB_REF_NAME" eventticketing-linux-x64.tar.gz --generate-notes
+        env:
+          GH_TOKEN: ${{ github.token }}
