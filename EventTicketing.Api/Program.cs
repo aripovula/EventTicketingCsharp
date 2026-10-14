@@ -50,6 +50,7 @@ builder.Services.AddOpenTelemetry()
 builder.Services.AddControllers(options => options.Filters.Add<EnvelopeResultFilter>())
     .ConfigureApiBehaviorOptions(options =>
         options.InvalidModelStateResponseFactory = ValidationErrorResponse.Create);
+builder.Services.AddExceptionHandler<PaymentsUnavailableHandler>();
 builder.Services.AddExceptionHandler<EnvelopeExceptionHandler>();
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("Default"))
