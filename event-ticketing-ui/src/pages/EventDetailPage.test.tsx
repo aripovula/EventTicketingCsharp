@@ -276,6 +276,17 @@ describe('EventDetailPage', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('Too many booking attempts. Please wait a minute and try again.')
   })
 
+  it('asks the buyer to wait while payments are unavailable', async () => {
+    stubEventThenBooking(new Response(JSON.stringify({ data: null, errors: [{ code: 'payments_unavailable' }] }), { status: 503, headers: { 'Retry-After': '30' } }))
+    renderPage()
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Buy ticket' }))
+    await userEvent.type(screen.getByLabelText('Email'), 'guest@example.com')
+    await userEvent.click(screen.getByRole('button', { name: 'Place order' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Payments are temporarily unavailable. Please try again in 30 seconds.')
+  })
+
   it('reports other booking failures', async () => {
     stubEventThenBooking(new Response('oops', { status: 500 }))
     renderPage()

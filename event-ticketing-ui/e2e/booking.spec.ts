@@ -60,6 +60,20 @@ test('booking too often asks the visitor to wait', async ({ page }) => {
   await expect(page.getByRole('dialog').getByRole('alert')).toHaveText('Too many booking attempts. Please try again in 30 seconds.')
 })
 
+test('a booking while payments are unavailable asks the buyer to wait', async ({ page }) => {
+  await page.route('**/api/v1/events/1', route => route.fulfill({ json: { data: event, errors: [] } }))
+  await page.route('**/api/v1/events/1/bookings', route => route.fulfill({
+    status: 503, headers: { 'Retry-After': '30' }, json: { data: null, errors: [{ code: 'payments_unavailable' }] },
+  }))
+  await page.goto('/events/1')
+
+  await page.getByRole('button', { name: 'Buy ticket' }).click()
+  await page.getByRole('dialog').getByLabel('Email').fill('guest@example.com')
+  await page.getByRole('button', { name: 'Place order' }).click()
+
+  await expect(page.getByRole('dialog').getByRole('alert')).toHaveText('Payments are temporarily unavailable. Please try again in 30 seconds.')
+})
+
 test('a retried booking reuses its idempotency key', async ({ page }) => {
   await page.route('**/api/v1/events/1', route => route.fulfill({ json: { data: event, errors: [] } }))
   const keys: string[] = []

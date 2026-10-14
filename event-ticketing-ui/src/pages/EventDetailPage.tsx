@@ -7,6 +7,7 @@ import BookingModal from '../components/BookingModal'
 import { useAuth } from '../context/useAuth'
 import { useHubEvents } from '../hooks/useHubEvents'
 import { formatPrice } from '../utils/formatPrice'
+import { paymentsUnavailableMessage } from '../utils/paymentsUnavailable'
 
 const time = (iso: string) => new Date(iso).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })
 
@@ -84,6 +85,8 @@ export default function EventDetailPage() {
       setBookingError(wait > 0
         ? `Too many booking attempts. Please try again in ${wait} seconds.`
         : 'Too many booking attempts. Please wait a minute and try again.')
+    } else if (res?.status === 503) {
+      setBookingError(paymentsUnavailableMessage(res))
     } else {
       setBookingError('Booking failed. Please try again.')
     }
