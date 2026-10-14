@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Options;
+using Polly.CircuitBreaker;
 using Stripe;
 
 namespace EventTicketing.Api.Payments;
@@ -25,6 +26,10 @@ public class StripePaymentGateway(IStripeClient stripe, IOptions<PaymentsOptions
         catch (StripeException e) when (e.StripeError?.Type == "card_error")
         {
             throw new PaymentDeclinedException(e.StripeError.Message ?? "Your card was declined.");
+        }
+        catch (BrokenCircuitException e)
+        {
+            throw Unavailable(e);
         }
 
         // A card that needs 3-D Secure comes back "requires_action"; we don't run that browser step,
@@ -56,4 +61,7 @@ public class StripePaymentGateway(IStripeClient stripe, IOptions<PaymentsOptions
 
         return new SavedCard(customerId, method.Id, method.Card.Brand, method.Card.Last4, (int)method.Card.ExpMonth, (int)method.Card.ExpYear);
     }
+
+    // The breaker opened because Stripe kept failing; it lets a trial call through after its break.
+    private static PaymentsUnavailableException Unavailable(BrokenCircuitException e) => new(StripeHttpClient.BreakDuration, e);
 }

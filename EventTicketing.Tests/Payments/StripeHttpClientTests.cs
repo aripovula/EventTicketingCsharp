@@ -62,4 +62,21 @@ public class StripeHttpClientTests
         Assert.Equal(1, handler.Calls);
     }
 
+    [Fact]
+    public async Task Charge_FailsFastOnceStripeKeepsFailing()
+    {
+        var handler = new StubHandler(HttpStatusCode.InternalServerError);
+        var gateway = Gateway(handler);
+
+        // Each charge is tried 3 times, so the second one reaches the breaker's minimum of 5 calls and opens it.
+        await Assert.ThrowsAsync<StripeException>(() => ChargeAsync(gateway));
+        await Assert.ThrowsAsync<PaymentsUnavailableException>(() => ChargeAsync(gateway));
+        var callsBefore = handler.Calls;
+
+        var e = await Assert.ThrowsAsync<PaymentsUnavailableException>(() => ChargeAsync(gateway));
+
+        Assert.Equal(StripeHttpClient.BreakDuration, e.RetryAfter);
+        Assert.Equal(callsBefore, handler.Calls);
+    }
+
 }
