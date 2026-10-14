@@ -139,3 +139,18 @@ jaeger &   # OTLP on :4317/:4318, UI on http://localhost:16686
 ```
 
 Jaeger keeps traces in memory, so they're gone when it stops. Tests and CI don't export anything. The tests check the trace ids instead, with an in-memory exporter or an `ActivityListener`.
+
+## Resilience: retries and a circuit breaker around Stripe
+
+Stripe sits in the middle of a booking: the seat is reserved, the card is charged, then the order is saved. If Stripe is slow or failing, the buyer shouldn't wait on timeouts, and we shouldn't pile more requests onto a service that's already struggling.
+
+The Stripe SDK sends its requests through an `HttpClient` from `IHttpClientFactory` with a resilience handler (`Microsoft.Extensions.Http.Resilience`, which is Polly v8). From the outside in:
+
+- **Total timeout, 30 seconds**, retries included.
+- **Retry**: up to 2 more tries for transient failures (network errors, 5xx, 408, 429), with exponential backoff and jitter from 500 ms. Only requests that are safe to repeat are retried: GETs, and POSTs carrying an `Idempotency-Key`. Stripe returns the first result for a repeated key instead of charging again. Our charges send the booking's own key, and the SDK adds one to its other POSTs. A declined card is a 402, not a transient failure, so it's never retried. The SDK's own retries are turned off, so requests aren't retried at two layers.
+- **Circuit breaker**: when at least half of 5 or more calls in 30 seconds fail, it opens for 30 seconds. While it's open, calls fail at once without reaching Stripe. After the break, one trial call decides whether it closes again.
+- **Per-attempt timeout, 10 seconds.**
+
+While the breaker is open, a paid booking puts the seat back and answers **503 `payments_unavailable`** with `Retry-After: 30`. Saving a card answers the same way. The booking modal and the profile page tell the buyer how long to wait. Free events don't call Stripe, so they keep booking.
+
+**Why not Blob Storage too.** Image uploads go from the browser straight to Azure with a SAS URL, so the API doesn't sit in that path. Creating the SAS is a local signature, not a network call. The API's only Blob calls are the container and CORS setup at startup, and the Azure SDK already retries those. A breaker there would protect nothing.
