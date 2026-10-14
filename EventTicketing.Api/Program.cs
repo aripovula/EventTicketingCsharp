@@ -13,6 +13,7 @@ using EventTicketing.Api.Storage;
 using EventTicketing.Api.Telemetry;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.Extensions.Caching.Hybrid;
 using Microsoft.Extensions.Options;
 using Microsoft.EntityFrameworkCore;
@@ -214,6 +215,13 @@ using (var scope = app.Services.CreateScope())
     EventSeeder.Seed(db, DateOnly.FromDateTime(DateTime.UtcNow));
 }
 
+// Behind Caddy every request arrives from 127.0.0.1; take the client's address and scheme from the
+// proxy's X-Forwarded-* headers, so per-IP rate limits and Secure cookies work. Only loopback
+// proxies are trusted, so a client can't fake its address by sending the header itself.
+app.UseForwardedHeaders(new ForwardedHeadersOptions
+{
+    ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto,
+});
 app.UseExceptionHandler(_ => { });
 app.UseMiddleware<CorrelationIdMiddleware>();
 app.UseSerilogRequestLogging();
