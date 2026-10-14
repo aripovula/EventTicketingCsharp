@@ -134,7 +134,12 @@ builder.Services.AddOptions<PaymentsOptions>()
         "Stripe:SecretKey is required (set it with dotnet user-secrets or the Stripe__SecretKey env var), or set Payments:Provider=Fake outside Production.")
     .ValidateOnStart();
 builder.Services.AddOptions<StripeOptions>().Bind(builder.Configuration.GetSection(StripeOptions.SectionName));
-builder.Services.AddSingleton<Stripe.IStripeClient>(sp => new Stripe.StripeClient(sp.GetRequiredService<IOptions<StripeOptions>>().Value.SecretKey));
+builder.Services.AddStripeHttpClient();
+// Our resilience handler does the retrying, so the SDK's own retries are off.
+builder.Services.AddScoped<Stripe.IStripeClient>(sp => new Stripe.StripeClient(
+    sp.GetRequiredService<IOptions<StripeOptions>>().Value.SecretKey,
+    httpClient: new Stripe.SystemNetHttpClient(
+        sp.GetRequiredService<IHttpClientFactory>().CreateClient(StripeHttpClient.Name), maxNetworkRetries: 0)));
 builder.Services.AddScoped<StripePaymentGateway>();
 builder.Services.AddSingleton<FakePaymentGateway>();
 builder.Services.AddScoped<IPaymentGateway>(sp =>
