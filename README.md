@@ -154,3 +154,26 @@ The Stripe SDK sends its requests through an `HttpClient` from `IHttpClientFacto
 While the breaker is open, a paid booking puts the seat back and answers **503 `payments_unavailable`** with `Retry-After: 30`. Saving a card answers the same way. The booking modal and the profile page tell the buyer how long to wait. Free events don't call Stripe, so they keep booking.
 
 **Why not Blob Storage too.** Image uploads go from the browser straight to Azure with a SAS URL, so the API doesn't sit in that path. Creating the SAS is a local signature, not a network call. The API's only Blob calls are the container and CORS setup at startup, and the Azure SDK already retries those. A breaker there would protect nothing.
+
+## Secrets: user-secrets locally, Key Vault in Azure
+
+No secret is ever in `appsettings*.json` or in the repository. The app needs two: the JWT signing key (`Jwt:SigningKey`, at least 32 bytes) and the Stripe secret key (`Stripe:SecretKey`). Each environment supplies them its own way:
+
+- **Locally**: `dotnet user-secrets`, which keeps them in your user profile, outside the repo:
+
+  ```bash
+  dotnet user-secrets set "Jwt:SigningKey" "$(openssl rand -base64 48)" --project EventTicketing.Api
+  dotnet user-secrets set "Stripe:SecretKey" "sk_test_..." --project EventTicketing.Api
+  ```
+
+- **CI**: each run generates a throwaway signing key with `openssl` into `Jwt__SigningKey`, and uses fake payments, so it needs no Stripe key at all.
+- **Azure**: a persistent Key Vault, read at startup through `Azure.Extensions.AspNetCore.Configuration.Secrets`. The app adds the vault only when `KeyVault:Uri` is set (the `KeyVault__Uri` environment variable on the VM). It signs in with `DefaultAzureCredential`, which on the VM means its user-assigned managed identity (`AZURE_CLIENT_ID` names it). That identity has only the `Key Vault Secrets User` role, so it can read secrets and nothing else. No password or connection string for the vault exists anywhere.
+
+The vault is shared by our three demo apps, so every secret name starts with the app's prefix, and the app loads only its own. Key Vault names can't contain `:`, so `--` stands for it:
+
+| Secret name in the vault | Configuration key |
+|---|---|
+| `EventTicketing--Jwt--SigningKey` | `Jwt:SigningKey` |
+| `EventTicketing--Stripe--SecretKey` | `Stripe:SecretKey` |
+
+The app checks both keys on startup (`ValidateOnStart`), so a missing or too-short secret stops it from starting at all, instead of failing on the first sign-in or payment.
