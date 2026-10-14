@@ -7,6 +7,7 @@ using EventTicketing.Api.Hubs;
 using EventTicketing.Api.Messaging;
 using EventTicketing.Api.Middleware;
 using EventTicketing.Api.Payments;
+using EventTicketing.Api.Secrets;
 using EventTicketing.Api.Services;
 using EventTicketing.Api.Storage;
 using EventTicketing.Api.Telemetry;
@@ -25,6 +26,8 @@ using Serilog;
 using Serilog.Formatting.Compact;
 
 var builder = WebApplication.CreateBuilder(args);
+// Deployed environments read the JWT and Stripe keys from Azure Key Vault; locally they come from user-secrets.
+builder.Configuration.AddKeyVaultIfConfigured(builder.Configuration[KeyVaultConfiguration.UriKey]);
 
 builder.Host.UseSerilog((ctx, config) => config
     .ReadFrom.Configuration(ctx.Configuration)
