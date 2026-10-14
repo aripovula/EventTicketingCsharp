@@ -79,4 +79,19 @@ public class StripeHttpClientTests
         Assert.Equal(callsBefore, handler.Calls);
     }
 
+    private static async Task<StripePaymentGateway> GatewayWithOpenBreakerAsync()
+    {
+        var gateway = Gateway(new StubHandler(HttpStatusCode.InternalServerError));
+        await Record.ExceptionAsync(() => ChargeAsync(gateway));
+        await Record.ExceptionAsync(() => ChargeAsync(gateway));
+        return gateway;
+    }
+
+    [Fact]
+    public async Task Refund_FailsFastWhileTheBreakerIsOpen()
+    {
+        var gateway = await GatewayWithOpenBreakerAsync();
+
+        await Assert.ThrowsAsync<PaymentsUnavailableException>(() => gateway.RefundAsync("pi_123", TestContext.Current.CancellationToken));
+    }
 }

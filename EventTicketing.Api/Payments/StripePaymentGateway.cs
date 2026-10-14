@@ -40,8 +40,17 @@ public class StripePaymentGateway(IStripeClient stripe, IOptions<PaymentsOptions
         return intent.Id;
     }
 
-    public Task RefundAsync(string paymentId, CancellationToken cancellationToken) =>
-        new RefundService(stripe).CreateAsync(new RefundCreateOptions { PaymentIntent = paymentId }, cancellationToken: cancellationToken);
+    public async Task RefundAsync(string paymentId, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await new RefundService(stripe).CreateAsync(new RefundCreateOptions { PaymentIntent = paymentId }, cancellationToken: cancellationToken);
+        }
+        catch (BrokenCircuitException e)
+        {
+            throw Unavailable(e);
+        }
+    }
 
     public async Task<SavedCard> SaveCardAsync(string? customerId, string email, string paymentMethodId, CancellationToken cancellationToken)
     {
