@@ -199,3 +199,45 @@ k6 run -e SEATS=10 -e BUYERS=1000 -e VUS=200 -e BASE_URL=http://localhost:5017 l
 ```
 
 On a laptop, with a Debug build and SQL logging on, 500 buyers for 50 seats gave exactly 50 orders and 450 sold-out answers, at about 54 bookings a second (p95 latency 2.7 s). Every buyer updates the same event row, so the conditional `UPDATE` makes them queue for its lock. That queue is the point: it's what stops two buyers from getting the last seat.
+
+## Azure demo deployment: one VM per visit
+
+The demo isn't meant to run around the clock. Our portfolio site (a separate repo) deploys a fresh copy when a visitor asks for one and deletes it 30 minutes later, so nothing costs money between visits. Managed PostgreSQL, Redis and App Service take minutes to provision and bill hourly minimums, so the demo runs everything on **one Ubuntu VM** instead, the same way we run it locally:
+
+- **`infra/demo-stack.bicep`** creates the VM (`Standard_B2s`), its network, a public IP with a DNS label, a network security group that opens only 80 and 443 (no SSH), and a storage account for event images. It attaches a **pre-created** user-assigned managed identity, so deploying a demo never needs permission to grant roles.
+- **`infra/cloud-init.yaml`** installs PostgreSQL, Redis, RabbitMQ and Caddy from Ubuntu's packages, downloads the release build, and starts the API as a systemd service. Caddy gets a Let's Encrypt certificate for `<label>.<region>.cloudapp.azure.com` and proxies to the API.
+- **`.github/workflows/release.yml`** builds that release on every `v*` tag: the API published self-contained for linux-x64, with the built React app in its `wwwroot`. The API serves the app itself, from the same origin, so cookies and SignalR need no CORS.
+
+Behind Caddy every request arrives from 127.0.0.1. The API therefore takes the client's address and scheme from the `X-Forwarded-For` and `X-Forwarded-Proto` headers, but only when the request comes from a loopback proxy. That keeps per-IP rate limiting meaningful, and a client can't dodge a limit by sending the header itself.
+
+**One-time setup** (long-lived resource group; `<vault>` must be globally unique):
+
+```bash
+az group create -n rg-eventticketing-shared -l eastus
+az keyvault create -n <vault> -g rg-eventticketing-shared --enable-rbac-authorization true
+az identity create -n id-eventticketing-demo -g rg-eventticketing-shared
+az role assignment create --role "Key Vault Secrets User" \
+  --assignee-object-id "$(az identity show -n id-eventticketing-demo -g rg-eventticketing-shared --query principalId -o tsv)" \
+  --assignee-principal-type ServicePrincipal \
+  --scope "$(az keyvault show -n <vault> --query id -o tsv)"
+az keyvault secret set --vault-name <vault> -n EventTicketing--Jwt--SigningKey --value "$(openssl rand -base64 48)"
+az keyvault secret set --vault-name <vault> -n EventTicketing--Stripe--SecretKey --value "sk_test_..."
+```
+
+**Per demo** (what the portfolio site automates):
+
+```bash
+az group create -n rg-eventticketing-demo-42 -l eastus --tags expiresAt=2026-10-14T15:30:00Z
+az deployment group create -g rg-eventticketing-demo-42 -f infra/demo-stack.bicep -p \
+  dnsLabel=eventticketing-demo-42 \
+  releaseUrl=https://github.com/<owner>/<repo>/releases/download/v1.0.0/eventticketing-linux-x64.tar.gz \
+  keyVaultUri=https://<vault>.vault.azure.net/ \
+  identityName=id-eventticketing-demo identityResourceGroup=rg-eventticketing-shared \
+  adminSshPublicKey="$(cat ~/.ssh/id_ed25519.pub)" expiresAt=2026-10-14T15:30:00Z
+# ...30 minutes later:
+az group delete -n rg-eventticketing-demo-42 --yes --no-wait
+```
+
+The VM is ready a few minutes after the deployment finishes, once cloud-init has installed the packages and Caddy has its certificate. To look inside without SSH, use `az vm run-command invoke -g <group> -n vm-event-ticketing --command-id RunShellScript --scripts "journalctl -u eventticketing -n 50"`.
+
+Known trade-offs: the storage account key reaches the VM through its `customData`, which anyone with read access to the VM can see. That's acceptable for a 30-minute demo whose storage account dies with it. Ubuntu's packages also bring PostgreSQL 16 and RabbitMQ 3.12 rather than the versions we pin locally; the app doesn't depend on anything newer.
