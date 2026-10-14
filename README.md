@@ -177,3 +177,25 @@ The vault is shared by our three demo apps, so every secret name starts with the
 | `EventTicketing--Stripe--SecretKey` | `Stripe:SecretKey` |
 
 The app checks both keys on startup (`ValidateOnStart`), so a missing or too-short secret stops it from starting at all, instead of failing on the first sign-in or payment.
+
+## Load test: no oversell under contention
+
+The integration tests prove that 10 concurrent buyers can't oversell 1 seat. `loadtest/booking-contention.js` does the same at scale with [k6](https://k6.io): many virtual users race to book a small event over real HTTP, through the rate limiter, idempotency filter, payment step and outbox.
+
+1. **Setup** signs in as the demo admin and creates a paid event with `SEATS` seats (default 50).
+2. `BUYERS` bookings (default 500) run across `VUS` concurrent virtual users (default 100), each with its own idempotency key.
+3. **Teardown** counts the orders the database really holds (through the admin orders API, not just the 201s we saw), checks that no seats are left, and deletes the event (its orders go with it).
+
+The run fails unless exactly `SEATS` bookings succeed, every other one gets `409 sold_out`, nothing else comes back, and the order count equals the seat count.
+
+It needs the API running with fake payments and the rate limits raised, since every virtual user comes from one IP:
+
+```bash
+cd EventTicketing.Api
+Payments__Provider=Fake RateLimiting__GlobalPermitLimit=100000 RateLimiting__BookingPermitLimit=100000 dotnet run
+# in another terminal, from the repo root (k6 is pinned in .tool-versions):
+k6 run loadtest/booking-contention.js
+k6 run -e SEATS=10 -e BUYERS=1000 -e VUS=200 -e BASE_URL=http://localhost:5017 loadtest/booking-contention.js
+```
+
+On a laptop, with a Debug build and SQL logging on, 500 buyers for 50 seats gave exactly 50 orders and 450 sold-out answers, at about 54 bookings a second (p95 latency 2.7 s). Every buyer updates the same event row, so the conditional `UPDATE` makes them queue for its lock. That queue is the point: it's what stops two buyers from getting the last seat.
