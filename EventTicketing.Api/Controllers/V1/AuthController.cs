@@ -134,13 +134,14 @@ public class AuthController(
         return Ok(card);
     }
 
-    /// <summary>Saves a card to the signed-in user's Stripe customer and makes it the saved card, replacing any earlier one. A refused card returns 402.</summary>
+    /// <summary>Saves a card to the signed-in user's Stripe customer and makes it the saved card, replacing any earlier one. A refused card returns 402; while Stripe is failing, 503 with Retry-After.</summary>
     [Authorize]
     [HttpPut("me/payment-method")]
     [ProducesResponseType(typeof(ApiEnvelope<PaymentMethodResponse>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiEnvelope<object>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ApiEnvelope<object>), StatusCodes.Status402PaymentRequired)]
+    [ProducesResponseType(typeof(ApiEnvelope<object>), StatusCodes.Status503ServiceUnavailable)]
     public async Task<IActionResult> SaveMyPaymentMethod(SavePaymentMethodRequest request, CancellationToken cancellationToken)
     {
         var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
