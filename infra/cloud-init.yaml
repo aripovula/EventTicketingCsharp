@@ -1,0 +1,62 @@
+#cloud-config
+# Boots the demo VM: PostgreSQL, Redis and RabbitMQ from Ubuntu's packages, the release build of the
+# API (which also serves the React app), and Caddy in front of it with a Let's Encrypt certificate.
+# demo-stack.bicep fills in the double-underscore placeholders before passing this file as the VM's customData.
+
+package_update: true
+packages:
+  - postgresql
+  - redis-server
+  - rabbitmq-server
+  - caddy
+
+write_files:
+  # Settings only; the JWT and Stripe keys come from Key Vault at startup.
+  - path: /etc/eventticketing/env
+    permissions: '0600'
+    content: |
+      ASPNETCORE_ENVIRONMENT=Production
+      ASPNETCORE_URLS=http://127.0.0.1:5000
+      ConnectionStrings__Default=Host=/var/run/postgresql;Database=event_ticketing;Username=eventticketing
+      KeyVault__Uri=__KEY_VAULT_URI__
+      AZURE_CLIENT_ID=__AZURE_CLIENT_ID__
+      AzureBlob__ConnectionString=__BLOB_CONNECTION_STRING__
+      AzureBlob__CorsOrigins__0=https://__FQDN__
+
+  - path: /etc/systemd/system/eventticketing.service
+    content: |
+      [Unit]
+      Description=Event Ticketing API
+      Wants=network-online.target postgresql.service redis-server.service rabbitmq-server.service
+      After=network-online.target postgresql.service redis-server.service rabbitmq-server.service
+
+      [Service]
+      User=eventticketing
+      WorkingDirectory=/opt/eventticketing
+      ExecStart=/opt/eventticketing/EventTicketing.Api
+      EnvironmentFile=/etc/eventticketing/env
+      Restart=always
+      RestartSec=5
+
+      [Install]
+      WantedBy=multi-user.target
+
+  # Written after the caddy package is installed, so it replaces the package's default site.
+  - path: /etc/caddy/Caddyfile
+    defer: true
+    content: |
+      __FQDN__ {
+        encode gzip
+        reverse_proxy 127.0.0.1:5000
+      }
+
+runcmd:
+  - useradd --system --no-create-home --shell /usr/sbin/nologin eventticketing
+  # Peer authentication: the eventticketing system user signs in as the same-named database role.
+  - sudo -u postgres createuser eventticketing
+  - sudo -u postgres createdb --owner eventticketing event_ticketing
+  - mkdir -p /opt/eventticketing
+  - curl -fsSL --retry 5 '__RELEASE_URL__' | tar -xz -C /opt/eventticketing
+  - systemctl daemon-reload
+  - systemctl enable --now eventticketing
+  - systemctl restart caddy
