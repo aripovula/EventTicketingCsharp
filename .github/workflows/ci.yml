@@ -16,6 +16,9 @@ jobs:
       - name: Backend format check
         run: dotnet format --verify-no-changes EventTicketing.sln
 
+      - name: Infrastructure lint
+        run: az bicep lint --file infra/demo-stack.bicep
+
       - uses: actions/setup-node@v4.4.0
         with:
           node-version-file: .tool-versions
