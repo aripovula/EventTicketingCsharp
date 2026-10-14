@@ -129,6 +129,7 @@ builder.Services.AddScoped<OrdersService>();
 builder.Services.AddScoped<PaymentMethodsService>();
 builder.Services.AddScoped<IdempotencyService>();
 builder.Services.AddScoped<AuditLogger>();
+builder.Services.AddScoped<DemoDateRefresher>();
 builder.Services.AddOptions<PaymentsOptions>()
     .Bind(builder.Configuration.GetSection(PaymentsOptions.SectionName))
     .Validate(p => p.Provider is PaymentsOptions.StripeProvider or PaymentsOptions.FakeProvider,
