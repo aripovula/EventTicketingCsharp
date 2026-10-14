@@ -241,3 +241,11 @@ az group delete -n rg-eventticketing-demo-42 --yes --no-wait
 The VM is ready a few minutes after the deployment finishes, once cloud-init has installed the packages and Caddy has its certificate. To look inside without SSH, use `az vm run-command invoke -g <group> -n vm-event-ticketing --command-id RunShellScript --scripts "journalctl -u eventticketing -n 50"`.
 
 Known trade-offs: the storage account key reaches the VM through its `customData`, which anyone with read access to the VM can see. That's acceptable for a 30-minute demo whose storage account dies with it. Ubuntu's packages also bring PostgreSQL 16 and RabbitMQ 3.12 rather than the versions we pin locally; the app doesn't depend on anything newer.
+
+## Demo dates that stay upcoming
+
+The seeder creates 30 demo events starting tomorrow, but only on an empty database. Each Azure demo gets a fresh one, so its events are always upcoming. A database that lives for weeks, like a local dev one, would slowly fill with past events instead.
+
+So the API runs a small background job, `DemoDateRefreshWorker`, when it starts and once a day after that. If the earliest demo event has already started, `DemoDateRefresher` moves all 30 so the demo begins tomorrow again, with the seeder's spacing and times of day (New York wall-clock times). It recognises demo events by their seeded titles, so events an admin created are never moved. Orders stay with their events and simply follow the new dates. Cached list pages are evicted so the new dates show at once.
+
+The old app did this with a separate console program run by cron. Running it inside the API needs no cron entry and can't be forgotten, and the dates only matter while the API is running anyway.
