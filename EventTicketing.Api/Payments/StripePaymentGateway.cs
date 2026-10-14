@@ -54,18 +54,21 @@ public class StripePaymentGateway(IStripeClient stripe, IOptions<PaymentsOptions
 
     public async Task<SavedCard> SaveCardAsync(string? customerId, string email, string paymentMethodId, CancellationToken cancellationToken)
     {
-        customerId ??= (await new CustomerService(stripe).CreateAsync(
-            new CustomerCreateOptions { Email = email }, cancellationToken: cancellationToken)).Id;
-
         PaymentMethod method;
         try
         {
+            customerId ??= (await new CustomerService(stripe).CreateAsync(
+                new CustomerCreateOptions { Email = email }, cancellationToken: cancellationToken)).Id;
             method = await new PaymentMethodService(stripe).AttachAsync(
                 paymentMethodId, new PaymentMethodAttachOptions { Customer = customerId }, cancellationToken: cancellationToken);
         }
         catch (StripeException e) when (e.StripeError?.Type == "card_error")
         {
             throw new PaymentDeclinedException(e.StripeError.Message ?? "Your card was declined.");
+        }
+        catch (BrokenCircuitException e)
+        {
+            throw Unavailable(e);
         }
 
         return new SavedCard(customerId, method.Id, method.Card.Brand, method.Card.Last4, (int)method.Card.ExpMonth, (int)method.Card.ExpYear);

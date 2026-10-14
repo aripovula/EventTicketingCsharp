@@ -88,6 +88,15 @@ public class StripeHttpClientTests
     }
 
     [Fact]
+    public async Task SaveCard_FailsFastWhileTheBreakerIsOpen()
+    {
+        var gateway = await GatewayWithOpenBreakerAsync();
+
+        await Assert.ThrowsAsync<PaymentsUnavailableException>(() => gateway.SaveCardAsync(
+            null, "holder@example.com", "pm_card_visa", TestContext.Current.CancellationToken));
+    }
+
+    [Fact]
     public async Task Refund_FailsFastWhileTheBreakerIsOpen()
     {
         var gateway = await GatewayWithOpenBreakerAsync();
