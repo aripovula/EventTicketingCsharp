@@ -48,7 +48,10 @@ public class DemoDateRefresherTests(IntegrationTestFactory factory) : IClassFixt
         var local = TimeZoneInfo.ConvertTimeFromUtc(jazz.StartTime, NewYork);
         Assert.Equal(Today.AddDays(1), DateOnly.FromDateTime(local));
         Assert.Equal(new TimeOnly(19, 0), TimeOnly.FromDateTime(local));
-        Assert.True(await CreateDb().Events.MinAsync(e => e.StartTime, TestContext.Current.CancellationToken) > DateTime.UtcNow);
+        // Only the demo events: another test here adds an admin event in the past.
+        var titles = EventSeeder.DemoSchedule(Today).Keys.ToList();
+        Assert.True(await CreateDb().Events.Where(e => titles.Contains(e.Title))
+            .MinAsync(e => e.StartTime, TestContext.Current.CancellationToken) > DateTime.UtcNow);
     }
 
     [Fact]
