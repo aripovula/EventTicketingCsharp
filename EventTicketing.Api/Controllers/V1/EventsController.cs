@@ -87,7 +87,7 @@ public class EventsController(EventsService eventsService, BookingService bookin
         return NoContent();
     }
 
-    /// <summary>Books and pays for one seat, as a guest or signed-in user. The seat is reserved atomically before the card is charged, so the last seat can never be sold twice; a declined card returns 402 and puts the seat back.</summary>
+    /// <summary>Books and pays for one seat, as a guest or signed-in user. The seat is reserved atomically before the card is charged, so the last seat can never be sold twice; a declined card returns 402 and puts the seat back. While Stripe is failing, a paid booking returns 503 with Retry-After.</summary>
     [HttpPost("{id:int}/bookings")]
     [EnableRateLimiting(RateLimitingOptions.BookingPolicy)]
     [Idempotent]
@@ -97,6 +97,7 @@ public class EventsController(EventsService eventsService, BookingService bookin
     [ProducesResponseType(typeof(ApiEnvelope<object>), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ApiEnvelope<object>), StatusCodes.Status409Conflict)]
     [ProducesResponseType(typeof(ApiEnvelope<object>), StatusCodes.Status429TooManyRequests)]
+    [ProducesResponseType(typeof(ApiEnvelope<object>), StatusCodes.Status503ServiceUnavailable)]
     public async Task<IActionResult> Book(
         int id,
         BookingRequest request,
