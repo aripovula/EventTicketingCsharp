@@ -233,6 +233,10 @@ app.UseSwaggerUI(options =>
     options.RoutePrefix = "swagger";
 });
 
+// In a release build the React app sits in wwwroot and is served from the same origin as the API.
+app.UseDefaultFiles();
+app.UseStaticFiles();
+
 app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
@@ -243,5 +247,7 @@ app.MapHealthChecks("/health/ready", new HealthCheckOptions
 {
     Predicate = check => check.Tags.Contains("ready")
 }).DisableRateLimiting();
+// Client-side routes such as /events/5 get the React app; unknown API paths still get a JSON 404.
+app.MapFallbackToFile("{*path:nonfile:regex(^(?!(api|hubs|health|swagger)(/|$)).*$)}", "index.html");
 
 app.Run();
