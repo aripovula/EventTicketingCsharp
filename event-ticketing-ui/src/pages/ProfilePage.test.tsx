@@ -16,7 +16,8 @@ function renderPage(user: User | null = john) {
   )
 }
 
-const json = (body: unknown, status = 200) => Promise.resolve(new Response(JSON.stringify(body), { status }))
+const json = (body: unknown, status = 200, headers: HeadersInit = {}) =>
+  Promise.resolve(new Response(JSON.stringify(body), { status, headers }))
 
 function stubApi({ saved = null as typeof visa | null, put = () => json({ data: visa, errors: [] }) } = {}) {
   const fetchMock = vi.fn((_url: string, init?: RequestInit) =>
@@ -82,6 +83,15 @@ describe('ProfilePage', () => {
     await userEvent.click(await screen.findByRole('button', { name: 'Save card' }))
 
     expect(await screen.findByRole('alert')).toHaveTextContent('Your card was declined.')
+  })
+
+  it('asks the user to wait while payments are unavailable', async () => {
+    stubApi({ put: () => json({ data: null, errors: [{ code: 'payments_unavailable' }] }, 503, { 'Retry-After': '30' }) })
+    renderPage()
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Save card' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Payments are temporarily unavailable. Please try again in 30 seconds.')
   })
 
   it('reports other failures', async () => {

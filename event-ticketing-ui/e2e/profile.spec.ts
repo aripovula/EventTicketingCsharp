@@ -53,3 +53,16 @@ test('a signed-in user saves a card on the profile page', async ({ page }) => {
   await expect(page.getByText('Visa ending in 4242')).toBeVisible()
   await expect(page.getByRole('button', { name: 'Replace card' })).toBeVisible()
 })
+
+test('saving a card while payments are unavailable asks the user to wait', async ({ page }) => {
+  await signedIn(page)
+  await page.route('**/api/v1/auth/me/payment-method', route =>
+    route.request().method() === 'PUT'
+      ? route.fulfill({ status: 503, headers: { 'Retry-After': '30' }, json: { data: null, errors: [{ code: 'payments_unavailable' }] } })
+      : route.fulfill({ status: 404, json: { data: null, errors: [{ code: 'not_found', detail: 'No saved card.' }] } }))
+  await page.goto('/profile')
+
+  await page.getByRole('button', { name: 'Save card' }).click()
+
+  await expect(page.getByRole('alert')).toHaveText('Payments are temporarily unavailable. Please try again in 30 seconds.')
+})

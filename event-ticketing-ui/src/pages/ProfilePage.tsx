@@ -4,6 +4,7 @@ import { fetchMyPaymentMethod, saveMyPaymentMethod, type SavedCard } from '../ap
 import { useAuth } from '../context/useAuth'
 import CardInput, { type CreatePaymentMethod } from '../payments/CardInput'
 import { formatCard, formatCardExpiry } from '../utils/formatCard'
+import { paymentsUnavailableMessage } from '../utils/paymentsUnavailable'
 
 export default function ProfilePage() {
   const { user, loading: authLoading } = useAuth()
@@ -108,6 +109,8 @@ function SaveCardForm({ ready, createPaymentMethod, field, note, replacing, onSa
         setSaved(true)
       } else if (res?.status === 402) {
         setError(body?.errors?.[0]?.detail ?? 'Your card was declined.')
+      } else if (res?.status === 503) {
+        setError(paymentsUnavailableMessage(res))
       } else {
         setError('Saving the card failed. Please try again.')
       }
