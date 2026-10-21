@@ -66,6 +66,22 @@ public class DemoLifecycleTests
         Assert.Equal(1, _stack.Creates);
     }
 
+    [Fact]
+    public async Task ARequestWhileItIsBeingDeleted_OnlyExtends_AndTheTimerRestartsIt()
+    {
+        _stack.State = StackState.Deleting;
+
+        var status = await _demo.RequestAsync(Ct);
+
+        Assert.Equal(DemoStates.Stopping, status.State);
+        Assert.Equal(0, _stack.Creates);
+
+        _stack.State = StackState.None;
+        await _demo.ReconcileAsync(Ct);
+
+        Assert.Equal(1, _stack.Creates);
+    }
+
     [Theory]
     [InlineData(false, DemoStates.Starting)]
     [InlineData(true, DemoStates.Ready)]
@@ -87,5 +103,62 @@ public class DemoLifecycleTests
         Assert.Equal(DemoStates.Stopped, status.State);
         Assert.Null(_expiry.ExpiresAt);
         Assert.Equal(0, _stack.Creates);
+    }
+
+    [Fact]
+    public async Task TheTimer_LeavesAnUnexpiredDemoRunning()
+    {
+        await _demo.RequestAsync(Ct);
+        _stack.State = StackState.Deployed;
+        _time.Advance(TimeSpan.FromMinutes(29));
+
+        await _demo.ReconcileAsync(Ct);
+
+        Assert.Equal(0, _stack.Deletes);
+    }
+
+    [Fact]
+    public async Task TheTimer_DeletesTheDemoOnceNobodyAskedForThirtyMinutes()
+    {
+        await _demo.RequestAsync(Ct);
+        _stack.State = StackState.Deployed;
+        _time.Advance(TimeSpan.FromMinutes(30));
+
+        await _demo.ReconcileAsync(Ct);
+
+        Assert.Equal(1, _stack.Deletes);
+    }
+
+    [Fact]
+    public async Task TheTimer_WaitsForADeploymentToFinishBeforeDeleting()
+    {
+        await _demo.RequestAsync(Ct);
+        _time.Advance(TimeSpan.FromMinutes(31));
+
+        await _demo.ReconcileAsync(Ct);
+
+        Assert.Equal(0, _stack.Deletes);
+    }
+
+    [Fact]
+    public async Task TheTimer_DeletesAnExpiredFailedDeployment()
+    {
+        await _demo.RequestAsync(Ct);
+        _stack.State = StackState.Failed;
+        _time.Advance(TimeSpan.FromMinutes(30));
+
+        await _demo.ReconcileAsync(Ct);
+
+        Assert.Equal(1, _stack.Deletes);
+        Assert.Equal(1, _stack.Creates);
+    }
+
+    [Fact]
+    public async Task TheTimer_DoesNothingWhenNoDemoWasEverRequested()
+    {
+        await _demo.ReconcileAsync(Ct);
+
+        Assert.Equal(0, _stack.Creates);
+        Assert.Equal(0, _stack.Deletes);
     }
 }
