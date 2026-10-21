@@ -5,6 +5,28 @@ namespace EventTicketing.E2ETests;
 
 public class BookingTests : E2ETestBase
 {
+    // Login page buttons: 0 signs in the chosen demo user (John Doe by default), 1 the admin.
+    private async Task SignInAsync(int demoPanelButton)
+    {
+        await Page.GotoAsync($"{BaseUrl}/login");
+        await Page.GetByRole(AriaRole.Button, new() { Name = "Sign in" }).Nth(demoPanelButton).ClickAsync();
+        await Expect(Page).ToHaveURLAsync(new Regex("/$"));
+    }
+
+    // Admins can't book, so tests that create an event as the admin buy their ticket as John.
+    private async Task SwitchToCustomerAsync()
+    {
+        await Page.GetByRole(AriaRole.Button, new() { Name = "Sign out" }).ClickAsync();
+        await SignInAsync(0);
+    }
+
+    private async Task DeleteAsAdminAsync(int id)
+    {
+        await Page.GetByRole(AriaRole.Button, new() { Name = "Sign out" }).ClickAsync();
+        await SignInAsync(1);
+        await Page.APIRequest.DeleteAsync($"{BaseUrl}/api/v1/events/{id}");
+    }
+
     [Test]
     public async Task SignedInUserBooksASeatAndSeesTheConfirmation()
     {
@@ -31,9 +53,10 @@ public class BookingTests : E2ETestBase
 
         try
         {
+            await SwitchToCustomerAsync();
             await Page.GotoAsync($"{BaseUrl}/events/{id}");
             await Page.GetByRole(AriaRole.Button, new() { Name = "Buy ticket" }).ClickAsync();
-            await Expect(Page.GetByRole(AriaRole.Dialog).GetByLabel("Email")).ToHaveValueAsync("admin@example.com");
+            await Expect(Page.GetByRole(AriaRole.Dialog).GetByLabel("Email")).ToHaveValueAsync("john@example.com");
             await Page.GetByRole(AriaRole.Button, new() { Name = "Place order" }).ClickAsync();
 
             await Expect(Page).ToHaveURLAsync(new Regex("/orders/\\d+$"));
@@ -43,7 +66,7 @@ public class BookingTests : E2ETestBase
         }
         finally
         {
-            await Page.APIRequest.DeleteAsync($"{BaseUrl}/api/v1/events/{id}");
+            await DeleteAsAdminAsync(id);
         }
     }
 
@@ -127,6 +150,7 @@ public class BookingTests : E2ETestBase
         {
             // Without a Stripe key in the UI, the form offers Stripe's test cards; Stripe test
             // mode and the API's fake gateway both decline this one.
+            await SwitchToCustomerAsync();
             await Page.GotoAsync($"{BaseUrl}/events/{id}");
             await Page.GetByRole(AriaRole.Button, new() { Name = "Buy ticket" }).ClickAsync();
             var dialog = Page.GetByRole(AriaRole.Dialog);
@@ -139,7 +163,7 @@ public class BookingTests : E2ETestBase
         }
         finally
         {
-            await Page.APIRequest.DeleteAsync($"{BaseUrl}/api/v1/events/{id}");
+            await DeleteAsAdminAsync(id);
         }
     }
 

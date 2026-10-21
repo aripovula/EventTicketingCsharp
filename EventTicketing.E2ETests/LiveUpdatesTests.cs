@@ -37,6 +37,10 @@ public class LiveUpdatesTests : E2ETestBase
             await visitor.GotoAsync($"{BaseUrl}/events/{id}");
             await Expect(visitor.GetByText("10 of 10 seats available")).ToBeVisibleAsync(new() { Timeout = 15_000 });
 
+            // Admins can't book, so the buyer is John.
+            await Page.GetByRole(AriaRole.Button, new() { Name = "Sign out" }).ClickAsync();
+            await Page.GetByRole(AriaRole.Button, new() { Name = "Sign in" }).First.ClickAsync();
+            await Expect(Page).ToHaveURLAsync(new Regex("/$"));
             await Page.GotoAsync($"{BaseUrl}/events/{id}");
             await Page.GetByRole(AriaRole.Button, new() { Name = "Buy ticket" }).ClickAsync();
             await Page.GetByRole(AriaRole.Button, new() { Name = "Place order" }).ClickAsync();
@@ -46,6 +50,9 @@ public class LiveUpdatesTests : E2ETestBase
         }
         finally
         {
+            await Page.GetByRole(AriaRole.Button, new() { Name = "Sign out" }).ClickAsync();
+            await Page.GetByRole(AriaRole.Button, new() { Name = "Sign in" }).Nth(1).ClickAsync();
+            await Expect(Page).ToHaveURLAsync(new Regex("/$"));
             await Page.APIRequest.DeleteAsync($"{BaseUrl}/api/v1/events/{id}");
         }
     }
