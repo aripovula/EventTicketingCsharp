@@ -30,6 +30,9 @@ public class DemoLifecycle(
         return await DescribeAsync(state, expiresAt, cancellationToken);
     }
 
+    public async Task<DemoStatus> GetStatusAsync(CancellationToken cancellationToken) =>
+        await DescribeAsync(await stack.GetStateAsync(cancellationToken), await expiry.GetAsync(cancellationToken), cancellationToken);
+
     private async Task<DemoStatus> DescribeAsync(StackState state, DateTimeOffset? expiresAt, CancellationToken cancellationToken)
     {
         var shown = state switch

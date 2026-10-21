@@ -65,4 +65,27 @@ public class DemoLifecycleTests
 
         Assert.Equal(1, _stack.Creates);
     }
+
+    [Theory]
+    [InlineData(false, DemoStates.Starting)]
+    [InlineData(true, DemoStates.Ready)]
+    public async Task ADeployedDemo_IsReadyOnlyOnceItAnswers(bool up, string expected)
+    {
+        _stack.State = StackState.Deployed;
+        _health.Up = up;
+
+        var status = await _demo.GetStatusAsync(Ct);
+
+        Assert.Equal(expected, status.State);
+    }
+
+    [Fact]
+    public async Task GettingTheStatus_ChangesNothing()
+    {
+        var status = await _demo.GetStatusAsync(Ct);
+
+        Assert.Equal(DemoStates.Stopped, status.State);
+        Assert.Null(_expiry.ExpiresAt);
+        Assert.Equal(0, _stack.Creates);
+    }
 }
