@@ -1,6 +1,6 @@
 // One short-lived demo of the app: a single VM running everything (see the README section
-// "Azure demo deployment"), plus its own storage account for event images. Deploy it into a fresh
-// resource group; deleting the group removes everything.
+// "Azure demo deployment"), plus its own storage account for event images. The demo launcher deploys
+// it as a deployment stack in the demos resource group; deleting the stack removes everything.
 
 @description('DNS label for the public address: the demo is served at https://<label>.<region>.cloudapp.azure.com.')
 param dnsLabel string
@@ -20,14 +20,11 @@ param identityResourceGroup string
 @description('Public key for the VM\'s admin account. Azure requires one, but the network security group keeps SSH closed.')
 param adminSshPublicKey string
 
-@description('When the orchestrator will delete this demo, as an ISO 8601 time; a sweeper uses it to catch failed teardowns.')
-param expiresAt string
-
 param location string = resourceGroup().location
 param vmSize string = 'Standard_B2s'
 param adminUsername string = 'azureuser'
 
-var tags = { app: 'event-ticketing', expiresAt: expiresAt }
+var tags = { app: 'event-ticketing' }
 var fqdn = '${dnsLabel}.${location}.cloudapp.azure.com'
 
 resource identity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' existing = {
