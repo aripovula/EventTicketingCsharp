@@ -200,21 +200,44 @@ k6 run -e SEATS=10 -e BUYERS=1000 -e VUS=200 -e BASE_URL=http://localhost:5017 l
 
 On a laptop, with a Debug build and SQL logging on, 500 buyers for 50 seats gave exactly 50 orders and 450 sold-out answers, at about 54 bookings a second (p95 latency 2.7 s). Every buyer updates the same event row, so the conditional `UPDATE` makes them queue for its lock. That queue is the point: it's what stops two buyers from getting the last seat.
 
-## Azure demo deployment: one VM per visit
+## Azure demo deployment: one shared demo, started on demand
 
-The demo isn't meant to run around the clock. Our portfolio site (a separate repo) deploys a fresh copy when a visitor asks for one and deletes it 30 minutes later, so nothing costs money between visits. Managed PostgreSQL, Redis and App Service take minutes to provision and bill hourly minimums, so the demo runs everything on **one Ubuntu VM** instead, the same way we run it locally:
+The demo isn't meant to run around the clock. Our portfolio site asks for it when a visitor opens the page, and it keeps running until nobody has opened the page for 30 minutes. Then everything is deleted, so nothing costs money between visits. Managed PostgreSQL, Redis and App Service take minutes to provision and bill hourly minimums, so the demo runs everything on **one Ubuntu VM** instead, the same way we run it locally:
 
 - **`infra/demo-stack.bicep`** creates the VM (`Standard_B2s`), its network, a public IP with a DNS label, a network security group that opens only 80 and 443 (no SSH), and a storage account for event images. It attaches a **pre-created** user-assigned managed identity, so deploying a demo never needs permission to grant roles.
-- **`infra/cloud-init.yaml`** installs PostgreSQL, Redis, RabbitMQ and Caddy from Ubuntu's packages, downloads the release build, and starts the API as a systemd service. Caddy gets a Let's Encrypt certificate for `<label>.<region>.cloudapp.azure.com` and proxies to the API.
-- **`.github/workflows/release.yml`** builds that release on every `v*` tag: the API published self-contained for linux-x64, with the built React app in its `wwwroot`. The API serves the app itself, from the same origin, so cookies and SignalR need no CORS.
+- **`infra/cloud-init.yaml`** installs PostgreSQL, Redis, RabbitMQ and Caddy from Ubuntu's packages, downloads the release build, and starts the API as a systemd service. Caddy gets a TLS certificate for `<label>.<region>.cloudapp.azure.com` and proxies to the API.
+- **`.github/workflows/release.yml`** builds a release on every `v*` tag: the API published self-contained for linux-x64 with the built React app in its `wwwroot` (the API serves the app itself, from the same origin, so cookies and SignalR need no CORS), the compiled demo template, and the launcher below.
+- **`EventTicketing.DemoLauncher`** is a small Azure Function that starts and stops the demo. **`infra/launcher.bicep`** deploys it once, with everything around it.
 
 Behind Caddy every request arrives from 127.0.0.1. The API therefore takes the client's address and scheme from the `X-Forwarded-For` and `X-Forwarded-Proto` headers, but only when the request comes from a loopback proxy. That keeps per-IP rate limiting meaningful, and a client can't dodge a limit by sending the header itself.
 
-**One-time setup** (long-lived resource group; `<vault>` must be globally unique):
+### How the launcher works
+
+There is never more than one demo, and every visitor shares it:
+
+- **`POST /api/demo`**: the portfolio page calls this when it opens. The demo's end moves to 30 minutes from now; if no demo is running, the launcher starts one. The answer is `{ "state": ..., "url": ..., "expiresAt": ... }`.
+- **`GET /api/demo`**: the page polls this until `state` is `ready`, which means `https://<demo>/health/ready` answers. Until then it's `starting` (or `stopping`, if a visitor arrives just as the previous demo is being deleted).
+- **A timer every 2 minutes** deletes the demo once its end has passed. If a visitor asked for it while it was being deleted, the timer starts it again afterwards.
+
+The demo is a **deployment stack** in its own resource group, `rg-eventticketing-demos`. The stack records every resource the template created, so deleting it removes exactly the demo. The only state the launcher keeps is the demo's end time, in a table in its own storage account.
+
+### Why a stolen credential can't run up a bill
+
+- **There is no key to steal.** The portfolio is a static site, so it holds nothing secret. The launcher signs in to Azure with its **managed identity**, which only code running inside that Function App can use; its storage account doesn't even accept keys.
+- **The launcher can only touch the demos resource group.** Its custom role, *Event Ticketing demo deployer*, allows the resource types `demo-stack.bicep` creates, in `rg-eventticketing-demos` only, and nothing under `Microsoft.Authorization`: it can't grant itself more or remove the policies below. Elsewhere it may only attach the demo VMs' identity (*Managed Identity Operator* on that one identity) and read and write its own storage.
+- **Azure Policy refuses everything else in the demos group, whoever asks:** VM size `Standard_B2s` only, `eastus` only, the demo's resource types only, and `Standard_LRS` storage only.
+- **The public endpoint can only start this one demo.** Calling it in a loop keeps one small VM running: about $1.20 a day at worst.
+
+### One-time setup
+
+A long-lived resource group holds the vault and the demo VMs' identity (`<vault>` must be globally unique). The vault uses Azure RBAC, under which nobody can read or write secrets without a role, not even its creator, so you give yourself *Key Vault Secrets Officer* before adding them:
 
 ```bash
 az group create -n rg-eventticketing-shared -l eastus
 az keyvault create -n <vault> -g rg-eventticketing-shared --enable-rbac-authorization true
+az role assignment create --role "Key Vault Secrets Officer" \
+  --assignee "$(az ad signed-in-user show --query id -o tsv)" \
+  --scope "$(az keyvault show -n <vault> --query id -o tsv)"
 az identity create -n id-eventticketing-demo -g rg-eventticketing-shared
 az role assignment create --role "Key Vault Secrets User" \
   --assignee-object-id "$(az identity show -n id-eventticketing-demo -g rg-eventticketing-shared --query principalId -o tsv)" \
@@ -224,27 +247,51 @@ az keyvault secret set --vault-name <vault> -n EventTicketing--Jwt--SigningKey -
 az keyvault secret set --vault-name <vault> -n EventTicketing--Stripe--SecretKey --value "sk_test_..."
 ```
 
-**Per demo** (what the portfolio site automates):
+Then, with a release published (push a `v*` tag; the repository must be public, because the VM and the launcher download it without a token), deploy the launcher as the subscription's Owner and upload its code:
 
 ```bash
-az group create -n rg-eventticketing-demo-42 -l eastus --tags expiresAt=2026-10-14T15:30:00Z
-az deployment group create -g rg-eventticketing-demo-42 -f infra/demo-stack.bicep -p \
-  dnsLabel=eventticketing-demo-42 \
-  releaseUrl=https://github.com/<owner>/<repo>/releases/download/v1.0.0/eventticketing-linux-x64.tar.gz \
-  keyVaultUri=https://<vault>.vault.azure.net/ \
-  identityName=id-eventticketing-demo identityResourceGroup=rg-eventticketing-shared \
-  adminSshPublicKey="$(cat ~/.ssh/id_ed25519.pub)" expiresAt=2026-10-14T15:30:00Z
-# ...30 minutes later:
-az group delete -n rg-eventticketing-demo-42 --yes --no-wait
+az deployment sub create -l eastus -f infra/launcher.bicep -p \
+  allowedOrigins='["https://<portfolio-site>"]' \
+  githubRepository=<owner>/<repo> \
+  keyVaultName=<vault> \
+  adminSshPublicKey="$(cat ~/.ssh/id_ed25519.pub)" \
+  --query properties.outputs
+curl -fsSLO https://github.com/<owner>/<repo>/releases/latest/download/demo-launcher.zip
+az functionapp deployment source config-zip -g rg-eventticketing-shared -n <functionAppName> --src demo-launcher.zip
 ```
 
-The VM is ready a few minutes after the deployment finishes, once cloud-init has installed the packages and Caddy has its certificate. To look inside without SSH, use `az vm run-command invoke -g <group> -n vm-event-ticketing --command-id RunShellScript --scripts "journalctl -u eventticketing -n 50"`.
+The deployment prints `launcherUrl` and `functionAppName`. New releases of the app need no redeploy: each demo downloads the latest release. Run the commands again only when the launcher itself changes.
 
-Known trade-offs: the storage account key reaches the VM through its `customData`, which anyone with read access to the VM can see. That's acceptable for a 30-minute demo whose storage account dies with it. Ubuntu's packages also bring PostgreSQL 16 and RabbitMQ 3.12 rather than the versions we pin locally; the app doesn't depend on anything newer.
+### Calling it from the portfolio page
+
+```js
+const launcher = 'https://<function-app>.azurewebsites.net/api/demo';
+
+async function showDemo(element) {
+  let status = await (await fetch(launcher, { method: 'POST' })).json();
+  while (status.state !== 'ready') {
+    element.textContent = 'Starting the live demo (about 5 minutes)...';
+    await new Promise((resolve) => setTimeout(resolve, 10000));
+    status = await (await fetch(launcher)).json();
+  }
+  element.innerHTML = `<a href="${status.url}">Open the live demo</a>`;
+}
+```
+
+### Looking inside
+
+The launcher logs to Application Insights (`appi-demo-launcher` in the shared group). For the VM, without SSH: `az vm run-command invoke -g rg-eventticketing-demos -n vm-event-ticketing --command-id RunShellScript --scripts "journalctl -u eventticketing -n 50"`. To end a demo early: `az stack group delete -n event-ticketing-demo -g rg-eventticketing-demos --action-on-unmanage deleteAll --yes`.
+
+Known trade-offs:
+
+- **Shared data.** Visitors share the demo's data, including the admin account, so one visitor can change events another is looking at. Every new demo starts again from the seeded data.
+- **Storage key in `customData`.** The storage account key reaches the VM through its `customData`, which anyone with read access to the VM can see. That's acceptable for a demo whose storage account dies with it.
+- **Repeated certificates.** The demo always has the same address, and Let's Encrypt issues only a handful of certificates per week for one name. After that, Caddy falls back to ZeroSSL on its own.
+- **Package versions.** Ubuntu's packages bring PostgreSQL 16 and RabbitMQ 3.12 rather than the versions we pin locally; the app doesn't depend on anything newer.
 
 ## Demo dates that stay upcoming
 
-The seeder creates 30 demo events starting tomorrow, but only on an empty database. Each Azure demo gets a fresh one, so its events are always upcoming. A database that lives for weeks, like a local dev one, would slowly fill with past events instead.
+The seeder creates 30 demo events starting tomorrow, but only on an empty database. Each new Azure demo gets a fresh one, so its events are always upcoming. A database that lives for weeks, like a local dev one, would slowly fill with past events instead.
 
 So the API runs a small background job, `DemoDateRefreshWorker`, when it starts and once a day after that. If the earliest demo event has already started, `DemoDateRefresher` moves all 30 so the demo begins tomorrow again, with the seeder's spacing and times of day (New York wall-clock times). It recognises demo events by their seeded titles, so events an admin created are never moved. Orders stay with their events and simply follow the new dates. Cached list pages are evicted so the new dates show at once.
 
