@@ -247,7 +247,27 @@ az keyvault secret set --vault-name <vault> -n EventTicketing--Jwt--SigningKey -
 az keyvault secret set --vault-name <vault> -n EventTicketing--Stripe--SecretKey --value "sk_test_..."
 ```
 
-Then, with a release published (push a `v*` tag; the repository must be public, because the VM and the launcher download it without a token), deploy the launcher as the subscription's Owner and upload its code:
+### Publishing a release from the git CLI
+
+The VM and the launcher download the **latest** GitHub release without a token, so the repository must be public, and every change the demo should pick up needs a new release. We publish one by pushing a tag; nothing has to be done on GitHub's web pages:
+
+1. **Push `main` and wait for CI to pass.** We tag only a commit whose CI run is green (the repository's *Actions* tab, workflow *CI*).
+2. **Tag that commit and push the tag.** We number releases with [semantic versioning](https://semver.org/): a new feature bumps the minor version, a fix the patch version.
+
+   ```bash
+   git switch main && git pull
+   git tag -a v1.1.0 -m "v1.1.0: on-demand shared Azure demo"
+   git push origin v1.1.0
+   ```
+
+   The tag starts the *Release* workflow, which builds the files and creates the GitHub release itself.
+3. **Check the release.** When the *Release* run has finished, the repository's *Releases* page shows `v1.1.0` marked **Latest**, with three files: `eventticketing-linux-x64.tar.gz`, `demo-stack.json` and `demo-launcher.zip`.
+
+If the *Release* run fails, we fix the cause on `main`, delete the tag (`git push origin :refs/tags/v1.1.0 && git tag -d v1.1.0`) and tag the fixed commit again.
+
+### Deploying the launcher
+
+With a release published, deploy the launcher as the subscription's Owner and upload its code:
 
 ```bash
 az deployment sub create -l eastus -f infra/launcher.bicep -p \
