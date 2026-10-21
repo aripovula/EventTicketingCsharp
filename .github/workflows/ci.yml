@@ -45,6 +45,9 @@ jobs:
       - name: Backend unit tests
         run: dotnet test --project EventTicketing.Tests -- --filter-not-trait "Category=Integration"
 
+      - name: Demo launcher unit tests
+        run: dotnet test --project EventTicketing.DemoLauncher.Tests
+
       - uses: actions/setup-node@v4.4.0
         with:
           node-version-file: .tool-versions
