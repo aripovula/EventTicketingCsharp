@@ -17,7 +17,9 @@ jobs:
         run: dotnet format --verify-no-changes EventTicketing.sln
 
       - name: Infrastructure lint
-        run: az bicep lint --file infra/demo-stack.bicep
+        run: |
+          az bicep lint --file infra/demo-stack.bicep
+          az bicep lint --file infra/launcher.bicep
 
       - uses: actions/setup-node@v4.4.0
         with:
