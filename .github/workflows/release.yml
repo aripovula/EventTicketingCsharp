@@ -1,7 +1,10 @@
 name: Release
 
-# Pushing a tag such as v1.2.0 builds the artifact that infra/cloud-init.yaml downloads onto the demo VM:
-# the API published self-contained for linux-x64, with the built React app in its wwwroot.
+# Pushing a tag such as v1.2.0 builds the release the demo launcher deploys from:
+# - eventticketing-linux-x64.tar.gz, which infra/cloud-init.yaml downloads onto the demo VM: the API
+#   published self-contained for linux-x64, with the built React app in its wwwroot;
+# - demo-stack.json, infra/demo-stack.bicep compiled for the launcher to deploy;
+# - demo-launcher.zip, the launcher itself, for az functionapp deployment source config-zip.
 on:
   push:
     tags: ['v*']
@@ -45,7 +48,15 @@ jobs:
           cp -r event-ticketing-ui/dist/. out/wwwroot/
           tar -czf eventticketing-linux-x64.tar.gz -C out .
 
+      - name: Build the demo template
+        run: az bicep build --file infra/demo-stack.bicep --outfile demo-stack.json
+
+      - name: Publish the demo launcher
+        run: |
+          dotnet publish EventTicketing.DemoLauncher -c Release -o launcher
+          (cd launcher && zip -qr ../demo-launcher.zip .)
+
       - name: Create the GitHub release
-        run: gh release create "$GITHUB_REF_NAME" eventticketing-linux-x64.tar.gz --generate-notes
+        run: gh release create "$GITHUB_REF_NAME" eventticketing-linux-x64.tar.gz demo-stack.json demo-launcher.zip --generate-notes
         env:
           GH_TOKEN: ${{ github.token }}
