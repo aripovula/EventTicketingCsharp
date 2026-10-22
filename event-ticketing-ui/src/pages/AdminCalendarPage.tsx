@@ -6,6 +6,7 @@ import type { EventClickArg, EventHoveringArg } from '@fullcalendar/core'
 import { fetchAllEvents, type EventItem } from '../api/events'
 import { EVENT_TYPE_COLORS, EVENT_TYPES, colorForType } from '../utils/eventTypes'
 import { formatPrice } from '../utils/formatPrice'
+import TechNote from '../components/TechNote'
 
 const time = (iso: string) => new Date(iso).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })
 
@@ -66,6 +67,11 @@ export default function AdminCalendarPage() {
         </Link>
         <h1 className="text-2xl font-bold text-gray-900 m-0">Events Calendar</h1>
       </div>
+
+      <TechNote points={[
+        <><strong>FullCalendar</strong> shows every event colored by type, with the seats still left, in your own time zone (the API stores and sends UTC).</>,
+        <>The page follows the cursor-paginated events API until it has every page, so the calendar is complete however many events there are.</>,
+      ]} />
 
       <ul aria-label="event type legend" className="flex flex-wrap gap-3 mb-5 list-none p-0 m-0">
         {EVENT_TYPES.filter(t => t !== 'Other').map(type => (

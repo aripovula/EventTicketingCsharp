@@ -46,6 +46,15 @@ function renderPage() {
 describe('AdminCalendarPage', () => {
   afterEach(() => vi.unstubAllGlobals())
 
+  it('explains how the page works', async () => {
+    stubEvents([])
+    renderPage()
+
+    const note = await screen.findByRole('complementary', { name: 'How this page works' })
+    expect(note).toHaveTextContent('FullCalendar')
+    expect(note).toHaveTextContent('cursor-paginated')
+  })
+
   it('renders the heading and a link back to admin', async () => {
     stubEvents([])
     renderPage()
