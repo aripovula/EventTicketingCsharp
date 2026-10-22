@@ -1,3 +1,5 @@
+import { authFetch } from './session'
+
 export interface EventSummary {
   eventId: number
   title: string
@@ -8,5 +10,5 @@ export interface EventSummary {
 }
 
 export function fetchSummary() {
-  return fetch('/api/v1/admin/summary', { credentials: 'include' })
+  return authFetch('/api/v1/admin/summary', { credentials: 'include' })
 }
