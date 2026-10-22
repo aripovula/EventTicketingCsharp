@@ -5,6 +5,7 @@ import { useEventPages } from '../hooks/useEventPages'
 import { useHubEvents } from '../hooks/useHubEvents'
 import { colorForType } from '../utils/eventTypes'
 import { formatPrice } from '../utils/formatPrice'
+import TechNote from '../components/TechNote'
 
 const time = (iso: string) => new Date(iso).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })
 
@@ -46,6 +47,12 @@ export default function EventListPage() {
 
   return (
     <div>
+      <TechNote points={[
+        <><strong>Live updates (SignalR over WebSockets):</strong> a new event appears the moment an admin adds it, seat counts and edits change in place, and deleted events disappear, all without a reload.</>,
+        <><strong>Infinite scroll with cursor pagination:</strong> the next 20 events load as you scroll, fetched &ldquo;after&rdquo; the last one shown rather than by page number, so new events never shift what you have already seen.</>,
+        <><strong>Redis cache</strong> (an in-memory store shared by every API instance): list pages are cached through .NET HybridCache, so most visits are answered without touching the database, which keeps the list fast under heavy traffic. Any change to an event evicts them at once, so nobody sees stale data.</>,
+        <><strong>Search in PostgreSQL</strong> (a case-insensitive <code>ILIKE</code> match on the title, done by the database rather than in the browser, so it works across every event, not just the ones loaded): it runs 300 ms after you stop typing, instead of on every keystroke.</>,
+      ]} />
       <div className="flex gap-3 mb-6">
         <input
           ref={searchInputRef}

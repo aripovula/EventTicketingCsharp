@@ -33,6 +33,16 @@ describe('EventListPage', () => {
   beforeEach(() => vi.stubGlobal('IntersectionObserver', FakeIntersectionObserver))
   afterEach(() => vi.unstubAllGlobals())
 
+  it('explains how the page works', async () => {
+    stubEvents([makeEvent()])
+    renderPage()
+
+    const note = await screen.findByRole('complementary', { name: 'How this page works' })
+    expect(note).toHaveTextContent('SignalR')
+    expect(note).toHaveTextContent('cursor pagination')
+    expect(note).toHaveTextContent('Redis')
+  })
+
   it('shows a loading message until events arrive', async () => {
     stubEvents([makeEvent()])
     renderPage()
@@ -54,7 +64,7 @@ describe('EventListPage', () => {
     stubEvents([makeEvent()])
     renderPage()
 
-    const card = within((await screen.findAllByRole('listitem'))[0])
+    const card = within(within(await screen.findByRole('list', { name: 'events' })).getAllByRole('listitem')[0])
     expect(card.getByText(/Blue Note Club/)).toBeInTheDocument()
     expect(card.getByText('Music')).toBeInTheDocument()
     expect(card.getByText('48 seats available')).toBeInTheDocument()
@@ -139,7 +149,7 @@ describe('EventListPage', () => {
     await scrollToNextPage(fetchMock, 2)
 
     expect(await screen.findByRole('link', { name: 'Second' })).toBeInTheDocument()
-    expect(screen.getAllByRole('listitem')).toHaveLength(2)
+    expect(within(screen.getByRole('list', { name: 'events' })).getAllByRole('listitem')).toHaveLength(2)
     expect(fetchMock).toHaveBeenLastCalledWith('/api/v1/events?sort=name&after=c1')
   })
 
@@ -165,7 +175,7 @@ describe('EventListPage', () => {
 
     await userEvent.selectOptions(screen.getByRole('combobox', { name: 'Sort events' }), 'date')
 
-    await waitFor(() => expect(screen.getAllByRole('listitem')).toHaveLength(1))
+    await waitFor(() => expect(within(screen.getByRole('list', { name: 'events' })).getAllByRole('listitem')).toHaveLength(1))
   })
 
   it('says so when no events match', async () => {
