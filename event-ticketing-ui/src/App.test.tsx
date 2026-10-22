@@ -108,6 +108,14 @@ describe('App', () => {
     expect(await screen.findByRole('link', { name: 'Profile' })).toHaveAttribute('href', '/profile')
   })
 
+  it('sends an admin who opens My orders to the admin area', async () => {
+    window.history.pushState({}, '', '/orders')
+    renderApp(admin)
+
+    expect(await screen.findByRole('heading', { name: 'Admin' })).toBeInTheDocument()
+    expect(window.location.pathname).toBe('/admin')
+  })
+
   it('hides the Profile link from signed-out visitors', () => {
     renderApp()
 

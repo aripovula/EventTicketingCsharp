@@ -1,5 +1,6 @@
 import { BrowserRouter, Link, Route, Routes, useNavigate } from 'react-router-dom'
 import RequireAdmin from './components/RequireAdmin'
+import RequireCustomer from './components/RequireCustomer'
 import { useAuth } from './context/useAuth'
 import AdminCalendarPage from './pages/AdminCalendarPage'
 import AdminEventFormPage from './pages/AdminEventFormPage'
@@ -74,10 +75,12 @@ function App() {
           <Routes>
             <Route path="/" element={<EventListPage />} />
             <Route path="/events/:id" element={<EventDetailPage />} />
-            <Route path="/orders" element={<MyOrdersPage />} />
-            <Route path="/calendar" element={<MyCalendarPage />} />
             <Route path="/orders/:id" element={<OrderConfirmationPage />} />
-            <Route path="/profile" element={<ProfilePage />} />
+            <Route element={<RequireCustomer />}>
+              <Route path="/orders" element={<MyOrdersPage />} />
+              <Route path="/calendar" element={<MyCalendarPage />} />
+              <Route path="/profile" element={<ProfilePage />} />
+            </Route>
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />
             <Route element={<RequireAdmin />}>
