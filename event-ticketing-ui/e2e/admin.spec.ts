@@ -156,11 +156,11 @@ test('an admin saves changes to an event', async ({ page }) => {
   expect(saved).toMatchObject({ title: 'New Title', priceCents: 1000 })
 })
 
-test('an admin opens the events calendar from the admin page', async ({ page }) => {
+test('an admin opens the events calendar from the header', async ({ page }) => {
   await signedInAs(page, 'admin')
   await page.goto('/admin')
 
-  await page.getByRole('main').getByRole('link', { name: 'Events Calendar' }).click()
+  await page.getByRole('banner').getByRole('link', { name: 'Events Calendar' }).click()
 
   await expect(page).toHaveURL('/admin/calendar')
   await expect(page.getByRole('heading', { name: 'Events Calendar' })).toBeVisible()

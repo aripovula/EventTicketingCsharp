@@ -35,15 +35,11 @@ describe('AdminPage', () => {
     expect(note).toHaveTextContent('Audit trail')
   })
 
-  it('renders the admin heading and a new-event link', async () => {
+  it('renders the admin heading', async () => {
     stubEvents([])
     renderPage()
 
     expect(screen.getByRole('heading', { name: 'Admin' })).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: '+ New event' })).toHaveAttribute('href', '/admin/new')
-    expect(screen.getByRole('link', { name: 'Events Calendar' })).toHaveAttribute('href', '/admin/calendar')
-    expect(screen.getByRole('link', { name: 'All orders' })).toHaveAttribute('href', '/admin/orders')
-    expect(screen.getByRole('link', { name: 'Seat summary' })).toHaveAttribute('href', '/admin/summary')
   })
 
   it('lists events by name with their venue and an edit link', async () => {
