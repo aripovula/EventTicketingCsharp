@@ -31,7 +31,7 @@ describe('MyOrdersPage', () => {
     renderWithUser(<MyOrdersPage />, null)
 
     const note = screen.getByRole('complementary', { name: 'How this page works' })
-    expect(note).toHaveTextContent('Cursor pagination')
+    expect(note).toHaveTextContent('cursor pagination')
     expect(note).toHaveTextContent('HttpOnly JWT cookie')
   })
 
