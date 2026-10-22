@@ -37,7 +37,7 @@ describe('ProfilePage', () => {
 
     const note = screen.getByRole('complementary', { name: 'How this page works' })
     expect(note).toHaveTextContent('Stripe Customer')
-    expect(note).toHaveTextContent('Circuit breaker')
+    expect(note).toHaveTextContent('circuit breaker')
   })
 
   it('asks signed-out visitors to sign in', () => {
