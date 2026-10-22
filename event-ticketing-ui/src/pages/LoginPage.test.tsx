@@ -42,6 +42,15 @@ function okLogin(user = john) {
 describe('LoginPage', () => {
   afterEach(() => vi.unstubAllGlobals())
 
+  it('explains how the page works', () => {
+    renderPage()
+
+    const note = screen.getByRole('complementary', { name: 'How this page works' })
+    expect(note).toHaveTextContent('HttpOnly cookies')
+    expect(note).toHaveTextContent('Rotating refresh tokens')
+    expect(note).toHaveTextContent('PBKDF2')
+  })
+
   it('renders the sign-in heading', () => {
     renderPage()
 

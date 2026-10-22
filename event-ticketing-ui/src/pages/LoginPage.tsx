@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { login } from '../api/auth'
 import { useAuth } from '../context/useAuth'
+import TechNote from '../components/TechNote'
 
 const USERS = [
   { label: 'John Doe',     email: 'john@example.com' },
@@ -192,6 +193,11 @@ export default function LoginPage() {
   return (
     <div className="flex flex-col gap-6">
       <h1 className="text-2xl font-semibold text-gray-900">Sign in</h1>
+      <TechNote className="" points={[
+        <><strong>JWT in HttpOnly cookies:</strong> signing in sets a 15-minute access token and a 7-day refresh token as HttpOnly cookies, which page scripts can&apos;t read, so an XSS bug couldn&apos;t steal them. The access token is self-contained and signed, so the API checks it without a database lookup on every request, and its short life limits the damage if one ever leaks.</>,
+        <><strong>Rotating refresh tokens:</strong> each refresh swaps in a new token, and reusing an old one revokes the whole session. A stolen refresh token is therefore caught the moment either the thief or you uses it again.</>,
+        <><strong>Passwords</strong> are hashed with ASP.NET Core Identity&apos;s PBKDF2 hasher (deliberately slow and salted), so even a leaked database doesn&apos;t reveal them and guessing them is expensive. Every sign-in and failed attempt goes into an audit log, which shows who did what and makes password-guessing visible.</>,
+      ]} />
       {justRegistered && (
         <p role="status" className="rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">
           Account created — please sign in.
