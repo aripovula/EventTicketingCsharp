@@ -145,6 +145,23 @@ public class BookingIntegrationTests(IntegrationTestFactory factory) : IClassFix
         Assert.Equal($"/api/v1/orders/{orderId}", response.Headers.Location?.AbsolutePath);
     }
 
+    [Fact]
+    public async Task Book_AsAdmin_Returns403AndTakesNoSeat()
+    {
+        var eventId = await CreateEventAsync(availableSeats: 3);
+        var admin = factory.CreateClient();
+        await admin.PostAsJsonAsync("/api/v1/auth/login", new { email = "admin@example.com", password = "Password" }, TestContext.Current.CancellationToken);
+
+        var response = await BookAsync(eventId, admin);
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+        Assert.Contains("\"code\":\"forbidden\"", await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
+        using var scope = factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var ev = await db.Events.AsNoTracking().SingleAsync(e => e.Id == eventId, TestContext.Current.CancellationToken);
+        Assert.Equal(3, ev.AvailableSeats);
+    }
+
     private async Task<HttpClient> SignedInNewUserAsync()
     {
         var client = factory.CreateClient();

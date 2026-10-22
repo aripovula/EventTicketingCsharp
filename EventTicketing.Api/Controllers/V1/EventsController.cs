@@ -87,13 +87,14 @@ public class EventsController(EventsService eventsService, BookingService bookin
         return NoContent();
     }
 
-    /// <summary>Books and pays for one seat, as a guest or signed-in user. The seat is reserved atomically before the card is charged, so the last seat can never be sold twice; a declined card returns 402 and puts the seat back. While Stripe is failing, a paid booking returns 503 with Retry-After.</summary>
+    /// <summary>Books and pays for one seat, as a guest or signed-in user; admins can't book (403). The seat is reserved atomically before the card is charged, so the last seat can never be sold twice; a declined card returns 402 and puts the seat back. While Stripe is failing, a paid booking returns 503 with Retry-After.</summary>
     [HttpPost("{id:int}/bookings")]
     [EnableRateLimiting(RateLimitingOptions.BookingPolicy)]
     [Idempotent]
     [ProducesResponseType(typeof(ApiEnvelope<OrderResponse>), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ApiEnvelope<object>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ApiEnvelope<object>), StatusCodes.Status402PaymentRequired)]
+    [ProducesResponseType(typeof(ApiEnvelope<object>), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ApiEnvelope<object>), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ApiEnvelope<object>), StatusCodes.Status409Conflict)]
     [ProducesResponseType(typeof(ApiEnvelope<object>), StatusCodes.Status429TooManyRequests)]
@@ -105,6 +106,11 @@ public class EventsController(EventsService eventsService, BookingService bookin
         [FromHeader(Name = IdempotentAttribute.HeaderName)] string? idempotencyKey,
         CancellationToken cancellationToken)
     {
+        // The admin account is for running the catalogue; its purchases would mix into customers' sales.
+        if (User.IsInRole("admin"))
+            return StatusCode(StatusCodes.Status403Forbidden, new ApiEnvelope(null,
+                [new ApiError("forbidden", "Admins can't book tickets. Sign in with a customer account to buy one.")]));
+
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
         // Without a key from the client, this request still gets one, so Stripe can't charge it twice.
         var result = await bookingService.BookAsync(
