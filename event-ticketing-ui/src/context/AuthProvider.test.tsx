@@ -134,4 +134,37 @@ describe('AuthProvider', () => {
 
     expect(await screen.findByText('Session checked')).toBeInTheDocument()
   })
+
+  it('refreshes the session every 10 minutes while signed in', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    try {
+      const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ data: jane, errors: [] })))
+      vi.stubGlobal('fetch', fetchMock)
+      render(<AuthProvider><Probe /></AuthProvider>)
+      await screen.findByText('Signed in as Jane Doer')
+
+      await act(async () => { await vi.advanceTimersByTimeAsync(10 * 60 * 1000) })
+
+      expect(fetchMock).toHaveBeenCalledWith('/api/v1/auth/refresh', { method: 'POST', credentials: 'include' })
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it("doesn't refresh while signed out", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    try {
+      const fetchMock = vi.fn().mockResolvedValue(new Response(null, { status: 401 }))
+      vi.stubGlobal('fetch', fetchMock)
+      render(<AuthProvider><Probe /></AuthProvider>)
+      await screen.findByText('Session checked')
+      fetchMock.mockClear()
+
+      await act(async () => { await vi.advanceTimersByTimeAsync(30 * 60 * 1000) })
+
+      expect(fetchMock).not.toHaveBeenCalled()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
 })

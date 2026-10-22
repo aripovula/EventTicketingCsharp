@@ -1,5 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react'
-import { fetchMe, logout, refreshSession } from '../api/auth'
+import { fetchMe, logout } from '../api/auth'
+import { refreshOnce } from '../api/session'
 import { AuthContext, type User } from './authContext'
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -11,14 +12,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     fetchMe()
       .then(async res => {
         if (res.status !== 401) return res
-        const refreshed = await refreshSession()
-        return refreshed.ok ? fetchMe() : res
+        return (await refreshOnce()) ? fetchMe() : res
       })
       .then(res => (res.ok ? res.json() : null))
       .then(body => { if (body?.data) setUser(body.data) })
       .catch(() => {})
       .finally(() => setLoading(false))
   }, [])
+
+  // The access token lasts 15 minutes. Refreshing every 10 keeps a signed-in visitor signed in, so a
+  // booking made after a long pause is still theirs rather than a guest's.
+  useEffect(() => {
+    if (!user) return
+    const timer = setInterval(() => { void refreshOnce() }, 10 * 60 * 1000)
+    return () => clearInterval(timer)
+  }, [user])
 
   async function signOut() {
     try {
