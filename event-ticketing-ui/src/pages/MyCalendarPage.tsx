@@ -63,8 +63,8 @@ export default function MyCalendarPage() {
     <div>
       <h1 className="text-2xl font-bold text-gray-900 mb-6">My Calendar</h1>
       <TechNote points={[
-        <><strong>FullCalendar</strong> shows the events you have tickets for, colored by type, in your own time zone (the API stores and sends UTC).</>,
-        <>The page follows the same cursor-paginated orders API as My orders until it has every page. Click an event to open its order.</>,
+        <><strong>FullCalendar</strong> shows the events you have tickets for by type, in your own time zone (the API stores UTC)</>,
+        <>the page follows the cursor-paginated orders API until it has every order; click an event to open its order</>,
       ]} />
       {error && <p className="text-center text-red-500 py-4">{error}</p>}
       <div className="bg-white rounded-xl border border-gray-200 p-4">
