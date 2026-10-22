@@ -4,6 +4,7 @@ import { createEvent, fetchEvent, updateEvent } from '../api/events'
 import { IMAGE_TYPES, uploadImage } from '../api/uploads'
 import { eventToForm, toEventInput, type EventFormData } from '../utils/eventForm'
 import { EVENT_TYPES } from '../utils/eventTypes'
+import TechNote from '../components/TechNote'
 
 const inputClass =
   'w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-400 transition'
@@ -93,6 +94,11 @@ export default function AdminEventFormPage() {
       </Link>
 
       <h1 className="text-2xl font-bold text-gray-900 mt-6 mb-6">{isEdit ? 'Edit event' : 'New event'}</h1>
+      <TechNote points={[
+        <><strong>Pre-signed upload URL (Azure SAS):</strong> when you pick an image, the API first checks that your JWT belongs to an admin, then hands the browser a signed URL that can write one new file and expires in 5 minutes.</>,
+        <><strong>Straight to Azure Blob Storage:</strong> the browser uploads the image directly to storage with that URL, bypassing our server, so the API spends no bandwidth, memory or CPU on uploads. That keeps server costs down. In a social app, where every user uploads photos, this is what lets the app scale: the uploads go to storage built for that load instead of all passing through our servers.</>,
+        <><strong>Safe by design:</strong> the URL can&apos;t read, list or delete anything, and the server picks the file name (a random GUID), so no upload can overwrite another. JPEG, PNG, WebP or GIF up to 5 MB.</>,
+      ]} />
 
       <div className="bg-white rounded-xl border border-gray-200 p-6">
         <form aria-label="event form" onSubmit={handleSubmit} className="space-y-4">

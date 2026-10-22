@@ -33,6 +33,15 @@ function submitForm() {
 }
 
 describe('AdminEventFormPage', () => {
+  it('explains how the page works', () => {
+    renderPage()
+
+    const note = screen.getByRole('complementary', { name: 'How this page works' })
+    expect(note).toHaveTextContent('Pre-signed upload URL (Azure SAS)')
+    expect(note).toHaveTextContent('bypassing our server')
+    expect(note).toHaveTextContent('expires in 5 minutes')
+  })
+
   it('renders the new-event heading and a link back to admin', () => {
     renderPage()
 
