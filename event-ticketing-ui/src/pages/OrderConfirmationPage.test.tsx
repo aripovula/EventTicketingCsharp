@@ -20,6 +20,16 @@ function stubOrder(response: Response) {
 describe('OrderConfirmationPage', () => {
   afterEach(() => vi.unstubAllGlobals())
 
+  it('explains how the page works', async () => {
+    stubOrder(new Response(JSON.stringify({ data: makeOrder(), errors: [] })))
+    renderAt('/orders/42')
+
+    const note = await screen.findByRole('complementary', { name: 'How this page works' })
+    expect(note).toHaveTextContent('Transactional outbox')
+    expect(note).toHaveTextContent('RabbitMQ')
+    expect(note).toHaveTextContent('SHA-256')
+  })
+
   it('confirms the order with event, venue, number and price', async () => {
     stubOrder(new Response(JSON.stringify({ data: makeOrder(), errors: [] })))
     renderAt('/orders/42')
