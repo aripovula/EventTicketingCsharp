@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { fetchSummary, type EventSummary } from '../api/admin'
 import { useHubEvents } from '../hooks/useHubEvents'
 import { formatPrice } from '../utils/formatPrice'
+import TechNote from '../components/TechNote'
 
 export default function AdminSummaryPage() {
   const [rows, setRows] = useState<EventSummary[]>([])
@@ -30,6 +31,10 @@ export default function AdminSummaryPage() {
           ← Back to admin
         </Link>
       </div>
+      <TechNote points={[
+        <><strong>One SQL query:</strong> PostgreSQL works out the sold seats, remaining seats and revenue for every event in a single round trip.</>,
+        <><strong>Live:</strong> the table reloads over SignalR whenever anyone books a ticket.</>,
+      ]} />
 
       {loading && <p className="text-gray-500 text-center py-12">Loading...</p>}
       {error && <p className="text-red-500 text-center py-12">Failed to load summary.</p>}

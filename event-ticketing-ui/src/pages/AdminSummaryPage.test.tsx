@@ -14,6 +14,15 @@ function renderPage() {
 describe('AdminSummaryPage', () => {
   afterEach(() => vi.unstubAllGlobals())
 
+  it('explains how the page works', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({ data: [], errors: [] }))))
+    renderPage()
+
+    const note = await screen.findByRole('complementary', { name: 'How this page works' })
+    expect(note).toHaveTextContent('One SQL query')
+    expect(note).toHaveTextContent('SignalR')
+  })
+
   it('shows seats and revenue per event', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({ data: [
       { eventId: 1, title: 'Jazz Night', totalSeats: 120, soldSeats: 72, remainingSeats: 48, revenueCents: 180000 },
