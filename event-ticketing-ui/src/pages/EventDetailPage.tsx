@@ -99,11 +99,11 @@ export default function EventDetailPage() {
         ← Back to events
       </Link>
       <TechNote className="mt-6" points={[
-        <><strong>A real Stripe test account:</strong> buying a ticket calls Stripe&apos;s test API, so each order is a real PaymentIntent in Stripe, just with no real money. Use card 4242 4242 4242 4242 with any future date and any CVC; 4000 0000 0000 0002 is declined.</>,
-        <><strong>Your card never reaches our server:</strong> Stripe Elements draws the card field in Stripe&apos;s own iframe, and our API only sees a token. That keeps the app out of PCI scope.</>,
-        <><strong>No overselling (an atomic conditional update):</strong> the seat is reserved with a single SQL statement, <code>UPDATE … SET available_seats = available_seats - 1 WHERE available_seats &gt; 0</code>, before the card is charged. Reading the count first and writing it back later would let two buyers both see &ldquo;1 left&rdquo; (a race condition); one statement makes the check and the update inseparable, so two buyers can never get the last seat. A declined card puts the seat back.</>,
-        <><strong>No double charges:</strong> every attempt sends an <code>Idempotency-Key</code>, which we also pass to Stripe, so a retried request returns the first result instead of charging again.</>,
-        <><strong>Live seats:</strong> the seat count updates over SignalR when anyone else books.</>,
+        <>orders go to <strong>a real Stripe test account</strong> as real test PaymentIntents (card 4242 4242 4242 4242, any future date and CVC; 4000 0000 0000 0002 is declined)</>,
+        <><strong>Stripe Elements</strong> keeps the card number off our server, out of PCI scope</>,
+        <><strong>no overselling</strong> (an atomic conditional update): one SQL <code>UPDATE … WHERE available_seats &gt; 0</code> reserves the seat before the charge, so two buyers can never both get the last one</>,
+        <><strong>no double charges</strong>: an <code>Idempotency-Key</code>, also passed to Stripe, makes retries safe</>,
+        <><strong>SignalR</strong> keeps the seat count live</>,
       ]} />
 
       <div className="mt-6 bg-white rounded-xl border border-gray-200 overflow-hidden">

@@ -49,8 +49,9 @@ describe('EventDetailPage', () => {
     renderPage()
 
     const note = await screen.findByRole('complementary', { name: 'How this page works' })
-    expect(note).toHaveTextContent('real Stripe test account')
+    expect(note).toHaveTextContent('a real Stripe test account')
     expect(note).toHaveTextContent('4242 4242 4242 4242')
+    expect(note).toHaveTextContent('atomic conditional update')
     expect(note).toHaveTextContent('Idempotency-Key')
   })
 
