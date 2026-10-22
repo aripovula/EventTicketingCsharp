@@ -4,6 +4,7 @@ import { fetchMyOrders, type OrderItem } from '../api/orders'
 import { useAuth } from '../context/useAuth'
 import { useCursorPages } from '../hooks/useCursorPages'
 import { formatPrice } from '../utils/formatPrice'
+import TechNote from '../components/TechNote'
 
 export default function MyOrdersPage() {
   const { user, loading: authLoading } = useAuth()
@@ -15,6 +16,10 @@ export default function MyOrdersPage() {
   return (
     <div className="max-w-lg mx-auto">
       <h1 className="text-2xl font-bold text-gray-900 mb-6">My orders</h1>
+      <TechNote points={[
+        <><strong>Cursor pagination:</strong> orders load 20 at a time as you scroll, newest first, each page fetched &ldquo;after&rdquo; the last order shown, so the query stays fast however many orders there are.</>,
+        <><strong>Only yours:</strong> the API takes who you are from the signed HttpOnly JWT cookie, never from a user id in the URL or request body (which anyone could change to read other people&apos;s orders). The cookie is signed by the server, so it can&apos;t be forged, and page scripts can&apos;t read it, unlike a token kept in localStorage, which an injected script could steal.</>,
+      ]} />
       {!user && (
         <p className="text-sm text-gray-600">
           <Link to="/login" className="text-cyan-600 hover:underline">Sign in</Link> to see your orders.

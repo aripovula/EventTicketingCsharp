@@ -27,6 +27,14 @@ describe('MyOrdersPage', () => {
   beforeEach(() => vi.stubGlobal('IntersectionObserver', FakeIntersectionObserver))
   afterEach(() => vi.unstubAllGlobals())
 
+  it('explains how the page works', () => {
+    renderWithUser(<MyOrdersPage />, null)
+
+    const note = screen.getByRole('complementary', { name: 'How this page works' })
+    expect(note).toHaveTextContent('Cursor pagination')
+    expect(note).toHaveTextContent('HttpOnly JWT cookie')
+  })
+
   it('renders the my-orders heading', () => {
     renderWithUser(<MyOrdersPage />, null)
 
