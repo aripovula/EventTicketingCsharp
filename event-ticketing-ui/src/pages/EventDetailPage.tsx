@@ -37,9 +37,9 @@ export default function EventDetailPage() {
 
   useEffect(() => { loadEvent() }, [loadEvent])
 
-  // A signed-in user's saved card is offered in the booking modal; guests have none.
+  // A signed-in user's saved card is offered in the booking modal; guests and admins have none.
   useEffect(() => {
-    if (!user) return
+    if (!user || user.role === 'admin') return
     fetchMyPaymentMethod()
       .then(res => (res.ok ? res.json() : null))
       .then(body => setSavedCard(body?.data ?? null))
@@ -116,13 +116,20 @@ export default function EventDetailPage() {
                   : <>{event.availableSeats} of {event.totalSeats} seats available</>}
               </p>
             </div>
-            <button
-              onClick={() => { setIdempotencyKey(crypto.randomUUID()); setModalOpen(true) }}
-              disabled={soldOut}
-              className="bg-cyan-600 text-white px-6 py-2.5 rounded-lg font-medium hover:bg-cyan-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              {soldOut ? 'Sold out' : 'Buy ticket'}
-            </button>
+            {user?.role === 'admin' ? (
+              // The API refuses admin bookings too; this just says so up front.
+              <p className="text-sm text-gray-500 text-right max-w-xs m-0">
+                Admins can't book tickets. Sign in with a customer account to buy one.
+              </p>
+            ) : (
+              <button
+                onClick={() => { setIdempotencyKey(crypto.randomUUID()); setModalOpen(true) }}
+                disabled={soldOut}
+                className="bg-cyan-600 text-white px-6 py-2.5 rounded-lg font-medium hover:bg-cyan-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                {soldOut ? 'Sold out' : 'Buy ticket'}
+              </button>
+            )}
           </div>
         </div>
       </div>

@@ -162,6 +162,15 @@ describe('EventDetailPage', () => {
     expect(within(screen.getByRole('dialog', { name: 'Place order' })).getByLabelText('Email')).toHaveValue('john@example.com')
   })
 
+  it("tells an admin they can't book, instead of offering the button", async () => {
+    const fetchMock = stubEvent(makeEvent())
+    renderPage(1, { userId: 9, name: 'Admin', email: 'admin@example.com', role: 'admin' })
+
+    expect(await screen.findByText("Admins can't book tickets. Sign in with a customer account to buy one.")).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Buy ticket' })).not.toBeInTheDocument()
+    expect(fetchMock).not.toHaveBeenCalledWith('/api/v1/auth/me/payment-method')
+  })
+
   it('takes a guest to the order page with the lookup token', async () => {
     const order = { id: 42, eventId: 1, eventTitle: 'Jazz Night', email: 'guest@example.com', priceCents: 2500, bookedAt: '2026-10-09T12:00:00Z', guestAccessToken: 'secret' }
     const fetchMock = stubEventThenBooking(new Response(JSON.stringify({ data: order, errors: [] }), { status: 201 }))
