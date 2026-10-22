@@ -1,3 +1,5 @@
+import { authFetch } from './session'
+
 export interface EventItem {
   id: number
   title: string
@@ -36,7 +38,7 @@ export function fetchEvent(id: number) {
 export type EventInput = Omit<EventItem, 'id'>
 
 export function createEvent(input: EventInput) {
-  return fetch('/api/v1/events', {
+  return authFetch('/api/v1/events', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include',
@@ -45,7 +47,7 @@ export function createEvent(input: EventInput) {
 }
 
 export function updateEvent(id: number, input: EventInput) {
-  return fetch(`/api/v1/events/${id}`, {
+  return authFetch(`/api/v1/events/${id}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include',
@@ -54,7 +56,7 @@ export function updateEvent(id: number, input: EventInput) {
 }
 
 export function deleteEvent(id: number) {
-  return fetch(`/api/v1/events/${id}`, { method: 'DELETE', credentials: 'include' })
+  return authFetch(`/api/v1/events/${id}`, { method: 'DELETE', credentials: 'include' })
 }
 
 /** Every event in date order, following the cursor through all pages (for the admin calendar). */

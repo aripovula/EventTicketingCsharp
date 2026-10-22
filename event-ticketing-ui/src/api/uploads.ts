@@ -1,3 +1,5 @@
+import { authFetch } from './session'
+
 /** Images bigger than this are refused before upload; the upload URL itself can't cap the size. */
 export const MAX_IMAGE_BYTES = 5 * 1024 * 1024
 
@@ -11,7 +13,7 @@ export async function uploadImage(file: File): Promise<string> {
   if (!IMAGE_TYPES.includes(file.type)) throw new Error('Images must be JPEG, PNG, WebP or GIF.')
   if (file.size > MAX_IMAGE_BYTES) throw new Error('Images must be 5 MB or smaller.')
 
-  const res = await fetch('/api/v1/admin/uploads/sas-url', {
+  const res = await authFetch('/api/v1/admin/uploads/sas-url', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include',

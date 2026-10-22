@@ -1,3 +1,5 @@
+import { authFetch } from './session'
+
 export interface OrderItem {
   id: number
   eventId: number
@@ -20,7 +22,7 @@ export function fetchOrder(id: number, guestToken?: string | null) {
 }
 
 export function fetchMyOrders(after?: string | null) {
-  return fetch(after ? `/api/v1/auth/me/orders?after=${encodeURIComponent(after)}` : '/api/v1/auth/me/orders', {
+  return authFetch(after ? `/api/v1/auth/me/orders?after=${encodeURIComponent(after)}` : '/api/v1/auth/me/orders', {
     credentials: 'include',
   })
 }
@@ -30,7 +32,7 @@ export function fetchAllOrders(after?: string | null, eventId?: number | null) {
   if (eventId) params.set('eventId', String(eventId))
   if (after) params.set('after', after)
   const query = params.toString()
-  return fetch(query ? `/api/v1/admin/orders?${query}` : '/api/v1/admin/orders', { credentials: 'include' })
+  return authFetch(query ? `/api/v1/admin/orders?${query}` : '/api/v1/admin/orders', { credentials: 'include' })
 }
 
 /** Every order of the signed-in user, following the cursor through all pages (for My Calendar). */
