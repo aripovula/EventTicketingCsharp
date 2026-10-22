@@ -46,6 +46,15 @@ function renderAs(user: User | null) {
 describe('MyCalendarPage', () => {
   afterEach(() => vi.unstubAllGlobals())
 
+  it('explains how the page works', () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({ data: [], errors: [], meta: { nextCursor: null } }))))
+    renderAs(john)
+
+    const note = screen.getByRole('complementary', { name: 'How this page works' })
+    expect(note).toHaveTextContent('FullCalendar')
+    expect(note).toHaveTextContent('UTC')
+  })
+
   it('renders the My Calendar heading for a signed-in user', () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({ data: [], errors: [], meta: { nextCursor: null } }))))
     renderAs(john)
