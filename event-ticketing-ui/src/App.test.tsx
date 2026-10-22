@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import App from './App'
 import { AuthProvider } from './context/AuthProvider'
@@ -70,17 +70,24 @@ describe('App', () => {
     expect(await screen.findByRole('list', { name: 'events' })).toBeInTheDocument()
   })
 
-  it('shows the Admin link only to admins', async () => {
+  it("gives admins one menu with every admin page", async () => {
     renderApp(admin)
 
-    expect(await screen.findByRole('link', { name: 'Admin' })).toHaveAttribute('href', '/admin')
+    const nav = within(screen.getByRole('banner'))
+    expect(await nav.findByRole('link', { name: 'Events' })).toHaveAttribute('href', '/admin')
+    expect(nav.getByRole('link', { name: 'Events Calendar' })).toHaveAttribute('href', '/admin/calendar')
+    expect(nav.getByRole('link', { name: 'Seat summary' })).toHaveAttribute('href', '/admin/summary')
+    expect(nav.getByRole('link', { name: 'All orders' })).toHaveAttribute('href', '/admin/orders')
+    expect(nav.getByRole('link', { name: '+ New event' })).toHaveAttribute('href', '/admin/new')
+    expect(nav.getByRole('button', { name: 'Sign out' })).toBeInTheDocument()
   })
 
-  it('hides the Admin link from regular users', async () => {
+  it('hides the admin links from regular users', async () => {
     renderApp(true)
 
     await screen.findByRole('button', { name: 'Sign out' })
-    expect(screen.queryByRole('link', { name: 'Admin' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'Events' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'Seat summary' })).not.toBeInTheDocument()
   })
 
   it('links to My orders from the header', () => {
@@ -111,7 +118,7 @@ describe('App', () => {
   it('hides My orders and Profile from admins, who can\'t book', async () => {
     renderApp(admin)
 
-    await screen.findByRole('link', { name: 'Admin' })
+    await screen.findByRole('link', { name: 'Events' })
     expect(screen.queryByRole('link', { name: 'My orders' })).not.toBeInTheDocument()
     expect(screen.queryByRole('link', { name: 'Profile' })).not.toBeInTheDocument()
   })

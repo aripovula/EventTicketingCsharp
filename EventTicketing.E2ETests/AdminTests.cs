@@ -17,7 +17,7 @@ public class AdminTests : E2ETestBase
     {
         await SignInAsAdminAsync();
 
-        await Page.GetByRole(AriaRole.Banner).GetByRole(AriaRole.Link, new() { Name = "Admin" }).ClickAsync();
+        await Page.GetByRole(AriaRole.Banner).GetByRole(AriaRole.Link, new() { Name = "Events", Exact = true }).ClickAsync();
 
         await Expect(Page.GetByRole(AriaRole.Heading, new() { Name = "Admin" })).ToBeVisibleAsync();
     }

@@ -25,27 +25,24 @@ function HeaderNav() {
     navigate('/login')
   }
 
+  const linkClass = 'text-sm text-gray-500 hover:text-cyan-600 transition-colors'
+
   return (
     <nav className="flex items-center gap-4">
-      {user?.role !== 'admin' && (
-        <Link to="/orders" className="text-sm text-gray-500 hover:text-cyan-600 transition-colors">
-          My orders
-        </Link>
-      )}
-      {user && (
-        <Link to={user.role === 'admin' ? '/admin/calendar' : '/calendar'} className="text-sm text-gray-500 hover:text-cyan-600 transition-colors">
-          {user.role === 'admin' ? 'Events Calendar' : 'My Calendar'}
-        </Link>
-      )}
-      {user && user.role !== 'admin' && (
-        <Link to="/profile" className="text-sm text-gray-500 hover:text-cyan-600 transition-colors">
-          Profile
-        </Link>
-      )}
-      {user?.role === 'admin' && (
-        <Link to="/admin" className="text-sm text-gray-500 hover:text-cyan-600 transition-colors">
-          Admin
-        </Link>
+      {user?.role === 'admin' ? (
+        <>
+          <Link to="/admin" className={linkClass}>Events</Link>
+          <Link to="/admin/calendar" className={linkClass}>Events Calendar</Link>
+          <Link to="/admin/summary" className={linkClass}>Seat summary</Link>
+          <Link to="/admin/orders" className={linkClass}>All orders</Link>
+          <Link to="/admin/new" className={linkClass}>+ New event</Link>
+        </>
+      ) : (
+        <>
+          <Link to="/orders" className={linkClass}>My orders</Link>
+          {user && <Link to="/calendar" className={linkClass}>My Calendar</Link>}
+          {user && <Link to="/profile" className={linkClass}>Profile</Link>}
+        </>
       )}
       {user ? (
         <button
@@ -55,7 +52,7 @@ function HeaderNav() {
           Sign out
         </button>
       ) : (
-        <Link to="/login" className="text-sm text-gray-500 hover:text-cyan-600 transition-colors">
+        <Link to="/login" className={linkClass}>
           Sign in
         </Link>
       )}

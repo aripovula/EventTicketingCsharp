@@ -12,7 +12,7 @@ test('an admin reaches the admin page from the header', async ({ page }) => {
   await signedInAs(page, 'admin')
   await page.goto('/')
 
-  await page.getByRole('banner').getByRole('link', { name: 'Admin' }).click()
+  await page.getByRole('banner').getByRole('link', { name: 'Events', exact: true }).click()
 
   await expect(page).toHaveURL('/admin')
   await expect(page.getByRole('heading', { name: 'Admin' })).toBeVisible()
