@@ -108,6 +108,14 @@ describe('App', () => {
     expect(await screen.findByRole('link', { name: 'Profile' })).toHaveAttribute('href', '/profile')
   })
 
+  it('hides My orders and Profile from admins, who can\'t book', async () => {
+    renderApp(admin)
+
+    await screen.findByRole('link', { name: 'Admin' })
+    expect(screen.queryByRole('link', { name: 'My orders' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'Profile' })).not.toBeInTheDocument()
+  })
+
   it('sends an admin who opens My orders to the admin area', async () => {
     window.history.pushState({}, '', '/orders')
     renderApp(admin)

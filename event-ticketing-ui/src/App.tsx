@@ -27,15 +27,17 @@ function HeaderNav() {
 
   return (
     <nav className="flex items-center gap-4">
-      <Link to="/orders" className="text-sm text-gray-500 hover:text-cyan-600 transition-colors">
-        My orders
-      </Link>
+      {user?.role !== 'admin' && (
+        <Link to="/orders" className="text-sm text-gray-500 hover:text-cyan-600 transition-colors">
+          My orders
+        </Link>
+      )}
       {user && (
         <Link to={user.role === 'admin' ? '/admin/calendar' : '/calendar'} className="text-sm text-gray-500 hover:text-cyan-600 transition-colors">
           {user.role === 'admin' ? 'Events Calendar' : 'My Calendar'}
         </Link>
       )}
-      {user && (
+      {user && user.role !== 'admin' && (
         <Link to="/profile" className="text-sm text-gray-500 hover:text-cyan-600 transition-colors">
           Profile
         </Link>
