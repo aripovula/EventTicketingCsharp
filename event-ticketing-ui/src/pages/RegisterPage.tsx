@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { register } from '../api/auth'
+import TechNote from '../components/TechNote'
 
 const inputClass =
   'w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-400 transition'
@@ -54,6 +55,11 @@ export default function RegisterPage() {
   return (
     <div className="flex flex-col gap-6">
       <h1 className="text-2xl font-semibold text-gray-900">Create an account</h1>
+      <TechNote className="" points={[
+        <><strong>Validated twice:</strong> the browser checks the fields first, for instant feedback, then the API validates again, because anyone can bypass the browser and call the API directly. Errors come back field by field in a consistent JSON envelope and show next to each field.</>,
+        <><strong>One account per email:</strong> a unique index in PostgreSQL enforces it. A &ldquo;check first, then insert&rdquo; in code could let two simultaneous sign-ups both pass the check; the database index can&apos;t be raced.</>,
+        <>The password is hashed with PBKDF2 (salted and deliberately slow) before it is stored, so not even we can read it. New accounts are always regular users: nobody can sign themselves up as an admin.</>,
+      ]} />
 
       <form onSubmit={handleSubmit} className="rounded-xl border border-gray-200 bg-white p-8 flex flex-col gap-5">
         <div>

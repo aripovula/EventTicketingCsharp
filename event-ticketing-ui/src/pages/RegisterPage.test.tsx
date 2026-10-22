@@ -29,6 +29,14 @@ async function fillAndSubmit() {
 describe('RegisterPage', () => {
   afterEach(() => vi.unstubAllGlobals())
 
+  it('explains how the page works', () => {
+    renderPage()
+
+    const note = screen.getByRole('complementary', { name: 'How this page works' })
+    expect(note).toHaveTextContent('Validated twice')
+    expect(note).toHaveTextContent('unique index')
+  })
+
   it('renders the create-account heading', () => {
     renderPage()
 
