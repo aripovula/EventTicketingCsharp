@@ -48,10 +48,10 @@ export default function EventListPage() {
   return (
     <div>
       <TechNote points={[
-        <><strong>Live updates (SignalR over WebSockets):</strong> a new event appears the moment an admin adds it, seat counts and edits change in place, and deleted events disappear, all without a reload.</>,
-        <><strong>Infinite scroll with cursor pagination:</strong> the next 20 events load as you scroll, fetched &ldquo;after&rdquo; the last one shown rather than by page number, so new events never shift what you have already seen.</>,
-        <><strong>Redis cache</strong> (an in-memory store shared by every API instance): list pages are cached through .NET HybridCache, so most visits are answered without touching the database, which keeps the list fast under heavy traffic. Any change to an event evicts them at once, so nobody sees stale data.</>,
-        <><strong>Search in PostgreSQL</strong> (a case-insensitive <code>ILIKE</code> match on the title, done by the database rather than in the browser, so it works across every event, not just the ones loaded): it runs 300 ms after you stop typing, instead of on every keystroke.</>,
+        <>new events, seat counts, edits and deletions arrive live over <strong>SignalR</strong></>,
+        <><strong>cursor pagination</strong> loads 20 events at a time as you scroll, so new events never shift what you have seen</>,
+        <><strong>Redis</strong> caches the list pages, so most visits skip the database, and any change evicts them at once</>,
+        <><strong>search</strong> runs in PostgreSQL (a case-insensitive <code>ILIKE</code>) 300 ms after you stop typing</>,
       ]} />
       <div className="flex gap-3 mb-6">
         <input
