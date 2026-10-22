@@ -25,7 +25,7 @@ describe('OrderConfirmationPage', () => {
     renderAt('/orders/42')
 
     const note = await screen.findByRole('complementary', { name: 'How this page works' })
-    expect(note).toHaveTextContent('Transactional outbox')
+    expect(note).toHaveTextContent('transactional outbox')
     expect(note).toHaveTextContent('RabbitMQ')
     expect(note).toHaveTextContent('SHA-256')
   })
