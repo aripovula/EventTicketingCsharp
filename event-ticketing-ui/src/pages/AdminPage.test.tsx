@@ -25,6 +25,16 @@ describe('AdminPage', () => {
   beforeEach(() => vi.stubGlobal('IntersectionObserver', FakeIntersectionObserver))
   afterEach(() => vi.unstubAllGlobals())
 
+  it('explains how the page works', () => {
+    stubEvents([])
+    renderPage()
+
+    const note = screen.getByRole('complementary', { name: 'How this page works' })
+    expect(note).toHaveTextContent('Role-based authorization')
+    expect(note).toHaveTextContent('SignalR')
+    expect(note).toHaveTextContent('Audit trail')
+  })
+
   it('renders the admin heading and a new-event link', async () => {
     stubEvents([])
     renderPage()

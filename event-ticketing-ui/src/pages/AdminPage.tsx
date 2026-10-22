@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { deleteEvent } from '../api/events'
 import ConfirmDialog from '../components/ConfirmDialog'
 import { useEventPages } from '../hooks/useEventPages'
+import TechNote from '../components/TechNote'
 
 export default function AdminPage() {
   const { events, setEvents, loading, loadingMore, sentinelRef } = useEventPages({ sort: 'name' })
@@ -54,6 +55,12 @@ export default function AdminPage() {
           </Link>
         </div>
       </div>
+      <TechNote points={[
+        <><strong>Role-based authorization:</strong> every admin endpoint requires the admin role in your JWT. Hiding buttons from other users is only for convenience; the API enforces it.</>,
+        <><strong>Real-time push:</strong> each create, edit or delete is broadcast over SignalR, so every open page, customers&apos; included, updates at once.</>,
+        <><strong>Audit trail:</strong> every change is written to an audit log in the same database transaction as the change itself.</>,
+        <><strong>Cache eviction:</strong> changes evict the Redis-cached event list pages, so nobody sees stale data.</>,
+      ]} />
 
       {deleteError && (
         <p role="alert" className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2 mb-4">{deleteError}</p>
