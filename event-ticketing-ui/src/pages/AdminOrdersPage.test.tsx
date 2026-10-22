@@ -39,6 +39,15 @@ describe('AdminOrdersPage', () => {
   beforeEach(() => vi.stubGlobal('IntersectionObserver', FakeIntersectionObserver))
   afterEach(() => vi.unstubAllGlobals())
 
+  it('explains how the page works', async () => {
+    routeFetch()
+    renderPage()
+
+    const note = await screen.findByRole('complementary', { name: 'How this page works' })
+    expect(note).toHaveTextContent('Cursor pagination')
+    expect(note).toHaveTextContent('SignalR')
+  })
+
   it('lists every order in a table', async () => {
     const fetchMock = routeFetch()
     renderPage()

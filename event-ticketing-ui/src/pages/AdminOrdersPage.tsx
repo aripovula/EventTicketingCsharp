@@ -5,6 +5,7 @@ import { fetchAllOrders, type OrderItem } from '../api/orders'
 import { useCursorPages } from '../hooks/useCursorPages'
 import { useHubEvents } from '../hooks/useHubEvents'
 import { formatPrice } from '../utils/formatPrice'
+import TechNote from '../components/TechNote'
 
 export default function AdminOrdersPage() {
   const [events, setEvents] = useState<EventItem[]>([])
@@ -29,6 +30,10 @@ export default function AdminOrdersPage() {
           ← Back to admin
         </Link>
       </div>
+      <TechNote points={[
+        <><strong>Cursor pagination:</strong> every order, newest first, 20 at a time as you scroll, optionally filtered by event on the server.</>,
+        <><strong>Live:</strong> new bookings appear over SignalR as customers make them.</>,
+      ]} />
 
       {events.length > 0 && (
         <div className="mb-4">
