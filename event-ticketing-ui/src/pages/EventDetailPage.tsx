@@ -8,6 +8,7 @@ import { useAuth } from '../context/useAuth'
 import { useHubEvents } from '../hooks/useHubEvents'
 import { formatPrice } from '../utils/formatPrice'
 import { paymentsUnavailableMessage } from '../utils/paymentsUnavailable'
+import TechNote from '../components/TechNote'
 
 const time = (iso: string) => new Date(iso).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })
 
@@ -97,6 +98,13 @@ export default function EventDetailPage() {
       <Link to="/" className="text-sm text-cyan-600 hover:text-cyan-800 transition-colors no-underline">
         ← Back to events
       </Link>
+      <TechNote className="mt-6" points={[
+        <><strong>A real Stripe test account:</strong> buying a ticket calls Stripe&apos;s test API, so each order is a real PaymentIntent in Stripe, just with no real money. Use card 4242 4242 4242 4242 with any future date and any CVC; 4000 0000 0000 0002 is declined.</>,
+        <><strong>Your card never reaches our server:</strong> Stripe Elements draws the card field in Stripe&apos;s own iframe, and our API only sees a token. That keeps the app out of PCI scope.</>,
+        <><strong>No overselling (an atomic conditional update):</strong> the seat is reserved with a single SQL statement, <code>UPDATE … SET available_seats = available_seats - 1 WHERE available_seats &gt; 0</code>, before the card is charged. Reading the count first and writing it back later would let two buyers both see &ldquo;1 left&rdquo; (a race condition); one statement makes the check and the update inseparable, so two buyers can never get the last seat. A declined card puts the seat back.</>,
+        <><strong>No double charges:</strong> every attempt sends an <code>Idempotency-Key</code>, which we also pass to Stripe, so a retried request returns the first result instead of charging again.</>,
+        <><strong>Live seats:</strong> the seat count updates over SignalR when anyone else books.</>,
+      ]} />
 
       <div className="mt-6 bg-white rounded-xl border border-gray-200 overflow-hidden">
         {event.imageUrl && <img src={event.imageUrl} alt={event.title} className="w-full h-64 object-cover" />}

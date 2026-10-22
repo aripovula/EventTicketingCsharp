@@ -44,6 +44,16 @@ function renderPage(id = 1, user: User | null = null) {
 describe('EventDetailPage', () => {
   afterEach(() => vi.unstubAllGlobals())
 
+  it('explains how the page works', async () => {
+    stubEvent(makeEvent())
+    renderPage()
+
+    const note = await screen.findByRole('complementary', { name: 'How this page works' })
+    expect(note).toHaveTextContent('real Stripe test account')
+    expect(note).toHaveTextContent('4242 4242 4242 4242')
+    expect(note).toHaveTextContent('Idempotency-Key')
+  })
+
   it('links back to the events list', async () => {
     stubEvent(makeEvent())
     renderPage()
