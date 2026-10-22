@@ -31,6 +31,15 @@ function stubApi({ saved = null as typeof visa | null, put = () => json({ data: 
 describe('ProfilePage', () => {
   afterEach(() => vi.unstubAllGlobals())
 
+  it('explains how the page works', () => {
+    stubApi()
+    renderPage()
+
+    const note = screen.getByRole('complementary', { name: 'How this page works' })
+    expect(note).toHaveTextContent('Stripe Customer')
+    expect(note).toHaveTextContent('Circuit breaker')
+  })
+
   it('asks signed-out visitors to sign in', () => {
     stubApi()
     renderPage(null)

@@ -5,6 +5,7 @@ import { useAuth } from '../context/useAuth'
 import CardInput, { type CreatePaymentMethod } from '../payments/CardInput'
 import { formatCard, formatCardExpiry } from '../utils/formatCard'
 import { paymentsUnavailableMessage } from '../utils/paymentsUnavailable'
+import TechNote from '../components/TechNote'
 
 export default function ProfilePage() {
   const { user, loading: authLoading } = useAuth()
@@ -25,6 +26,11 @@ export default function ProfilePage() {
   return (
     <div className="max-w-lg mx-auto space-y-8">
       <h1 className="text-2xl font-bold text-gray-900">Profile</h1>
+      <TechNote className="" points={[
+        <><strong>Saved card with Stripe:</strong> Stripe stores the card on a Stripe Customer made for you. Our database keeps only the Stripe ids plus the brand, last four digits and expiry, and the API never returns the ids.</>,
+        <><strong>Paying with it:</strong> the booking form offers this card first, and the server looks it up by your signed-in account, so nobody can pay with another user&apos;s card.</>,
+        <><strong>Circuit breaker (Polly):</strong> calls to Stripe are retried, and if Stripe keeps failing we stop calling it for 30 seconds and tell you when to try again, instead of making you wait on timeouts.</>,
+      ]} />
       {!user && (
         <p className="text-sm text-gray-600">
           <Link to="/login" className="text-cyan-600 hover:underline">Sign in</Link> to see your profile.
