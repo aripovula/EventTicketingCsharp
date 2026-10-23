@@ -19,7 +19,7 @@ describe('AdminSummaryPage', () => {
     renderPage()
 
     const note = await screen.findByRole('complementary', { name: 'How this page works' })
-    expect(note).toHaveTextContent('One SQL query')
+    expect(note).toHaveTextContent('one SQL query')
     expect(note).toHaveTextContent('SignalR')
   })
 

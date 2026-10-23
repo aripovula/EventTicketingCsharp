@@ -32,8 +32,8 @@ export default function AdminSummaryPage() {
         </Link>
       </div>
       <TechNote points={[
-        <><strong>One SQL query:</strong> PostgreSQL works out the sold seats, remaining seats and revenue for every event in a single round trip.</>,
-        <><strong>Live:</strong> the table reloads over SignalR whenever anyone books a ticket.</>,
+        <><strong>one SQL query</strong> works out the sold seats, remaining seats and revenue of every event in a single round trip</>,
+        <>the table reloads over <strong>SignalR</strong> whenever anyone books</>,
       ]} />
 
       {loading && <p className="text-gray-500 text-center py-12">Loading...</p>}
