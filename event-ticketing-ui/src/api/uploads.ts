@@ -22,10 +22,13 @@ export async function uploadImage(file: File): Promise<string> {
   if (!res.ok) throw new Error(`Could not start the upload (${res.status}). Please try again.`)
   const { uploadUrl, imageUrl } = (await res.json()).data
 
+  // fetch rejects, rather than answering, when storage can't be reached or its CORS rule refuses this site.
   const put = await fetch(uploadUrl, {
     method: 'PUT',
     headers: { 'x-ms-blob-type': 'BlockBlob', 'x-ms-blob-content-type': file.type },
     body: file,
+  }).catch(() => {
+    throw new Error("Couldn't reach image storage, so the image wasn't uploaded. Please try again.")
   })
   if (!put.ok) throw new Error(`The upload failed (${put.status}). Please try again.`)
   return imageUrl

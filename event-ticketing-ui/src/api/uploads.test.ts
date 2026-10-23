@@ -59,4 +59,12 @@ describe('uploadImage', () => {
 
     await expect(uploadImage(png())).rejects.toThrow('The upload failed (403). Please try again.')
   })
+
+  it('says so when image storage refuses the connection', async () => {
+    vi.stubGlobal('fetch', vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({ data: slot, errors: [] })))
+      .mockRejectedValueOnce(new TypeError('Failed to fetch')))
+
+    await expect(uploadImage(png())).rejects.toThrow("Couldn't reach image storage, so the image wasn't uploaded. Please try again.")
+  })
 })
