@@ -33,7 +33,7 @@ describe('RegisterPage', () => {
     renderPage()
 
     const note = screen.getByRole('complementary', { name: 'How this page works' })
-    expect(note).toHaveTextContent('Validated twice')
+    expect(note).toHaveTextContent('validated twice')
     expect(note).toHaveTextContent('unique index')
   })
 
