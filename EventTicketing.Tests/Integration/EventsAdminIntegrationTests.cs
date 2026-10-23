@@ -250,4 +250,62 @@ public class EventsAdminIntegrationTests(IntegrationTestFactory factory) : IClas
         Assert.Equal("has_orders", error.GetProperty("code").GetString());
         Assert.Equal("Sold Some Seats", (await GetEventAsync(admin, id)).GetProperty("title").GetString());
     }
+
+    [Fact]
+    public async Task Archive_Anonymously_Returns401()
+    {
+        var response = await factory.CreateClient().PostAsync("/api/v1/events/1/archive", null, TestContext.Current.CancellationToken);
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Archive_AsRegularUser_Returns403()
+    {
+        var john = await SignedInAsync("john@example.com");
+
+        var response = await john.PostAsync("/api/v1/events/1/archive", null, TestContext.Current.CancellationToken);
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Archive_AsAdmin_Returns204AndKeepsTheEventAndItsOrders()
+    {
+        var admin = await SignedInAsync("admin@example.com");
+        var id = await CreateAsAdminAsync(admin, "Past Its Prime");
+        await AddOrderAsync(id);
+
+        var response = await admin.PostAsync($"/api/v1/events/{id}/archive", null, TestContext.Current.CancellationToken);
+
+        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+        var ev = await GetEventAsync(admin, id);
+        Assert.Equal(JsonValueKind.String, ev.GetProperty("archivedAt").ValueKind);
+        Assert.True(ev.GetProperty("hasOrders").GetBoolean());
+        AssertRecordedForAdmin(await AuditEntryAsync(AuditAction.EventArchived, id), "Past Its Prime");
+    }
+
+    [Fact]
+    public async Task Archive_Twice_KeepsTheFirstTime()
+    {
+        var admin = await SignedInAsync("admin@example.com");
+        var id = await CreateAsAdminAsync(admin, "Archived Once");
+        await admin.PostAsync($"/api/v1/events/{id}/archive", null, TestContext.Current.CancellationToken);
+        var first = (await GetEventAsync(admin, id)).GetProperty("archivedAt").GetDateTime();
+
+        var response = await admin.PostAsync($"/api/v1/events/{id}/archive", null, TestContext.Current.CancellationToken);
+
+        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+        Assert.Equal(first, (await GetEventAsync(admin, id)).GetProperty("archivedAt").GetDateTime());
+    }
+
+    [Fact]
+    public async Task Archive_UnknownEvent_Returns404()
+    {
+        var admin = await SignedInAsync("admin@example.com");
+
+        var response = await admin.PostAsync("/api/v1/events/999999/archive", null, TestContext.Current.CancellationToken);
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
 }

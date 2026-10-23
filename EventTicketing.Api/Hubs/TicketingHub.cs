@@ -15,4 +15,5 @@ public static class TicketingEvents
     public const string EventCreated = nameof(EventCreated);
     public const string EventUpdated = nameof(EventUpdated);
     public const string EventDeleted = nameof(EventDeleted);
+    public const string EventArchived = nameof(EventArchived);
 }

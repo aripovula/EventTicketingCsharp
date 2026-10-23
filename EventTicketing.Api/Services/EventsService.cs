@@ -136,6 +136,23 @@ public class EventsService(AppDbContext db, HybridCache cache, AuditLogger audit
         return DeleteResult.Deleted;
     }
 
+    /// <summary>Takes the event off sale and out of the list; its orders stay. Archiving twice changes nothing.</summary>
+    /// <returns>False when no event has the given id.</returns>
+    public async Task<bool> ArchiveAsync(int id, AuditActor actor, CancellationToken cancellationToken)
+    {
+        var ev = await db.Events.FindAsync([id], cancellationToken);
+        if (ev is null)
+            return false;
+        if (ev.ArchivedAt is not null)
+            return true;
+
+        ev.ArchivedAt = DateTime.UtcNow;
+        audit.Record(AuditAction.EventArchived, "Event", id, actor, new { ev.Title });
+        await db.SaveChangesAsync(cancellationToken);
+        await EvictListPagesAsync();
+        return true;
+    }
+
     // The change is already saved, so evict even if the request is cancelled meanwhile.
     private ValueTask EvictListPagesAsync() => cache.RemoveByTagAsync(ListCacheTag, CancellationToken.None);
 

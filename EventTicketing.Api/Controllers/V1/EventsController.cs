@@ -92,6 +92,22 @@ public class EventsController(EventsService eventsService, BookingService bookin
         return NoContent();
     }
 
+    /// <summary>Archives an event: it leaves the list and stops selling tickets, but its orders stay. Admin only.</summary>
+    [Authorize(Roles = "admin")]
+    [HttpPost("{id:int}/archive")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ApiEnvelope<object>), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> Archive(int id, CancellationToken cancellationToken)
+    {
+        if (!await eventsService.ArchiveAsync(id, AuditActor.FromClaims(User), cancellationToken))
+            return NotFound(new ApiEnvelope(null, [new ApiError("not_found", "Event not found.")]));
+
+        await hub.Clients.All.SendAsync(TicketingEvents.EventArchived, id, CancellationToken.None);
+        return NoContent();
+    }
+
     /// <summary>Books and pays for one seat, as a guest or signed-in user; admins can't book (403). The seat is reserved atomically before the card is charged, so the last seat can never be sold twice; a declined card returns 402 and puts the seat back. While Stripe is failing, a paid booking returns 503 with Retry-After.</summary>
     [HttpPost("{id:int}/bookings")]
     [EnableRateLimiting(RateLimitingOptions.BookingPolicy)]
