@@ -30,9 +30,9 @@ describe('AdminPage', () => {
     renderPage()
 
     const note = screen.getByRole('complementary', { name: 'How this page works' })
-    expect(note).toHaveTextContent('Role-based authorization')
+    expect(note).toHaveTextContent('role-based authorization')
     expect(note).toHaveTextContent('SignalR')
-    expect(note).toHaveTextContent('Audit trail')
+    expect(note).toHaveTextContent('audit log')
   })
 
   it('renders the admin heading', async () => {

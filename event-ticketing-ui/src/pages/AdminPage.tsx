@@ -28,10 +28,8 @@ export default function AdminPage() {
     <div>
       <h1 className="text-2xl font-bold text-gray-900 mt-0 mb-6">Admin</h1>
       <TechNote points={[
-        <><strong>Role-based authorization:</strong> every admin endpoint requires the admin role in your JWT. Hiding buttons from other users is only for convenience; the API enforces it.</>,
-        <><strong>Real-time push:</strong> each create, edit or delete is broadcast over SignalR, so every open page, customers&apos; included, updates at once.</>,
-        <><strong>Audit trail:</strong> every change is written to an audit log in the same database transaction as the change itself.</>,
-        <><strong>Cache eviction:</strong> changes evict the Redis-cached event list pages, so nobody sees stale data.</>,
+        <><strong>role-based authorization</strong>: every admin endpoint checks the admin role in your JWT; hidden buttons are only for convenience</>,
+        <>each change is pushed to every open page over <strong>SignalR</strong>, written to an <strong>audit log</strong> in the same transaction, and evicts the <strong>Redis</strong>-cached lists</>,
       ]} />
 
       {deleteError && (
