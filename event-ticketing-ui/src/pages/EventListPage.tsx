@@ -5,6 +5,7 @@ import { useEventPages } from '../hooks/useEventPages'
 import { useHubEvents } from '../hooks/useHubEvents'
 import { colorForType } from '../utils/eventTypes'
 import { formatPrice } from '../utils/formatPrice'
+import EventImage from '../components/EventImage'
 import TechNote from '../components/TechNote'
 
 const time = (iso: string) => new Date(iso).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })
@@ -82,7 +83,7 @@ export default function EventListPage() {
         {events.map(event => (
           <li key={event.id} className="bg-white rounded-xl border border-gray-200 overflow-hidden hover:shadow-md transition-shadow flex h-[220px]">
             {event.imageUrl && (
-              <img src={event.imageUrl} alt={event.title} className="aspect-[4/3] h-full object-cover shrink-0" />
+              <EventImage src={event.imageUrl} alt={event.title} className="aspect-[4/3] h-full object-cover shrink-0" />
             )}
             <div className="flex flex-col justify-between p-5 flex-1 min-w-0">
               <div>

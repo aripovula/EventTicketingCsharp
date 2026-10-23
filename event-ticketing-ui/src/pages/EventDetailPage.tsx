@@ -8,6 +8,7 @@ import { useAuth } from '../context/useAuth'
 import { useHubEvents } from '../hooks/useHubEvents'
 import { formatPrice } from '../utils/formatPrice'
 import { paymentsUnavailableMessage } from '../utils/paymentsUnavailable'
+import EventImage from '../components/EventImage'
 import TechNote from '../components/TechNote'
 
 const time = (iso: string) => new Date(iso).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })
@@ -107,7 +108,7 @@ export default function EventDetailPage() {
       ]} />
 
       <div className="mt-6 bg-white rounded-xl border border-gray-200 overflow-hidden">
-        {event.imageUrl && <img src={event.imageUrl} alt={event.title} className="w-full h-64 object-cover" />}
+        {event.imageUrl && <EventImage src={event.imageUrl} alt={event.title} className="w-full h-64 object-cover" />}
         <div className="p-6">
           <h1 className="text-3xl font-bold text-gray-900 mt-0 mb-2">{event.title}</h1>
           <p className="text-gray-500 text-sm mb-6">
