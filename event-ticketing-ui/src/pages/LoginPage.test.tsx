@@ -46,8 +46,8 @@ describe('LoginPage', () => {
     renderPage()
 
     const note = screen.getByRole('complementary', { name: 'How this page works' })
+    expect(note).toHaveTextContent('ASP.NET Core 10')
     expect(note).toHaveTextContent('HttpOnly cookies')
-    expect(note).toHaveTextContent('Rotating refresh tokens')
     expect(note).toHaveTextContent('PBKDF2')
   })
 
@@ -222,11 +222,10 @@ describe('LoginPage', () => {
     expect(screen.getByText(/open this app in another browser/)).toHaveTextContent('SignalR')
   })
 
-  it('describes the app and its tech stack', () => {
+  it('describes the app in its how-this-page-works card only', () => {
     renderPage()
 
-    expect(screen.getByText('About this app')).toBeInTheDocument()
-    expect(screen.getByText('ASP.NET Core 10')).toBeInTheDocument()
-    expect(screen.getByText('React 19')).toBeInTheDocument()
+    expect(screen.getByRole('complementary', { name: 'How this page works' })).toHaveTextContent('React 19')
+    expect(screen.queryByText('About this app')).not.toBeInTheDocument()
   })
 })

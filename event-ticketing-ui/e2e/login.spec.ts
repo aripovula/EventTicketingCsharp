@@ -26,7 +26,7 @@ test('login page suggests watching live updates in two browsers', async ({ page 
 test('login page describes the app', async ({ page }) => {
   await page.goto('/login')
 
-  await expect(page.getByText('About this app')).toBeVisible()
+  await expect(page.getByRole('complementary', { name: 'How this page works' })).toContainText('ASP.NET Core 10')
 })
 
 test('signing in as a demo user goes to the home page', async ({ page }) => {

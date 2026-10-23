@@ -194,9 +194,10 @@ export default function LoginPage() {
     <div className="flex flex-col gap-6">
       <h1 className="text-2xl font-semibold text-gray-900">Sign in</h1>
       <TechNote className="" points={[
-        <><strong>JWT in HttpOnly cookies:</strong> signing in sets a 15-minute access token and a 7-day refresh token as HttpOnly cookies, which page scripts can&apos;t read, so an XSS bug couldn&apos;t steal them. The access token is self-contained and signed, so the API checks it without a database lookup on every request, and its short life limits the damage if one ever leaks.</>,
-        <><strong>Rotating refresh tokens:</strong> each refresh swaps in a new token, and reusing an old one revokes the whole session. A stolen refresh token is therefore caught the moment either the thief or you uses it again.</>,
-        <><strong>Passwords</strong> are hashed with ASP.NET Core Identity&apos;s PBKDF2 hasher (deliberately slow and salted), so even a leaked database doesn&apos;t reveal them and guessing them is expensive. Every sign-in and failed attempt goes into an audit log, which shows who did what and makes password-guessing visible.</>,
+        <>an <strong>ASP.NET Core 10</strong> API with <strong>PostgreSQL</strong> (EF Core), <strong>Redis</strong>, <strong>RabbitMQ</strong> and <strong>SignalR</strong>, and a <strong>React 19</strong> + TypeScript front end</>,
+        <>signing in sets a 15-minute JWT and a rotating refresh token in <strong>HttpOnly cookies</strong> that scripts can&apos;t read, and reusing an old refresh token revokes the session</>,
+        <>passwords are hashed with <strong>PBKDF2</strong> and every sign-in is audit-logged</>,
+        <>tested with xUnit, Vitest and Playwright in GitHub Actions</>,
       ]} />
       {justRegistered && (
         <p role="status" className="rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">
@@ -240,25 +241,6 @@ export default function LoginPage() {
         incognito window) to log in as admin — or vice versa. That way you can see what the admin
         panel reflects in real time based on a regular user's actions, and vice versa.{' '}
         Real-time push updates are delivered via <strong>SignalR</strong> (WebSockets).
-      </div>
-
-      <div className="rounded-xl border border-gray-200 bg-gray-50 px-5 py-4 text-sm text-gray-700 leading-relaxed space-y-2">
-        <p className="font-semibold text-gray-900">About this app</p>
-        <p>
-          A full-stack event ticketing demo. The backend is <strong>ASP.NET Core 10</strong> (C#) with
-          versioned REST controllers, backed by <strong>PostgreSQL</strong> with{' '}
-          <strong>Entity Framework Core</strong> for data access and migrations. Authentication uses
-          short-lived <strong>JWT</strong> access tokens and rotating refresh tokens in HttpOnly cookies.
-        </p>
-        <p>
-          The frontend is <strong>React 19</strong> with <strong>TypeScript</strong>, built with Vite and
-          styled with Tailwind CSS. Real-time seat and event updates are pushed from the server using{' '}
-          <strong>SignalR</strong> (WebSockets).
-        </p>
-        <p className="text-gray-500">
-          Backend tests: xUnit · Frontend tests: Vitest / React Testing Library · E2E: Playwright ·
-          CI: GitHub Actions
-        </p>
       </div>
     </div>
   )
