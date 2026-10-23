@@ -173,6 +173,14 @@ describe('EventDetailPage', () => {
     expect(within(screen.getByRole('dialog', { name: 'Place order' })).getByLabelText('Email')).toHaveValue('john@example.com')
   })
 
+  it('says an archived event no longer sells tickets, instead of offering the button', async () => {
+    stubEvent(makeEvent({ archivedAt: '2026-10-23T20:00:00Z', hasOrders: true }))
+    renderPage(1)
+
+    expect(await screen.findByText('This event has been archived and no longer sells tickets.')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Buy ticket' })).not.toBeInTheDocument()
+  })
+
   it("tells an admin they can't book, instead of offering the button", async () => {
     const fetchMock = stubEvent(makeEvent())
     renderPage(1, { userId: 9, name: 'Admin', email: 'admin@example.com', role: 'admin' })
@@ -336,6 +344,16 @@ describe('EventDetailPage', () => {
       act(() => hub.handlers.BookingMade(1))
 
       expect(await screen.findByText('47 of 120 seats available')).toBeInTheDocument()
+    })
+
+    it('refreshes the details when this event is archived', async () => {
+      const fetchMock = stubSeatsSequence(48, 48)
+      renderPage(1)
+      await screen.findByText('48 of 120 seats available')
+
+      act(() => hub.handlers.EventArchived(1))
+
+      await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2))
     })
 
     it('refreshes the details when this event is edited', async () => {

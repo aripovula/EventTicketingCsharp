@@ -48,10 +48,12 @@ export default function EventDetailPage() {
       .catch(() => {})
   }, [user])
 
-  // Live updates: seats and details change under the visitor's feet; a deleted event sends them home.
+  // Live updates: seats and details change under the visitor's feet; a deleted event sends them home,
+  // while an archived one stays (order links point here) and stops selling.
   useHubEvents({
     BookingMade: eventId => { if (eventId === Number(id)) loadEvent() },
     EventUpdated: eventId => { if (eventId === Number(id)) loadEvent() },
+    EventArchived: eventId => { if (eventId === Number(id)) loadEvent() },
     EventDeleted: eventId => { if (eventId === Number(id)) navigate('/') },
   })
 
@@ -125,7 +127,11 @@ export default function EventDetailPage() {
                   : <>{event.availableSeats} of {event.totalSeats} seats available</>}
               </p>
             </div>
-            {user?.role === 'admin' ? (
+            {event.archivedAt ? (
+              <p className="text-sm text-gray-500 text-right max-w-xs m-0">
+                This event has been archived and no longer sells tickets.
+              </p>
+            ) : user?.role === 'admin' ? (
               // The API refuses admin bookings too; this just says so up front.
               <p className="text-sm text-gray-500 text-right max-w-xs m-0">
                 Admins can't book tickets. Sign in with a customer account to buy one.
