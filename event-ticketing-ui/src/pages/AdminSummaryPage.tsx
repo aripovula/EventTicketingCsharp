@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
 import { fetchSummary, type EventSummary } from '../api/admin'
 import { useHubEvents } from '../hooks/useHubEvents'
 import { formatPrice } from '../utils/formatPrice'
@@ -25,12 +24,7 @@ export default function AdminSummaryPage() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-gray-900 m-0">Seat summary</h1>
-        <Link to="/admin" className="text-sm text-cyan-600 hover:text-cyan-800 transition-colors no-underline">
-          ← Back to admin
-        </Link>
-      </div>
+      <h1 className="text-2xl font-bold text-gray-900 mt-0 mb-6">Seat summary</h1>
       <TechNote points={[
         <><strong>one SQL query</strong> works out the sold seats, remaining seats and revenue of every event in a single round trip</>,
         <>the table reloads over <strong>SignalR</strong> whenever anyone books</>,

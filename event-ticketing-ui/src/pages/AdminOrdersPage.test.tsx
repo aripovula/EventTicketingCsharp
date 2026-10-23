@@ -75,13 +75,6 @@ describe('AdminOrdersPage', () => {
     expect(await screen.findByText('Failed to load orders.')).toBeInTheDocument()
   })
 
-  it('links back to admin', async () => {
-    routeFetch({ orders: json([]) })
-    renderPage()
-
-    expect(await screen.findByRole('link', { name: '← Back to admin' })).toHaveAttribute('href', '/admin')
-  })
-
   it('asks the server for one event\'s orders when filtered', async () => {
     const fetchMock = routeFetch({ events: [makeEvent({ id: 7, title: 'Comedy Showcase' })] })
     renderPage()

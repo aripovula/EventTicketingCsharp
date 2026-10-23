@@ -61,12 +61,7 @@ export default function AdminCalendarPage() {
 
   return (
     <div>
-      <div className="mb-6">
-        <Link to="/admin" className="text-sm text-cyan-600 hover:text-cyan-800 transition-colors no-underline">
-          ← Back to admin
-        </Link>
-        <h1 className="text-2xl font-bold text-gray-900 m-0">Events Calendar</h1>
-      </div>
+      <h1 className="text-2xl font-bold text-gray-900 mt-0 mb-6">Events Calendar</h1>
 
       <TechNote points={[
         <><strong>FullCalendar</strong> shows every event by type with its remaining seats, in your own time zone (the API stores UTC)</>,

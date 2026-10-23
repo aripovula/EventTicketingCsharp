@@ -42,11 +42,10 @@ describe('AdminEventFormPage', () => {
     expect(note).toHaveTextContent('social app')
   })
 
-  it('renders the new-event heading and a link back to admin', () => {
+  it('renders the new-event heading', () => {
     renderPage()
 
     expect(screen.getByRole('heading', { name: 'New event' })).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: '← Back to admin' })).toHaveAttribute('href', '/admin')
   })
 
   it('has every event field', () => {

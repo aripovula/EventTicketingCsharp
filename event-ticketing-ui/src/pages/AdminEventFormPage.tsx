@@ -89,11 +89,7 @@ export default function AdminEventFormPage() {
 
   return (
     <div>
-      <Link to="/admin" className="text-sm text-cyan-600 hover:text-cyan-800 transition-colors no-underline">
-        ← Back to admin
-      </Link>
-
-      <h1 className="text-2xl font-bold text-gray-900 mt-6 mb-6">{isEdit ? 'Edit event' : 'New event'}</h1>
+      <h1 className="text-2xl font-bold text-gray-900 mt-0 mb-6">{isEdit ? 'Edit event' : 'New event'}</h1>
       <TechNote points={[
         <><strong>pre-signed upload URL (Azure SAS)</strong>: after checking that you are an admin, the API gives the browser a URL that can write one new file for 5 minutes</>,
         <>the image goes <strong>straight to Azure Blob Storage</strong>, bypassing our server and saving its bandwidth and compute; in a social app, this is what lets uploads scale</>,

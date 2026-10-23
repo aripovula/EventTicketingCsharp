@@ -55,12 +55,11 @@ describe('AdminCalendarPage', () => {
     expect(note).toHaveTextContent('cursor-paginated')
   })
 
-  it('renders the heading and a link back to admin', async () => {
+  it('renders the heading', async () => {
     stubEvents([])
     renderPage()
 
     expect(await screen.findByRole('heading', { name: 'Events Calendar' })).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: '← Back to admin' })).toHaveAttribute('href', '/admin')
   })
 
   it('shows a colour legend for every event type except Other', async () => {

@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
 import { fetchAllEvents, type EventItem } from '../api/events'
 import { fetchAllOrders, type OrderItem } from '../api/orders'
 import { useCursorPages } from '../hooks/useCursorPages'
@@ -24,12 +23,7 @@ export default function AdminOrdersPage() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-gray-900 m-0">All orders</h1>
-        <Link to="/admin" className="text-sm text-cyan-600 hover:text-cyan-800 transition-colors no-underline">
-          ← Back to admin
-        </Link>
-      </div>
+      <h1 className="text-2xl font-bold text-gray-900 mt-0 mb-6">All orders</h1>
       <TechNote points={[
         <><strong>cursor pagination</strong>: every order, newest first, 20 at a time, optionally filtered by event on the server</>,
         <>new bookings appear live over <strong>SignalR</strong></>,
