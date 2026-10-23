@@ -33,6 +33,7 @@ describe('AdminPage', () => {
     expect(note).toHaveTextContent('role-based authorization')
     expect(note).toHaveTextContent('SignalR')
     expect(note).toHaveTextContent('audit log')
+    expect(note).toHaveTextContent('archived instead of deleted')
   })
 
   it('renders the admin heading', async () => {
@@ -104,5 +105,46 @@ describe('AdminPage', () => {
 
     expect(await screen.findByRole('alert')).toHaveTextContent('Failed to delete event (500). Please try again.')
     expect(screen.getByText('Comedy Showcase')).toBeInTheDocument()
+  })
+
+  function stubListWithOrders(actionResponse: Response) {
+    const fetchMock = vi.fn((_url: string, init?: RequestInit) => Promise.resolve(init?.method
+      ? actionResponse
+      : new Response(JSON.stringify({ data: [makeEvent({ id: 2, title: 'Comedy Showcase', hasOrders: true })], errors: [], meta: { nextCursor: null } }))))
+    vi.stubGlobal('fetch', fetchMock)
+    return fetchMock
+  }
+
+  it('offers Archive instead of Delete for an event with orders', async () => {
+    stubListWithOrders(new Response(null, { status: 204 }))
+    renderPage()
+
+    expect(await screen.findByRole('button', { name: 'Archive Comedy Showcase' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Delete Comedy Showcase' })).not.toBeInTheDocument()
+  })
+
+  it('archives the event after confirming and takes it off the list', async () => {
+    const fetchMock = stubListWithOrders(new Response(null, { status: 204 }))
+    renderPage()
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Archive Comedy Showcase' }))
+    const dialog = screen.getByRole('dialog')
+    expect(within(dialog).getByRole('heading', { name: 'Archive event?' })).toBeInTheDocument()
+    expect(dialog).toHaveTextContent('its orders stay')
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Archive' }))
+
+    expect(screen.queryByText('Comedy Showcase')).not.toBeInTheDocument()
+    expect(fetchMock).toHaveBeenCalledWith('/api/v1/events/2/archive', { method: 'POST', credentials: 'include' })
+  })
+
+  it('switches to Archive when a ticket was sold since the list loaded', async () => {
+    stubListThenDelete(new Response(JSON.stringify({ data: null, errors: [{ code: 'has_orders' }] }), { status: 409 }))
+    renderPage()
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Delete Comedy Showcase' }))
+    await userEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Delete' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent("Tickets have been sold for this event, so it can't be deleted. Archive it instead.")
+    expect(screen.getByRole('button', { name: 'Archive Comedy Showcase' })).toBeInTheDocument()
   })
 })

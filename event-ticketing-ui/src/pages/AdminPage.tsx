@@ -1,28 +1,36 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { deleteEvent } from '../api/events'
+import { archiveEvent, deleteEvent } from '../api/events'
 import ConfirmDialog from '../components/ConfirmDialog'
 import { useEventPages } from '../hooks/useEventPages'
 import TechNote from '../components/TechNote'
 
 export default function AdminPage() {
   const { events, setEvents, loading, loadingMore, sentinelRef } = useEventPages({ sort: 'name' })
-  const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null)
-  const [deleteError, setDeleteError] = useState<string | null>(null)
+  // Events with orders can't be deleted (the orders would go too), so they get Archive instead of Delete.
+  const [confirming, setConfirming] = useState<{ id: number; action: 'delete' | 'archive' } | null>(null)
+  const [actionError, setActionError] = useState<string | null>(null)
 
-  async function handleDeleteConfirmed() {
-    if (confirmDeleteId === null) return
-    const res = await deleteEvent(confirmDeleteId).catch(() => null)
-    if (!res?.ok) {
-      setDeleteError(`Failed to delete event (${res?.status ?? 'network error'}). Please try again.`)
-      setConfirmDeleteId(null)
+  async function handleConfirmed() {
+    if (confirming === null) return
+    const { id, action } = confirming
+    setConfirming(null)
+    const res = await (action === 'delete' ? deleteEvent(id) : archiveEvent(id)).catch(() => null)
+    if (res?.status === 409 && action === 'delete') {
+      // Someone bought a ticket since the list loaded.
+      setEvents(prev => prev.map(ev => (ev.id === id ? { ...ev, hasOrders: true } : ev)))
+      setActionError('Tickets have been sold for this event, so it can\'t be deleted. Archive it instead.')
       return
     }
-    setEvents(prev => prev.filter(ev => ev.id !== confirmDeleteId))
-    setConfirmDeleteId(null)
+    if (!res?.ok) {
+      setActionError(`Failed to ${action} event (${res?.status ?? 'network error'}). Please try again.`)
+      return
+    }
+    setActionError(null)
+    setEvents(prev => prev.filter(ev => ev.id !== id))
   }
 
-  const confirmingEvent = events.find(ev => ev.id === confirmDeleteId)
+  const confirmingEvent = events.find(ev => ev.id === confirming?.id)
 
   return (
     <div>
@@ -30,10 +38,11 @@ export default function AdminPage() {
       <TechNote points={[
         <><strong>role-based authorization</strong>: every admin endpoint checks the admin role in your JWT; hidden buttons are only for convenience</>,
         <>each change is pushed to every open page over <strong>SignalR</strong>, written to an <strong>audit log</strong> in the same transaction, and evicts the <strong>Redis</strong>-cached lists</>,
+        <>an event with sold tickets is <strong>archived</strong> instead of deleted: it leaves the list and stops selling, but its orders stay</>,
       ]} />
 
-      {deleteError && (
-        <p role="alert" className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2 mb-4">{deleteError}</p>
+      {actionError && (
+        <p role="alert" className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2 mb-4">{actionError}</p>
       )}
 
       {loading ? (
@@ -55,13 +64,23 @@ export default function AdminPage() {
                   >
                     Edit
                   </Link>
-                  <button
-                    onClick={() => setConfirmDeleteId(ev.id)}
-                    aria-label={`Delete ${ev.title}`}
-                    className="text-sm border border-red-200 text-red-600 px-3 py-1.5 rounded-lg hover:bg-red-50 transition-colors"
-                  >
-                    Delete
-                  </button>
+                  {ev.hasOrders ? (
+                    <button
+                      onClick={() => setConfirming({ id: ev.id, action: 'archive' })}
+                      aria-label={`Archive ${ev.title}`}
+                      className="text-sm border border-amber-300 text-amber-700 px-3 py-1.5 rounded-lg hover:bg-amber-50 transition-colors"
+                    >
+                      Archive
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => setConfirming({ id: ev.id, action: 'delete' })}
+                      aria-label={`Delete ${ev.title}`}
+                      className="text-sm border border-red-200 text-red-600 px-3 py-1.5 rounded-lg hover:bg-red-50 transition-colors"
+                    >
+                      Delete
+                    </button>
+                  )}
                 </div>
               </li>
             ))}
@@ -71,13 +90,22 @@ export default function AdminPage() {
         </div>
       )}
 
-      {confirmDeleteId !== null && (
+      {confirming?.action === 'delete' && (
         <ConfirmDialog
           title="Delete event?"
           message={<>Are you sure you want to delete <span className="font-medium text-gray-900">"{confirmingEvent?.title}"</span>? This cannot be undone.</>}
           confirmLabel="Delete"
-          onConfirm={handleDeleteConfirmed}
-          onCancel={() => setConfirmDeleteId(null)}
+          onConfirm={handleConfirmed}
+          onCancel={() => setConfirming(null)}
+        />
+      )}
+      {confirming?.action === 'archive' && (
+        <ConfirmDialog
+          title="Archive event?"
+          message={<>Tickets have been sold for <span className="font-medium text-gray-900">"{confirmingEvent?.title}"</span>, so it can't be deleted. Archiving takes it off sale and out of the events list; its orders stay.</>}
+          confirmLabel="Archive"
+          onConfirm={handleConfirmed}
+          onCancel={() => setConfirming(null)}
         />
       )}
     </div>
