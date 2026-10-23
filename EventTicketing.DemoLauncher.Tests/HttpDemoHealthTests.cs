@@ -1,13 +1,9 @@
 using System.Net;
-using Microsoft.Extensions.Options;
 
 namespace EventTicketing.DemoLauncher.Tests;
 
 public class HttpDemoHealthTests
 {
-    private static readonly IOptions<DemoOptions> Options =
-        Microsoft.Extensions.Options.Options.Create(new DemoOptions { DnsLabel = "eventticketing-demo", Location = "eastus" });
-
     private class StubHandler(Func<HttpRequestMessage, HttpResponseMessage> respond) : HttpMessageHandler
     {
         public Uri? Requested { get; private set; }
@@ -20,7 +16,8 @@ public class HttpDemoHealthTests
     }
 
     private static Task<bool> IsUpAsync(StubHandler handler) =>
-        new HttpDemoHealth(new HttpClient(handler), Options).IsUpAsync(TestContext.Current.CancellationToken);
+        new HttpDemoHealth(new HttpClient(handler))
+            .IsUpAsync("https://eventticketing-demo.eastus.cloudapp.azure.com", TestContext.Current.CancellationToken);
 
     [Fact]
     public async Task AReadyDemo_IsUp()

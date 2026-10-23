@@ -59,7 +59,7 @@ public class DemoLifecycle(
         {
             StackState.None => DemoStates.Stopped,
             StackState.Deleting => DemoStates.Stopping,
-            StackState.Deployed when await health.IsUpAsync(cancellationToken) => DemoStates.Ready,
+            StackState.Deployed when await health.IsUpAsync(options.Value.Url, cancellationToken) => DemoStates.Ready,
             // Failed deployments are retried by the next request or timer run.
             _ => DemoStates.Starting,
         };
