@@ -12,6 +12,10 @@ export interface EventItem {
   availableSeats: number
   priceCents: number
   imageUrl?: string | null
+  /** Events with orders can't be deleted, only archived. */
+  hasOrders?: boolean
+  /** Set once an admin archived the event: it no longer sells tickets. */
+  archivedAt?: string | null
 }
 
 export type EventSort = 'name' | 'date' | 'price'
@@ -35,7 +39,7 @@ export function fetchEvent(id: number) {
   return fetch(`/api/v1/events/${id}`)
 }
 
-export type EventInput = Omit<EventItem, 'id'>
+export type EventInput = Omit<EventItem, 'id' | 'hasOrders' | 'archivedAt'>
 
 export function createEvent(input: EventInput) {
   return authFetch('/api/v1/events', {
@@ -57,6 +61,10 @@ export function updateEvent(id: number, input: EventInput) {
 
 export function deleteEvent(id: number) {
   return authFetch(`/api/v1/events/${id}`, { method: 'DELETE', credentials: 'include' })
+}
+
+export function archiveEvent(id: number) {
+  return authFetch(`/api/v1/events/${id}/archive`, { method: 'POST', credentials: 'include' })
 }
 
 /** Every event in date order, following the cursor through all pages (for the admin calendar). */
