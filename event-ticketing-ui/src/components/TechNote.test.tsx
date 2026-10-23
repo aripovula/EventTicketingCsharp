@@ -1,13 +1,14 @@
-import { render, screen, within } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import TechNote from './TechNote'
 
 describe('TechNote', () => {
-  it('lists each point under a heading', () => {
-    render(<TechNote points={['Uses SignalR.', <><strong>Cached</strong> in Redis.</>]} />)
+  it('reads as one paragraph: heading first, points joined by semicolons, then a full stop', () => {
+    render(<TechNote points={['uses SignalR', <><strong>cached</strong> in Redis</>]} />)
 
     const note = screen.getByRole('complementary', { name: 'How this page works' })
-    expect(within(note).getByText('How this page works')).toBeInTheDocument()
-    const items = within(note).getAllByRole('listitem')
-    expect(items.map(item => item.textContent)).toEqual(['Uses SignalR.', 'Cached in Redis.'])
+    expect(note.querySelectorAll('p')).toHaveLength(1)
+    expect(note.querySelector('li')).toBeNull()
+    expect(note).toHaveTextContent(/^How this page works: uses SignalR; cached in Redis\.$/)
+    expect(screen.getByText('How this page works:').tagName).toBe('STRONG')
   })
 })
