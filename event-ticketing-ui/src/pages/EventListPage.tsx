@@ -37,6 +37,7 @@ export default function EventListPage() {
     BookingMade: refreshCard,
     EventUpdated: refreshCard,
     EventDeleted: eventId => setEvents(prev => prev.filter(e => e.id !== eventId)),
+    EventArchived: eventId => setEvents(prev => prev.filter(e => e.id !== eventId)),
   })
 
   const changeInputSize = (inputWidth: number, fontSize: number) => {

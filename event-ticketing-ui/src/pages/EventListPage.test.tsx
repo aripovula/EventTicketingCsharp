@@ -255,5 +255,16 @@ describe('EventListPage', () => {
       expect(screen.queryByText('Comedy Showcase')).not.toBeInTheDocument()
       expect(screen.getByText('Jazz Night')).toBeInTheDocument()
     })
+
+    it('removes a card when its event is archived', async () => {
+      stubListThenEvent([makeEvent(), makeEvent({ id: 2, title: 'Comedy Showcase' })])
+      renderPage()
+      await screen.findByText('Comedy Showcase')
+
+      act(() => hub.handlers.EventArchived(2))
+
+      expect(screen.queryByText('Comedy Showcase')).not.toBeInTheDocument()
+      expect(screen.getByText('Jazz Night')).toBeInTheDocument()
+    })
   })
 })

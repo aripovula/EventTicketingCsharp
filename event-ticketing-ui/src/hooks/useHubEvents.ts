@@ -2,7 +2,7 @@ import { HubConnectionBuilder, LogLevel } from '@microsoft/signalr'
 import { useEffect, useLayoutEffect, useRef } from 'react'
 
 /** Messages the TicketingHub pushes; each carries the id of the event that changed. */
-export type HubEvent = 'BookingMade' | 'EventCreated' | 'EventUpdated' | 'EventDeleted'
+export type HubEvent = 'BookingMade' | 'EventCreated' | 'EventUpdated' | 'EventDeleted' | 'EventArchived'
 
 type Handlers = Partial<Record<HubEvent, (eventId: number) => void>>
 
