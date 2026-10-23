@@ -138,6 +138,8 @@ public class EventsController(EventsService eventsService, BookingService bookin
             id, request, userId is null ? null : int.Parse(userId), idempotencyKey ?? Guid.NewGuid().ToString(), cancellationToken);
         if (result.Status == BookingStatus.SoldOut)
             return Conflict(new ApiEnvelope(null, [new ApiError("sold_out", "Sorry, this event just sold out.")]));
+        if (result.Status == BookingStatus.EventArchived)
+            return Conflict(new ApiEnvelope(null, [new ApiError("event_archived", "This event has been archived and no longer sells tickets.")]));
         if (result.Status == BookingStatus.EventNotFound)
             return NotFound(new ApiEnvelope(null, [new ApiError("not_found", "Event not found.")]));
         if (result.Status == BookingStatus.PaymentMethodRequired)

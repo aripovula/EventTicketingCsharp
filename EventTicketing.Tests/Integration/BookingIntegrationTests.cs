@@ -36,7 +36,7 @@ public class BookingIntegrationTests(IntegrationTestFactory factory) : IClassFix
         Assert.Contains("\"field\":\"paymentMethodId\"", await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
     }
 
-    private async Task<int> CreateEventAsync(int availableSeats, int priceCents = 2500)
+    private async Task<int> CreateEventAsync(int availableSeats, int priceCents = 2500, DateTime? archivedAt = null)
     {
         using var scope = factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
@@ -50,6 +50,7 @@ public class BookingIntegrationTests(IntegrationTestFactory factory) : IClassFix
             TotalSeats = 10,
             AvailableSeats = availableSeats,
             PriceCents = priceCents,
+            ArchivedAt = archivedAt,
         };
         db.Events.Add(ev);
         await db.SaveChangesAsync(TestContext.Current.CancellationToken);
@@ -81,6 +82,20 @@ public class BookingIntegrationTests(IntegrationTestFactory factory) : IClassFix
 
         Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
         Assert.Contains("\"code\":\"sold_out\"", await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
+    }
+
+    [Fact]
+    public async Task Book_ArchivedEvent_Returns409AndTakesNoSeat()
+    {
+        var eventId = await CreateEventAsync(availableSeats: 3, archivedAt: DateTime.UtcNow);
+
+        var response = await BookAsync(eventId);
+
+        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+        Assert.Contains("\"code\":\"event_archived\"", await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
+        using var scope = factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        Assert.Equal(3, (await db.Events.SingleAsync(e => e.Id == eventId, TestContext.Current.CancellationToken)).AvailableSeats);
     }
 
     [Fact]

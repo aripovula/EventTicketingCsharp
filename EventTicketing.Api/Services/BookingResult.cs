@@ -7,6 +7,7 @@ public enum BookingStatus
     Booked,
     SoldOut,
     EventNotFound,
+    EventArchived,
     PaymentDeclined,
     PaymentMethodRequired,
     NoSavedPaymentMethod,

@@ -19,13 +19,15 @@ public class BookingService(
         // Check and decrement in ONE statement: the row lock queues concurrent buyers,
         // so the second one for the last seat matches zero rows instead of overselling.
         var reserved = await db.Events
-            .Where(e => e.Id == eventId && e.AvailableSeats > 0)
+            .Where(e => e.Id == eventId && e.AvailableSeats > 0 && e.ArchivedAt == null)
             .ExecuteUpdateAsync(s => s.SetProperty(e => e.AvailableSeats, e => e.AvailableSeats - 1), cancellationToken);
 
         if (reserved == 0)
         {
-            var exists = await db.Events.AnyAsync(e => e.Id == eventId, cancellationToken);
-            return new BookingResult(exists ? BookingStatus.SoldOut : BookingStatus.EventNotFound);
+            var archivedAt = await db.Events.Where(e => e.Id == eventId).Select(e => new { e.ArchivedAt }).SingleOrDefaultAsync(cancellationToken);
+            return new BookingResult(archivedAt is null ? BookingStatus.EventNotFound
+                : archivedAt.ArchivedAt is not null ? BookingStatus.EventArchived
+                : BookingStatus.SoldOut);
         }
 
         var ev = await db.Events.SingleAsync(e => e.Id == eventId, cancellationToken);
