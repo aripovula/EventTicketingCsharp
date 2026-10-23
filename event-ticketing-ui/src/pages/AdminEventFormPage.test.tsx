@@ -37,9 +37,9 @@ describe('AdminEventFormPage', () => {
     renderPage()
 
     const note = screen.getByRole('complementary', { name: 'How this page works' })
-    expect(note).toHaveTextContent('Pre-signed upload URL (Azure SAS)')
+    expect(note).toHaveTextContent('pre-signed upload URL (Azure SAS)')
     expect(note).toHaveTextContent('bypassing our server')
-    expect(note).toHaveTextContent('expires in 5 minutes')
+    expect(note).toHaveTextContent('social app')
   })
 
   it('renders the new-event heading and a link back to admin', () => {

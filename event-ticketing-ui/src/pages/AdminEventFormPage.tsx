@@ -95,9 +95,9 @@ export default function AdminEventFormPage() {
 
       <h1 className="text-2xl font-bold text-gray-900 mt-6 mb-6">{isEdit ? 'Edit event' : 'New event'}</h1>
       <TechNote points={[
-        <><strong>Pre-signed upload URL (Azure SAS):</strong> when you pick an image, the API first checks that your JWT belongs to an admin, then hands the browser a signed URL that can write one new file and expires in 5 minutes.</>,
-        <><strong>Straight to Azure Blob Storage:</strong> the browser uploads the image directly to storage with that URL, bypassing our server, so the API spends no bandwidth, memory or CPU on uploads. That keeps server costs down. In a social app, where every user uploads photos, this is what lets the app scale: the uploads go to storage built for that load instead of all passing through our servers.</>,
-        <><strong>Safe by design:</strong> the URL can&apos;t read, list or delete anything, and the server picks the file name (a random GUID), so no upload can overwrite another. JPEG, PNG, WebP or GIF up to 5 MB.</>,
+        <><strong>pre-signed upload URL (Azure SAS)</strong>: after checking that you are an admin, the API gives the browser a URL that can write one new file for 5 minutes</>,
+        <>the image goes <strong>straight to Azure Blob Storage</strong>, bypassing our server and saving its bandwidth and compute; in a social app, this is what lets uploads scale</>,
+        <>the URL can&apos;t read, list or delete, and the server picks the file name, so nothing is overwritten (JPEG, PNG, WebP or GIF, up to 5 MB)</>,
       ]} />
 
       <div className="bg-white rounded-xl border border-gray-200 p-6">
