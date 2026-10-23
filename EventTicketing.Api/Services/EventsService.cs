@@ -35,7 +35,8 @@ public class EventsService(AppDbContext db, HybridCache cache, AuditLogger audit
 
     private async Task<EventPage?> QueryPageAsync(EventListQuery query, CancellationToken cancellationToken)
     {
-        var events = db.Events.AsQueryable();
+        // Archived events keep their page (order links point there) but leave the list.
+        var events = db.Events.Where(e => e.ArchivedAt == null);
         if (!string.IsNullOrWhiteSpace(query.Q))
         {
             var pattern = "%" + EscapeLike(query.Q.Trim()) + "%";
