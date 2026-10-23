@@ -1,15 +1,33 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { archiveEvent, deleteEvent } from '../api/events'
+import { archiveEvent, deleteEvent, fetchEvent } from '../api/events'
 import ConfirmDialog from '../components/ConfirmDialog'
 import { useEventPages } from '../hooks/useEventPages'
+import { useHubEvents } from '../hooks/useHubEvents'
 import TechNote from '../components/TechNote'
 
 export default function AdminPage() {
-  const { events, setEvents, loading, loadingMore, sentinelRef } = useEventPages({ sort: 'name' })
+  const { events, setEvents, reload, loading, loadingMore, sentinelRef } = useEventPages({ sort: 'name' })
   // Events with orders can't be deleted (the orders would go too), so they get Archive instead of Delete.
   const [confirming, setConfirming] = useState<{ id: number; action: 'delete' | 'archive' } | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
+
+  function refreshRow(eventId: number) {
+    if (!events.some(e => e.id === eventId)) return
+    fetchEvent(eventId)
+      .then(res => (res.ok ? res.json() : null))
+      .then(body => { if (body?.data) setEvents(prev => prev.map(e => (e.id === eventId ? body.data : e))) })
+      .catch(() => {})
+  }
+  const removeRow = (eventId: number) => setEvents(prev => prev.filter(e => e.id !== eventId))
+  // A sold ticket turns Delete into Archive at once, without waiting for a reload.
+  useHubEvents({
+    BookingMade: eventId => setEvents(prev => prev.map(e => (e.id === eventId ? { ...e, hasOrders: true } : e))),
+    EventCreated: reload,
+    EventUpdated: refreshRow,
+    EventDeleted: removeRow,
+    EventArchived: removeRow,
+  })
 
   async function handleConfirmed() {
     if (confirming === null) return

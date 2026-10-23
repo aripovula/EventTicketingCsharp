@@ -1,8 +1,13 @@
-import { render, screen, within } from '@testing-library/react'
+import { act, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import type { EventItem } from '../api/events'
 import { makeEvent } from '../test/fixtures'
+
+const hub = vi.hoisted(() => ({ handlers: {} as Record<string, (eventId: number) => void> }))
+vi.mock('../hooks/useHubEvents', () => ({
+  useHubEvents: (handlers: Record<string, (eventId: number) => void>) => { hub.handlers = handlers },
+}))
 import AdminPage from './AdminPage'
 
 class FakeIntersectionObserver {
@@ -146,5 +151,54 @@ describe('AdminPage', () => {
 
     expect(await screen.findByRole('alert')).toHaveTextContent("Tickets have been sold for this event, so it can't be deleted. Archive it instead.")
     expect(screen.getByRole('button', { name: 'Archive Comedy Showcase' })).toBeInTheDocument()
+  })
+
+  describe('live updates', () => {
+    it('swaps Delete for Archive when a ticket is sold', async () => {
+      stubEvents([makeEvent(), makeEvent({ id: 2, title: 'Comedy Showcase' })])
+      renderPage()
+      await screen.findByRole('button', { name: 'Delete Comedy Showcase' })
+
+      act(() => hub.handlers.BookingMade(2))
+
+      expect(screen.getByRole('button', { name: 'Archive Comedy Showcase' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Delete Jazz Night' })).toBeInTheDocument()
+    })
+
+    it('reloads the list when an event is created', async () => {
+      const fetchMock = stubEvents([makeEvent()])
+      renderPage()
+      await screen.findByText('Jazz Night')
+      fetchMock.mockResolvedValue(new Response(JSON.stringify(
+        { data: [makeEvent(), makeEvent({ id: 3, title: 'Brand New Gig' })], errors: [], meta: { nextCursor: null } })))
+
+      act(() => hub.handlers.EventCreated(3))
+
+      expect(await screen.findByText('Brand New Gig')).toBeInTheDocument()
+    })
+
+    it('refreshes a row when its event is edited', async () => {
+      const fetchMock = stubEvents([makeEvent()])
+      renderPage()
+      await screen.findByText('Jazz Night')
+      fetchMock.mockResolvedValue(new Response(JSON.stringify({ data: makeEvent({ title: 'Jazz Night Deluxe' }), errors: [] })))
+
+      act(() => hub.handlers.EventUpdated(1))
+
+      expect(await screen.findByText('Jazz Night Deluxe')).toBeInTheDocument()
+    })
+
+    it('removes a row when its event is deleted or archived', async () => {
+      stubEvents([makeEvent(), makeEvent({ id: 2, title: 'Comedy Showcase' }), makeEvent({ id: 3, title: 'Rock Fest' })])
+      renderPage()
+      await screen.findByText('Rock Fest')
+
+      act(() => hub.handlers.EventDeleted(2))
+      act(() => hub.handlers.EventArchived(3))
+
+      expect(screen.queryByText('Comedy Showcase')).not.toBeInTheDocument()
+      expect(screen.queryByText('Rock Fest')).not.toBeInTheDocument()
+      expect(screen.getByText('Jazz Night')).toBeInTheDocument()
+    })
   })
 })
