@@ -118,20 +118,22 @@ public class EventsService(AppDbContext db, HybridCache cache, AuditLogger audit
         return true;
     }
 
-    /// <returns>False when no event has the given id.</returns>
-    public async Task<bool> DeleteAsync(int id, AuditActor actor, CancellationToken cancellationToken)
+    public async Task<DeleteResult> DeleteAsync(int id, AuditActor actor, CancellationToken cancellationToken)
     {
         await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
         // Read the title for the audit entry before the row is gone.
         var title = await db.Events.Where(e => e.Id == id).Select(e => e.Title).SingleOrDefaultAsync(cancellationToken);
-        if (title is null || await db.Events.Where(e => e.Id == id).ExecuteDeleteAsync(cancellationToken) == 0)
-            return false;
+        if (title is null)
+            return DeleteResult.NotFound;
+        // Deleting would take the orders with it (they cascade), so an event with orders is archived instead.
+        if (await db.Events.Where(e => e.Id == id && !e.Orders.Any()).ExecuteDeleteAsync(cancellationToken) == 0)
+            return DeleteResult.HasOrders;
 
         audit.Record(AuditAction.EventDeleted, "Event", id, actor, new { Title = title });
         await db.SaveChangesAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
         await EvictListPagesAsync();
-        return true;
+        return DeleteResult.Deleted;
     }
 
     // The change is already saved, so evict even if the request is cancelled meanwhile.
@@ -187,4 +189,11 @@ public class EventsService(AppDbContext db, HybridCache cache, AuditLogger audit
     // Treat the search text literally: LIKE wildcards in user input must not act as wildcards.
     private static string EscapeLike(string text) =>
         text.Replace(@"\", @"\\").Replace("%", @"\%").Replace("_", @"\_");
+}
+
+public enum DeleteResult
+{
+    Deleted,
+    NotFound,
+    HasOrders,
 }

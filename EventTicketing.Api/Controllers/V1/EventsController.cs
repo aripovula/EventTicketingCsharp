@@ -71,17 +71,22 @@ public class EventsController(EventsService eventsService, BookingService bookin
         return NoContent();
     }
 
-    /// <summary>Deletes an event. Admin only.</summary>
+    /// <summary>Deletes an event that has no orders; one with orders returns 409 and should be archived instead. Admin only.</summary>
     [Authorize(Roles = "admin")]
     [HttpDelete("{id:int}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ApiEnvelope<object>), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ApiEnvelope<object>), StatusCodes.Status409Conflict)]
     public async Task<IActionResult> Delete(int id, CancellationToken cancellationToken)
     {
-        if (!await eventsService.DeleteAsync(id, AuditActor.FromClaims(User), cancellationToken))
+        var result = await eventsService.DeleteAsync(id, AuditActor.FromClaims(User), cancellationToken);
+        if (result == DeleteResult.NotFound)
             return NotFound(new ApiEnvelope(null, [new ApiError("not_found", "Event not found.")]));
+        if (result == DeleteResult.HasOrders)
+            return Conflict(new ApiEnvelope(null,
+                [new ApiError("has_orders", "Tickets have been sold for this event, so it can't be deleted. Archive it instead.")]));
 
         await hub.Clients.All.SendAsync(TicketingEvents.EventDeleted, id, CancellationToken.None);
         return NoContent();

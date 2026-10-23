@@ -234,4 +234,20 @@ public class EventsAdminIntegrationTests(IntegrationTestFactory factory) : IClas
         Assert.True(ev.GetProperty("hasOrders").GetBoolean());
         Assert.Equal(JsonValueKind.Null, ev.GetProperty("archivedAt").ValueKind);
     }
+
+    [Fact]
+    public async Task Delete_AnEventWithOrders_Returns409AndKeepsIt()
+    {
+        var admin = await SignedInAsync("admin@example.com");
+        var id = await CreateAsAdminAsync(admin, "Sold Some Seats");
+        await AddOrderAsync(id);
+
+        var response = await admin.DeleteAsync($"/api/v1/events/{id}", TestContext.Current.CancellationToken);
+
+        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+        var error = JsonDocument.Parse(await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken))
+            .RootElement.GetProperty("errors")[0];
+        Assert.Equal("has_orders", error.GetProperty("code").GetString());
+        Assert.Equal("Sold Some Seats", (await GetEventAsync(admin, id)).GetProperty("title").GetString());
+    }
 }
