@@ -31,8 +31,8 @@ export default function AdminOrdersPage() {
         </Link>
       </div>
       <TechNote points={[
-        <><strong>Cursor pagination:</strong> every order, newest first, 20 at a time as you scroll, optionally filtered by event on the server.</>,
-        <><strong>Live:</strong> new bookings appear over SignalR as customers make them.</>,
+        <><strong>cursor pagination</strong>: every order, newest first, 20 at a time, optionally filtered by event on the server</>,
+        <>new bookings appear live over <strong>SignalR</strong></>,
       ]} />
 
       {events.length > 0 && (

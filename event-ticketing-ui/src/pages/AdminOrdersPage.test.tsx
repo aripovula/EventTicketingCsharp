@@ -44,7 +44,7 @@ describe('AdminOrdersPage', () => {
     renderPage()
 
     const note = await screen.findByRole('complementary', { name: 'How this page works' })
-    expect(note).toHaveTextContent('Cursor pagination')
+    expect(note).toHaveTextContent('cursor pagination')
     expect(note).toHaveTextContent('SignalR')
   })
 
