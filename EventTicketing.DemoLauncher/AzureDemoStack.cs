@@ -45,7 +45,7 @@ public class AzureDemoStack(ArmClient arm, HttpClient http, IOptions<DemoOptions
 
     public async Task<string> StartCreateAsync(CancellationToken cancellationToken)
     {
-        var dnsLabel = Options.DnsLabel;
+        var dnsLabel = Options.NewDnsLabel();
         // The template comes from the same release as the app, so the two always match.
         var template = await http.GetStringAsync(Options.TemplateUrl, cancellationToken);
         var data = new DeploymentStackData

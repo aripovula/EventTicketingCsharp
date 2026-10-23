@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using System.Security.Cryptography;
 
 namespace EventTicketing.DemoLauncher;
 
@@ -20,7 +21,10 @@ public class DemoOptions
 
     [Required] public string Location { get; set; } = "";
 
-    /// <summary>The demo is served at https://&lt;label&gt;.&lt;location&gt;.cloudapp.azure.com.</summary>
+    /// <summary>
+    /// Start of the demo's host name: each demo is served at
+    /// https://&lt;label&gt;-&lt;5 random characters&gt;.&lt;location&gt;.cloudapp.azure.com.
+    /// </summary>
     [Required] public string DnsLabel { get; set; } = "";
 
     /// <summary>The compiled infra/demo-stack.bicep, as attached to the GitHub release.</summary>
@@ -42,6 +46,13 @@ public class DemoOptions
 
     /// <summary>How long the demo stays up after the last request.</summary>
     [Range(1, 240)] public int LifetimeMinutes { get; set; } = 30;
+
+    /// <summary>
+    /// A host name no earlier demo had. Every demo gets a new Let's Encrypt certificate, and Let's Encrypt
+    /// issues only 5 a week for the same name, so reusing one name stops the demo after a few starts.
+    /// </summary>
+    public string NewDnsLabel() =>
+        $"{DnsLabel}-{RandomNumberGenerator.GetString("abcdefghijklmnopqrstuvwxyz0123456789", 5)}";
 
     public string UrlFor(string dnsLabel) => $"https://{dnsLabel}.{Location}.cloudapp.azure.com";
 }
