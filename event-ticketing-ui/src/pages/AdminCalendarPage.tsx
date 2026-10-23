@@ -69,8 +69,8 @@ export default function AdminCalendarPage() {
       </div>
 
       <TechNote points={[
-        <><strong>FullCalendar</strong> shows every event colored by type, with the seats still left, in your own time zone (the API stores and sends UTC).</>,
-        <>The page follows the cursor-paginated events API until it has every page, so the calendar is complete however many events there are.</>,
+        <><strong>FullCalendar</strong> shows every event by type with its remaining seats, in your own time zone (the API stores UTC)</>,
+        <>the page follows the cursor-paginated events API until it has every page</>,
       ]} />
 
       <ul aria-label="event type legend" className="flex flex-wrap gap-3 mb-5 list-none p-0 m-0">
