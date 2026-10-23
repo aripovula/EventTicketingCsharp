@@ -16,4 +16,15 @@ public abstract class E2ETestBase : PageTest
         Page.SetDefaultNavigationTimeout(30_000);
         SetDefaultExpectTimeout(15_000);
     }
+
+    /// <summary>
+    /// Cleans up an event a test created, as the signed-in admin. One with orders can't be deleted, so it is
+    /// archived instead, which takes it out of the shared dev database's list.
+    /// </summary>
+    protected async Task RemoveEventAsync(int id)
+    {
+        var deleted = await Page.APIRequest.DeleteAsync($"{BaseUrl}/api/v1/events/{id}");
+        if (deleted.Status == 409)
+            await Page.APIRequest.PostAsync($"{BaseUrl}/api/v1/events/{id}/archive");
+    }
 }

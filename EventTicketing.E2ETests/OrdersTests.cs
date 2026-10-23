@@ -55,7 +55,7 @@ public class OrdersTests : E2ETestBase
         {
             await Page.GetByRole(AriaRole.Button, new() { Name = "Sign out" }).ClickAsync();
             await SignInAsync(1);
-            await Page.APIRequest.DeleteAsync($"{BaseUrl}/api/v1/events/{id}");
+            await RemoveEventAsync(id);
         }
     }
 }

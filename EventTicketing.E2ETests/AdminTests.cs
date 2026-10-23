@@ -93,7 +93,7 @@ public class AdminTests : E2ETestBase
             // Leave the shared dev database as we found it.
             var search = await Page.APIRequest.GetAsync($"{BaseUrl}/api/v1/events?q={Uri.EscapeDataString(title)}");
             foreach (var ev in (await search.JsonAsync())!.Value.GetProperty("data").EnumerateArray())
-                await Page.APIRequest.DeleteAsync($"{BaseUrl}/api/v1/events/{ev.GetProperty("id").GetInt32()}");
+                await RemoveEventAsync(ev.GetProperty("id").GetInt32());
         }
     }
 
@@ -136,7 +136,7 @@ public class AdminTests : E2ETestBase
         {
             var search = await Page.APIRequest.GetAsync($"{BaseUrl}/api/v1/events?q={Uri.EscapeDataString(title)}");
             foreach (var ev in (await search.JsonAsync())!.Value.GetProperty("data").EnumerateArray())
-                await Page.APIRequest.DeleteAsync($"{BaseUrl}/api/v1/events/{ev.GetProperty("id").GetInt32()}");
+                await RemoveEventAsync(ev.GetProperty("id").GetInt32());
         }
     }
 
@@ -177,7 +177,7 @@ public class AdminTests : E2ETestBase
         }
         finally
         {
-            await Page.APIRequest.DeleteAsync($"{BaseUrl}/api/v1/events/{id}");
+            await RemoveEventAsync(id);
         }
     }
 

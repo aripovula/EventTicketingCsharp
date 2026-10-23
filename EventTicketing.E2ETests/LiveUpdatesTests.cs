@@ -53,7 +53,7 @@ public class LiveUpdatesTests : E2ETestBase
             await Page.GetByRole(AriaRole.Button, new() { Name = "Sign out" }).ClickAsync();
             await Page.GetByRole(AriaRole.Button, new() { Name = "Sign in" }).Nth(1).ClickAsync();
             await Expect(Page).ToHaveURLAsync(new Regex("/$"));
-            await Page.APIRequest.DeleteAsync($"{BaseUrl}/api/v1/events/{id}");
+            await RemoveEventAsync(id);
         }
     }
 }

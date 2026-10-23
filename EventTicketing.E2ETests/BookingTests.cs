@@ -24,7 +24,7 @@ public class BookingTests : E2ETestBase
     {
         await Page.GetByRole(AriaRole.Button, new() { Name = "Sign out" }).ClickAsync();
         await SignInAsync(1);
-        await Page.APIRequest.DeleteAsync($"{BaseUrl}/api/v1/events/{id}");
+        await RemoveEventAsync(id);
     }
 
     [Test]
@@ -119,7 +119,7 @@ public class BookingTests : E2ETestBase
             await Page.GotoAsync($"{BaseUrl}/login");
             await Page.GetByRole(AriaRole.Button, new() { Name = "Sign in" }).Nth(1).ClickAsync();
             await Expect(Page).ToHaveURLAsync(new Regex("/$"));
-            await Page.APIRequest.DeleteAsync($"{BaseUrl}/api/v1/events/{id}");
+            await RemoveEventAsync(id);
         }
     }
 
@@ -215,7 +215,7 @@ public class BookingTests : E2ETestBase
             await Page.GotoAsync($"{BaseUrl}/login");
             await Page.GetByRole(AriaRole.Button, new() { Name = "Sign in" }).Nth(1).ClickAsync();
             await Expect(Page).ToHaveURLAsync(new Regex("/$"));
-            await Page.APIRequest.DeleteAsync($"{BaseUrl}/api/v1/events/{id}");
+            await RemoveEventAsync(id);
         }
     }
 }
