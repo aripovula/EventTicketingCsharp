@@ -11,12 +11,16 @@ public enum StackState
     Deleting,
 }
 
+/// <summary>The stack's state and, while it exists, the address of the demo it holds.</summary>
+public record StackInfo(StackState State, string? Url);
+
 /// <summary>The demo's resources, managed as one deployment stack. Start* calls return without waiting.</summary>
 public interface IDemoStack
 {
-    Task<StackState> GetStateAsync(CancellationToken cancellationToken);
+    Task<StackInfo> GetAsync(CancellationToken cancellationToken);
 
-    Task StartCreateAsync(CancellationToken cancellationToken);
+    /// <summary>Starts deploying a new demo and returns the address it will have.</summary>
+    Task<string> StartCreateAsync(CancellationToken cancellationToken);
 
     Task StartDeleteAsync(CancellationToken cancellationToken);
 }

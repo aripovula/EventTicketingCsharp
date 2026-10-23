@@ -1,7 +1,10 @@
 namespace EventTicketing.DemoLauncher;
 
-/// <summary>What the portfolio page shows: <see cref="DemoStates"/>, the demo's address, and when it ends.</summary>
-public record DemoStatus(string State, string Url, DateTimeOffset? ExpiresAt);
+/// <summary>
+/// What the portfolio page shows: <see cref="DemoStates"/>, the demo's address (null while there is no
+/// demo), and when it ends.
+/// </summary>
+public record DemoStatus(string State, string? Url, DateTimeOffset? ExpiresAt);
 
 public static class DemoStates
 {

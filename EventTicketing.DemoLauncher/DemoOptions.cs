@@ -43,5 +43,5 @@ public class DemoOptions
     /// <summary>How long the demo stays up after the last request.</summary>
     [Range(1, 240)] public int LifetimeMinutes { get; set; } = 30;
 
-    public string Url => $"https://{DnsLabel}.{Location}.cloudapp.azure.com";
+    public string UrlFor(string dnsLabel) => $"https://{dnsLabel}.{Location}.cloudapp.azure.com";
 }

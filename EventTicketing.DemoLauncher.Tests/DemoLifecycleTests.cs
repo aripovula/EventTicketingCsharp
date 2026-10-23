@@ -30,7 +30,7 @@ public class DemoLifecycleTests
 
         Assert.Equal(1, _stack.Creates);
         Assert.Equal(NineTen.AddMinutes(30), _expiry.ExpiresAt);
-        Assert.Equal(new DemoStatus(DemoStates.Starting, "https://eventticketing-demo.eastus.cloudapp.azure.com", NineTen.AddMinutes(30)), status);
+        Assert.Equal(new DemoStatus(DemoStates.Starting, FakeDemoStack.Url, NineTen.AddMinutes(30)), status);
     }
 
     [Fact]
@@ -93,6 +93,7 @@ public class DemoLifecycleTests
         var status = await _demo.GetStatusAsync(Ct);
 
         Assert.Equal(expected, status.State);
+        Assert.Equal(FakeDemoStack.Url, status.Url);
     }
 
     [Fact]
@@ -101,6 +102,7 @@ public class DemoLifecycleTests
         var status = await _demo.GetStatusAsync(Ct);
 
         Assert.Equal(DemoStates.Stopped, status.State);
+        Assert.Null(status.Url);
         Assert.Null(_expiry.ExpiresAt);
         Assert.Equal(0, _stack.Creates);
     }

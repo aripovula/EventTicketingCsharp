@@ -18,13 +18,22 @@ public class AzureDemoStack(ArmClient arm, HttpClient http, IOptions<DemoOptions
     private DeploymentStackCollection Stacks =>
         arm.GetDeploymentStacks(ResourceGroupResource.CreateResourceIdentifier(Options.SubscriptionId, Options.ResourceGroup));
 
-    public async Task<StackState> GetStateAsync(CancellationToken cancellationToken)
+    public async Task<StackInfo> GetAsync(CancellationToken cancellationToken)
     {
         var stack = await Stacks.GetIfExistsAsync(Options.StackName, cancellationToken);
         if (!stack.HasValue)
-            return StackState.None;
+            return new StackInfo(StackState.None, null);
 
-        var state = stack.Value!.Data.ProvisioningState;
+        var data = stack.Value!.Data;
+        // The stack keeps the parameters it was created with, so it knows its own address.
+        var url = data.Parameters.TryGetValue("dnsLabel", out var label) && label.Value is not null
+            ? Options.UrlFor(label.Value.ToObjectFromJson<string>()!)
+            : null;
+        return new StackInfo(StateOf(data.ProvisioningState), url);
+    }
+
+    private static StackState StateOf(DeploymentStackProvisioningState? state)
+    {
         if (state == DeploymentStackProvisioningState.Succeeded)
             return StackState.Deployed;
         if (state == DeploymentStackProvisioningState.Failed || state == DeploymentStackProvisioningState.Canceled)
@@ -34,8 +43,9 @@ public class AzureDemoStack(ArmClient arm, HttpClient http, IOptions<DemoOptions
         return StackState.Deploying;
     }
 
-    public async Task StartCreateAsync(CancellationToken cancellationToken)
+    public async Task<string> StartCreateAsync(CancellationToken cancellationToken)
     {
+        var dnsLabel = Options.DnsLabel;
         // The template comes from the same release as the app, so the two always match.
         var template = await http.GetStringAsync(Options.TemplateUrl, cancellationToken);
         var data = new DeploymentStackData
@@ -48,7 +58,7 @@ public class AzureDemoStack(ArmClient arm, HttpClient http, IOptions<DemoOptions
             },
             DenySettings = new DeploymentStackDenySettings(DeploymentStackDenySettingsMode.None),
         };
-        foreach (var (name, value) in Parameters())
+        foreach (var (name, value) in Parameters(dnsLabel))
             data.Parameters[name] = new DeploymentParameterItem { Value = BinaryData.FromObjectAsJson(value) };
 
         try
@@ -59,6 +69,7 @@ public class AzureDemoStack(ArmClient arm, HttpClient http, IOptions<DemoOptions
         {
             // Another request started it a moment ago.
         }
+        return Options.UrlFor(dnsLabel);
     }
 
     public async Task StartDeleteAsync(CancellationToken cancellationToken)
@@ -78,9 +89,9 @@ public class AzureDemoStack(ArmClient arm, HttpClient http, IOptions<DemoOptions
         }
     }
 
-    private Dictionary<string, string> Parameters() => new()
+    private Dictionary<string, string> Parameters(string dnsLabel) => new()
     {
-        ["dnsLabel"] = Options.DnsLabel,
+        ["dnsLabel"] = dnsLabel,
         ["releaseUrl"] = Options.ReleaseUrl,
         ["keyVaultUri"] = Options.KeyVaultUri,
         ["identityName"] = Options.IdentityName,
