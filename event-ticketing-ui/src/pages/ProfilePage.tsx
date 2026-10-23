@@ -27,7 +27,7 @@ export default function ProfilePage() {
     <div className="max-w-lg mx-auto space-y-8">
       <h1 className="text-2xl font-bold text-gray-900">Profile</h1>
       <TechNote className="" points={[
-        <><strong>Stripe</strong> keeps your card on a Stripe Customer; we store only its brand, last 4 digits and expiry</>,
+        <>your card is saved through <strong>Stripe's real test API</strong> on a Stripe Customer; we store only its brand, last 4 digits and expiry</>,
         <>the server finds it by your account, so nobody can pay with your card</>,
         <>a <strong>Polly circuit breaker</strong> stops calling a failing Stripe for 30 s and tells you when to retry</>,
       ]} />

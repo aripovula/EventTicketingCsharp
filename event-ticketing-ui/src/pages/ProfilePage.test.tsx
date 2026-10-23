@@ -36,7 +36,7 @@ describe('ProfilePage', () => {
     renderPage()
 
     const note = screen.getByRole('complementary', { name: 'How this page works' })
-    expect(note).toHaveTextContent('Stripe Customer')
+    expect(note).toHaveTextContent("Stripe's real test API")
     expect(note).toHaveTextContent('circuit breaker')
   })
 
