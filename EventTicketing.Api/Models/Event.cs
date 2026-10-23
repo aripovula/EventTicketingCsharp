@@ -37,6 +37,14 @@ public class Event : ITimestamped
     [MaxLength(500)]
     public string? ImageUrl { get; set; }
 
+    /// <summary>
+    /// When an admin took the event off sale. An event with orders can't be deleted (the orders would go with
+    /// it), so it is archived instead: hidden from the list and closed to bookings, but its orders stay.
+    /// </summary>
+    public DateTime? ArchivedAt { get; set; }
+
+    public List<Order> Orders { get; set; } = [];
+
     public DateTime CreatedAt { get; set; }
 
     public DateTime UpdatedAt { get; set; }

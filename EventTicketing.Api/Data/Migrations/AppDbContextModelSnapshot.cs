@@ -79,6 +79,10 @@ namespace EventTicketing.Api.Data.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
+                    b.Property<DateTime?>("ArchivedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("archived_at");
+
                     b.Property<int>("AvailableSeats")
                         .HasColumnType("integer")
                         .HasColumnName("available_seats");
@@ -500,7 +504,7 @@ namespace EventTicketing.Api.Data.Migrations
             modelBuilder.Entity("EventTicketing.Api.Models.Order", b =>
                 {
                     b.HasOne("EventTicketing.Api.Models.Event", "Event")
-                        .WithMany()
+                        .WithMany("Orders")
                         .HasForeignKey("EventId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
@@ -539,6 +543,11 @@ namespace EventTicketing.Api.Data.Migrations
                         .HasConstraintName("fk_refresh_tokens_users_user_id");
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("EventTicketing.Api.Models.Event", b =>
+                {
+                    b.Navigation("Orders");
                 });
 #pragma warning restore 612, 618
         }
