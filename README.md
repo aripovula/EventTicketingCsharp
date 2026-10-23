@@ -215,7 +215,7 @@ Behind Caddy every request arrives from 127.0.0.1. The API therefore takes the c
 
 There is never more than one demo, and every visitor shares it:
 
-- **`POST /api/demo`**: the portfolio page calls this when it opens. The demo's end moves to 30 minutes from now; if no demo is running, the launcher starts one. The answer is `{ "state": ..., "url": ..., "expiresAt": ... }`.
+- **`POST /api/demo`**: the portfolio page calls this when it opens. The demo's end moves to 30 minutes from now; if no demo is running, the launcher starts one. The answer is `{ "state": ..., "url": ..., "expiresAt": ... }`. Each new demo gets a new address (`<label>-<5 random characters>.<region>.cloudapp.azure.com`), so the page should link to the `url` it's given rather than a fixed one.
 - **`GET /api/demo`**: the page polls this until `state` is `ready`, which means `https://<demo>/health/ready` answers. Until then it's `starting` (or `stopping`, if a visitor arrives just as the previous demo is being deleted).
 - **A timer every 2 minutes** deletes the demo once its end has passed. If a visitor asked for it while it was being deleted, the timer starts it again afterwards.
 
@@ -306,7 +306,7 @@ Known trade-offs:
 
 - **Shared data.** Visitors share the demo's data, including the admin account, so one visitor can change events another is looking at. Every new demo starts again from the seeded data.
 - **Storage key in `customData`.** The storage account key reaches the VM through its `customData`, which anyone with read access to the VM can see. That's acceptable for a demo whose storage account dies with it.
-- **Repeated certificates.** The demo always has the same address, and Let's Encrypt issues only a handful of certificates per week for one name. After that, Caddy falls back to ZeroSSL on its own.
+- **A new address each time.** Every demo gets a new Let's Encrypt certificate, and Let's Encrypt issues only 5 a week for the same name. With one fixed address, the sixth start in a week came up without HTTPS, so each demo now gets its own host name. The cost is that a bookmarked demo link stops working once that demo is deleted.
 - **Package versions.** Ubuntu's packages bring PostgreSQL 16 and RabbitMQ 3.12 rather than the versions we pin locally; the app doesn't depend on anything newer.
 
 ## Demo dates that stay upcoming
