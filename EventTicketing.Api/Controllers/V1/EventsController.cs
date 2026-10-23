@@ -152,6 +152,8 @@ public class EventsController(EventsService eventsService, BookingService bookin
             return StatusCode(StatusCodes.Status402PaymentRequired,
                 new ApiEnvelope(null, [new ApiError("payment_declined", result.Error!)]));
 
+        // The cached list pages have the old seat count and say the event has no orders.
+        await eventsService.EvictListPagesAsync();
         // The seat is already taken, so tell open pages even if this request was cancelled.
         await hub.Clients.All.SendAsync(TicketingEvents.BookingMade, id, CancellationToken.None);
         return CreatedAtAction(nameof(OrdersController.Get), "Orders", new { id = result.Order!.Id }, result.Order);

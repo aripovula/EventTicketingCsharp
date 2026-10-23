@@ -117,4 +117,23 @@ public class EventsListCacheIntegrationTests(IntegrationTestFactory factory) : I
 
         Assert.DoesNotContain("!!!!Doomed Event", await TitlesAsync(FirstPage));
     }
+
+    [Fact]
+    public async Task BookingATicket_EvictsTheCachedPages()
+    {
+        var admin = await AdminAsync();
+        var id = await CreateAsync(admin, "!!!!!Booked Event");
+        Assert.False(await HasOrdersAsync(id));
+
+        await _client.PostAsJsonAsync($"/api/v1/events/{id}/bookings",
+            new { email = "guest@example.com", paymentMethodId = "pm_card_visa" }, TestContext.Current.CancellationToken);
+
+        Assert.True(await HasOrdersAsync(id));
+    }
+
+    private async Task<bool> HasOrdersAsync(int id)
+    {
+        var body = JsonDocument.Parse(await _client.GetStringAsync(FirstPage, TestContext.Current.CancellationToken)).RootElement;
+        return body.GetProperty("data").EnumerateArray().Single(e => e.GetProperty("id").GetInt32() == id).GetProperty("hasOrders").GetBoolean();
+    }
 }

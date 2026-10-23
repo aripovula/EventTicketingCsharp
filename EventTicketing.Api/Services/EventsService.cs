@@ -155,7 +155,7 @@ public class EventsService(AppDbContext db, HybridCache cache, AuditLogger audit
     }
 
     // The change is already saved, so evict even if the request is cancelled meanwhile.
-    private ValueTask EvictListPagesAsync() => cache.RemoveByTagAsync(ListCacheTag, CancellationToken.None);
+    public ValueTask EvictListPagesAsync() => cache.RemoveByTagAsync(ListCacheTag, CancellationToken.None);
 
     public async Task<IReadOnlyList<EventSummary>> SummaryAsync(CancellationToken cancellationToken) =>
         await db.Events
