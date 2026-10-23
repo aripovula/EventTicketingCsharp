@@ -98,7 +98,7 @@ public static class EventSeeder
             Day: 22, Start: new TimeOnly(17, 0), EndDay: 22, End: new TimeOnly(20, 0),
             Venue: "Art Studio", EventType: "Art",
             TotalSeats: 30, AvailableSeats: 9, PriceCents: 7500,
-            ImageUrl: "https://images.unsplash.com/photo-1452780212461-64df12a92440?w=800&q=80"),
+            ImageUrl: "https://images.unsplash.com/photo-1542038784456-1ea8e935640e?w=800&q=80"),
         new(
             "Symphony Orchestra",
             "The City Philharmonic performs Beethoven's 5th and Dvořák's New World Symphony in a grand evening concert.",
