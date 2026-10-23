@@ -42,6 +42,18 @@ public class EventsAdminIntegrationTests(IntegrationTestFactory factory) : IClas
             .SingleAsync(a => a.Action == action && a.EntityType == "Event" && a.EntityId == eventId, TestContext.Current.CancellationToken);
     }
 
+    private async Task AddOrderAsync(int eventId)
+    {
+        using var scope = factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        db.Orders.Add(new Order { EventId = eventId, Email = "guest@example.com", PriceCents = 1500, BookedAt = DateTime.UtcNow });
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+    }
+
+    private async Task<JsonElement> GetEventAsync(HttpClient client, int id) =>
+        JsonDocument.Parse(await client.GetStringAsync($"/api/v1/events/{id}", TestContext.Current.CancellationToken))
+            .RootElement.GetProperty("data");
+
     private static void AssertRecordedForAdmin(AuditLog entry, string title)
     {
         Assert.NotNull(entry.UserId);
@@ -207,5 +219,19 @@ public class EventsAdminIntegrationTests(IntegrationTestFactory factory) : IClas
         var response = await admin.DeleteAsync("/api/v1/events/999999", TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Get_SaysWhetherTheEventHasOrders()
+    {
+        var admin = await SignedInAsync("admin@example.com");
+        var id = await CreateAsAdminAsync(admin, "Orders Or Not");
+        Assert.False((await GetEventAsync(admin, id)).GetProperty("hasOrders").GetBoolean());
+
+        await AddOrderAsync(id);
+
+        var ev = await GetEventAsync(admin, id);
+        Assert.True(ev.GetProperty("hasOrders").GetBoolean());
+        Assert.Equal(JsonValueKind.Null, ev.GetProperty("archivedAt").ValueKind);
     }
 }

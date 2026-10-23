@@ -16,7 +16,7 @@ public class EventsService(AppDbContext db, HybridCache cache, AuditLogger audit
     // An expression (not a method) so EF Core translates it into the SELECT list.
     private static readonly Expression<Func<Event, EventResponse>> ToResponse = e => new EventResponse(
         e.Id, e.Title, e.Description, e.StartTime, e.EndTime, e.Venue, e.EventType,
-        e.TotalSeats, e.AvailableSeats, e.PriceCents, e.ImageUrl);
+        e.TotalSeats, e.AvailableSeats, e.PriceCents, e.ImageUrl, e.Orders.Any(), e.ArchivedAt);
 
     /// <returns>The page, or null when the cursor is malformed.</returns>
     public async Task<EventPage?> ListAsync(EventListQuery query, CancellationToken cancellationToken)

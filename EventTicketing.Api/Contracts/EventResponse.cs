@@ -11,4 +11,7 @@ public record EventResponse(
     int TotalSeats,
     int AvailableSeats,
     int PriceCents,
-    string? ImageUrl);
+    string? ImageUrl,
+    // The admin page offers Archive rather than Delete for events with orders.
+    bool HasOrders,
+    DateTime? ArchivedAt);
