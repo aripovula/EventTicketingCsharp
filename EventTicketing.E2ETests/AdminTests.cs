@@ -65,6 +65,59 @@ public class AdminTests : E2ETestBase
     }
 
     [Test]
+    public async Task AdminArchivesAnEventThatHasOrders()
+    {
+        await SignInAsAdminAsync();
+        var title = $"E2E Archive {Guid.NewGuid():N}"[..21];
+        var created = await Page.APIRequest.PostAsync($"{BaseUrl}/api/v1/events", new()
+        {
+            DataObject = new
+            {
+                title,
+                description = "Created by an E2E test.",
+                startTime = DateTime.UtcNow.AddDays(30),
+                endTime = DateTime.UtcNow.AddDays(30).AddHours(2),
+                venue = "Test Hall",
+                eventType = "Other",
+                totalSeats = 10,
+                availableSeats = 10,
+                priceCents = 0,
+            },
+        });
+        Assert.That(created.Status, Is.EqualTo(201));
+        var id = (await created.JsonAsync())!.Value.GetProperty("data").GetProperty("id").GetInt32();
+        // A guest books a free ticket from a separate, signed-out context (admins can't book).
+        await using var guest = await Playwright.APIRequest.NewContextAsync();
+        var booked = await guest.PostAsync($"{BaseUrl}/api/v1/events/{id}/bookings", new() { DataObject = new { email = "e2e-guest@example.com" } });
+        Assert.That(booked.Status, Is.EqualTo(201));
+        try
+        {
+            await Page.GotoAsync($"{BaseUrl}/admin");
+            var archive = Page.GetByRole(AriaRole.Button, new() { Name = $"Archive {title}" });
+            var delete = Page.GetByRole(AriaRole.Button, new() { Name = $"Delete {title}" });
+            await Expect(archive.Or(delete)).ToBeVisibleAsync();
+            // The cached list can be up to two minutes behind the booking; then deleting is refused and the button switches.
+            if (await delete.IsVisibleAsync())
+            {
+                await delete.ClickAsync();
+                await Page.GetByRole(AriaRole.Dialog).GetByRole(AriaRole.Button, new() { Name = "Delete" }).ClickAsync();
+                await Expect(Page.GetByRole(AriaRole.Alert)).ToContainTextAsync("Archive it instead");
+            }
+
+            await archive.ClickAsync();
+            await Page.GetByRole(AriaRole.Dialog).GetByRole(AriaRole.Button, new() { Name = "Archive" }).ClickAsync();
+
+            await Expect(Page.GetByRole(AriaRole.List, new() { Name = "admin events" }).GetByText(title)).ToHaveCountAsync(0);
+            await Page.GotoAsync($"{BaseUrl}/events/{id}");
+            await Expect(Page.GetByText("This event has been archived and no longer sells tickets.")).ToBeVisibleAsync();
+        }
+        finally
+        {
+            await RemoveEventAsync(id);
+        }
+    }
+
+    [Test]
     public async Task AdminCreatesAnEventThroughTheForm()
     {
         await SignInAsAdminAsync();
