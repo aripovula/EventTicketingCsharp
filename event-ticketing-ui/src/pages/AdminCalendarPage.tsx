@@ -1,9 +1,10 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import FullCalendar from '@fullcalendar/react'
 import dayGridPlugin from '@fullcalendar/daygrid'
 import type { EventClickArg, EventHoveringArg } from '@fullcalendar/core'
 import { fetchAllEvents, type EventItem } from '../api/events'
+import { useHubEvents } from '../hooks/useHubEvents'
 import { EVENT_TYPE_COLORS, EVENT_TYPES, colorForType } from '../utils/eventTypes'
 import { formatPrice } from '../utils/formatPrice'
 import TechNote from '../components/TechNote'
@@ -24,6 +25,21 @@ export default function AdminCalendarPage() {
       .catch((err: Error) => setError(err.message.startsWith('Failed') ? err.message : 'Could not load events.'))
       .finally(() => setLoading(false))
   }, [])
+
+  // Any change can move, add or remove an entry or change its seat count, so load them all again;
+  // an open popup shows the fresh copy of its event, or closes if the event is gone.
+  const reload = useCallback(() => {
+    fetchAllEvents()
+      .then(all => {
+        setEvents(all)
+        setPopup(prev => {
+          const fresh = prev && all.find(ev => ev.id === prev.event.id)
+          return fresh ? { ...prev!, event: fresh } : null
+        })
+      })
+      .catch(() => {})
+  }, [])
+  useHubEvents({ BookingMade: reload, EventCreated: reload, EventUpdated: reload, EventDeleted: reload, EventArchived: reload })
 
   // Clicking anywhere outside the popup closes it.
   useEffect(() => {

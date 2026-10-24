@@ -1,10 +1,15 @@
-import { render, screen, within } from '@testing-library/react'
+import { act, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import type { EventItem } from '../api/events'
 import { makeEvent } from '../test/fixtures'
 import { colorForType } from '../utils/eventTypes'
 import AdminCalendarPage from './AdminCalendarPage'
+
+const hub = vi.hoisted(() => ({ handlers: {} as Record<string, (eventId: number) => void> }))
+vi.mock('../hooks/useHubEvents', () => ({
+  useHubEvents: (handlers: Record<string, (eventId: number) => void>) => { hub.handlers = handlers },
+}))
 
 // FullCalendar needs real layout; in unit tests a stub lists the events it was given.
 vi.mock('@fullcalendar/daygrid', () => ({ default: {} }))
@@ -131,5 +136,39 @@ describe('AdminCalendarPage', () => {
     await userEvent.click(screen.getByRole('heading', { name: 'Events Calendar' }))
 
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  })
+
+  describe('live updates', () => {
+    function stubChangingEvents(events: EventItem[]) {
+      vi.stubGlobal('fetch', vi.fn(() => Promise.resolve(
+        new Response(JSON.stringify({ data: [...events], errors: [], meta: { nextCursor: null } })))))
+    }
+
+    it.each(['BookingMade', 'EventCreated', 'EventUpdated', 'EventDeleted', 'EventArchived'])('reloads the events when %s arrives', async message => {
+      const events = [makeEvent({ availableSeats: 48 })]
+      stubChangingEvents(events)
+      renderPage()
+      const calendar = await screen.findByRole('list', { name: 'calendar events' })
+      events[0] = makeEvent({ availableSeats: 47 })
+      events.push(makeEvent({ id: 2, title: 'Comedy Showcase', availableSeats: 10 }))
+
+      act(() => hub.handlers[message](1))
+
+      expect(await within(calendar).findByText('Comedy Showcase – 10')).toBeInTheDocument()
+      expect(within(calendar).getByText('Jazz Night – 47')).toBeInTheDocument()
+    })
+
+    it('closes the popup when its event goes away', async () => {
+      const events = [makeEvent()]
+      stubChangingEvents(events)
+      renderPage()
+      await userEvent.click(await screen.findByText(/^Jazz Night –/))
+      expect(screen.getByRole('dialog')).toBeInTheDocument()
+      events.pop()
+
+      act(() => hub.handlers.EventArchived(1))
+
+      await vi.waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    })
   })
 })
