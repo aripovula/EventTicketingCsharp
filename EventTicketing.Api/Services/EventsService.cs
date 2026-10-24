@@ -21,8 +21,8 @@ public class EventsService(AppDbContext db, HybridCache cache, AuditLogger audit
     /// <returns>The page, or null when the cursor is malformed.</returns>
     public async Task<EventPage?> ListAsync(EventListQuery query, CancellationToken cancellationToken)
     {
-        // Everyone loads the plain list pages; searches are too varied to be worth caching.
-        if (!string.IsNullOrWhiteSpace(query.Q))
+        // Everyone loads the plain list pages; searches are too varied, and admin-only lists too rare, to be worth caching.
+        if (!string.IsNullOrWhiteSpace(query.Q) || query.IncludeArchived)
             return await QueryPageAsync(query, cancellationToken);
 
         return await cache.GetOrCreateAsync(
@@ -35,8 +35,8 @@ public class EventsService(AppDbContext db, HybridCache cache, AuditLogger audit
 
     private async Task<EventPage?> QueryPageAsync(EventListQuery query, CancellationToken cancellationToken)
     {
-        // Archived events keep their page (order links point there) but leave the list.
-        var events = db.Events.Where(e => e.ArchivedAt == null);
+        // Archived events keep their page (order links point there) but leave the list, unless an admin asks for them.
+        var events = query.IncludeArchived ? db.Events : db.Events.Where(e => e.ArchivedAt == null);
         if (!string.IsNullOrWhiteSpace(query.Q))
         {
             var pattern = "%" + EscapeLike(query.Q.Trim()) + "%";

@@ -23,4 +23,8 @@ public record EventListQuery
     [FromQuery(Name = "limit")]
     [Range(1, 50)]
     public int Limit { get; init; } = 20;
+
+    /// <summary>Admins only: also list archived events.</summary>
+    [FromQuery(Name = "includeArchived")]
+    public bool IncludeArchived { get; init; }
 }

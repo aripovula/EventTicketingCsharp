@@ -1,3 +1,5 @@
+using System.Net;
+using System.Net.Http.Json;
 using System.Text.Json;
 using EventTicketing.Api.Data;
 using EventTicketing.Api.Models;
@@ -64,5 +66,38 @@ public class EventsArchivedListIntegrationTests(IntegrationTestFactory factory) 
         var body = JsonDocument.Parse(await _client.GetStringAsync($"/api/v1/events/{id}", TestContext.Current.CancellationToken));
 
         Assert.Equal("Archived But Linked", body.RootElement.GetProperty("data").GetProperty("title").GetString());
+    }
+
+    [Fact]
+    public async Task AnAdmin_CanAskForArchivedEventsToo()
+    {
+        await AddEventAsync("Archived For Admins", DateTime.UtcNow);
+        var admin = factory.CreateClient();
+        await admin.PostAsJsonAsync("/api/v1/auth/login", new { email = "admin@example.com", password = "Password" }, TestContext.Current.CancellationToken);
+
+        var body = JsonDocument.Parse(await admin.GetStringAsync("/api/v1/events?q=Archived%20For%20Admins&includeArchived=true", TestContext.Current.CancellationToken));
+
+        var ev = Assert.Single(body.RootElement.GetProperty("data").EnumerateArray());
+        Assert.NotEqual(JsonValueKind.Null, ev.GetProperty("archivedAt").ValueKind);
+    }
+
+    [Fact]
+    public async Task AnAdmin_GetsArchivedEventsOnUnsearchedPagesToo()
+    {
+        await AddEventAsync("!Archived Unsearched", DateTime.UtcNow);
+        var admin = factory.CreateClient();
+        await admin.PostAsJsonAsync("/api/v1/auth/login", new { email = "admin@example.com", password = "Password" }, TestContext.Current.CancellationToken);
+
+        var body = JsonDocument.Parse(await admin.GetStringAsync("/api/v1/events?sort=name&limit=50&includeArchived=true", TestContext.Current.CancellationToken));
+
+        Assert.Contains(body.RootElement.GetProperty("data").EnumerateArray(), e => e.GetProperty("title").GetString() == "!Archived Unsearched");
+    }
+
+    [Fact]
+    public async Task Others_CannotAskForArchivedEvents()
+    {
+        var response = await _client.GetAsync("/api/v1/events?includeArchived=true", TestContext.Current.CancellationToken);
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
     }
 }

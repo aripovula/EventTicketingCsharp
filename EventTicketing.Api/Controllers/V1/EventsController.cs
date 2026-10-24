@@ -14,12 +14,17 @@ namespace EventTicketing.Api.Controllers.V1;
 [Route("api/v1/events")]
 public class EventsController(EventsService eventsService, BookingService bookingService, IHubContext<TicketingHub> hub) : ControllerBase
 {
-    /// <summary>Lists events with title search, sorting and keyset cursor pagination (meta.nextCursor).</summary>
+    /// <summary>Lists events with title search, sorting and keyset cursor pagination (meta.nextCursor). Archived events are left out unless an admin passes includeArchived=true.</summary>
     [HttpGet]
     [ProducesResponseType(typeof(ApiEnvelope<IReadOnlyList<EventResponse>>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiEnvelope<object>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ApiEnvelope<object>), StatusCodes.Status403Forbidden)]
     public async Task<IActionResult> List([FromQuery] EventListQuery query, CancellationToken cancellationToken)
     {
+        if (query.IncludeArchived && !User.IsInRole("admin"))
+            return StatusCode(StatusCodes.Status403Forbidden, new ApiEnvelope(null,
+                [new ApiError("forbidden", "Only admins can list archived events.", "includeArchived")]));
+
         var page = await eventsService.ListAsync(query, cancellationToken);
         if (page is null)
             return BadRequest(new ApiEnvelope(null, [new ApiError("invalid_cursor", "The page cursor is invalid.", "after")]));
