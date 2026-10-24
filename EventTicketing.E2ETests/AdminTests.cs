@@ -86,24 +86,19 @@ public class AdminTests : E2ETestBase
         });
         Assert.That(created.Status, Is.EqualTo(201));
         var id = (await created.JsonAsync())!.Value.GetProperty("data").GetProperty("id").GetInt32();
-        // A guest books a free ticket from a separate, signed-out context (admins can't book).
-        await using var guest = await Playwright.APIRequest.NewContextAsync();
-        var booked = await guest.PostAsync($"{BaseUrl}/api/v1/events/{id}/bookings", new() { DataObject = new { email = "e2e-guest@example.com" } });
-        Assert.That(booked.Status, Is.EqualTo(201));
         try
         {
             await Page.GotoAsync($"{BaseUrl}/admin");
-            var archive = Page.GetByRole(AriaRole.Button, new() { Name = $"Archive {title}" });
-            var delete = Page.GetByRole(AriaRole.Button, new() { Name = $"Delete {title}" });
-            await Expect(archive.Or(delete)).ToBeVisibleAsync();
-            // The cached list can be up to two minutes behind the booking; then deleting is refused and the button switches.
-            if (await delete.IsVisibleAsync())
-            {
-                await delete.ClickAsync();
-                await Page.GetByRole(AriaRole.Dialog).GetByRole(AriaRole.Button, new() { Name = "Delete" }).ClickAsync();
-                await Expect(Page.GetByRole(AriaRole.Alert)).ToContainTextAsync("Archive it instead");
-            }
+            await Expect(Page.GetByRole(AriaRole.Button, new() { Name = $"Delete {title}" })).ToBeVisibleAsync();
 
+            // A guest books a free ticket from a separate, signed-out context (admins can't book).
+            await using var guest = await Playwright.APIRequest.NewContextAsync();
+            var booked = await guest.PostAsync($"{BaseUrl}/api/v1/events/{id}/bookings", new() { DataObject = new { email = "e2e-guest@example.com" } });
+            Assert.That(booked.Status, Is.EqualTo(201));
+
+            // The open page hears about the booking over SignalR and swaps Delete for Archive without a reload.
+            var archive = Page.GetByRole(AriaRole.Button, new() { Name = $"Archive {title}" });
+            await Expect(archive).ToBeVisibleAsync();
             await archive.ClickAsync();
             await Page.GetByRole(AriaRole.Dialog).GetByRole(AriaRole.Button, new() { Name = "Archive" }).ClickAsync();
 
