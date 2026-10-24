@@ -12,14 +12,22 @@ export default function AdminOrdersPage() {
   // The server filters, so the choice covers every order, not just the pages loaded so far.
   const fetchPage = useCallback((after: string | null) => fetchAllOrders(after, eventId), [eventId])
   const { items: orders, loading, error, loadingMore, sentinelRef, reload } = useCursorPages<OrderItem>(fetchPage)
-  // New orders arrive newest first, so a booking (for the chosen event, if any) reloads the first page.
-  useHubEvents({ BookingMade: bookedEventId => { if (eventId === null || bookedEventId === eventId) reload() } })
-
-  useEffect(() => {
+  const loadEvents = useCallback(() => {
     fetchAllEvents()
       .then(all => setEvents([...all].sort((a, b) => a.title.localeCompare(b.title))))
       .catch(() => {})
   }, [])
+  useEffect(() => { loadEvents() }, [loadEvents])
+
+  // New orders arrive newest first, so a booking (for the chosen event, if any) reloads the first page.
+  // Admin changes to events reload the filter's choices.
+  useHubEvents({
+    BookingMade: bookedEventId => { if (eventId === null || bookedEventId === eventId) reload() },
+    EventCreated: loadEvents,
+    EventUpdated: loadEvents,
+    EventArchived: loadEvents,
+    EventDeleted: deletedId => { if (deletedId === eventId) setEventId(null); loadEvents() },
+  })
 
   return (
     <div>

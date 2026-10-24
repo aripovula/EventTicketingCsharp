@@ -131,4 +131,35 @@ describe('AdminOrdersPage', () => {
 
     expect(fetchMock).not.toHaveBeenCalled()
   })
+
+  it.each(['EventCreated', 'EventUpdated', 'EventArchived'])('reloads the filter\'s events when %s arrives', async message => {
+    const events = [makeEvent({ id: 1, title: 'Jazz Night' })]
+    routeFetch({ events })
+    renderPage()
+    const select = await screen.findByRole('combobox', { name: 'Filter by event' })
+    events.push(makeEvent({ id: 9, title: 'Art Fair' }))
+
+    act(() => hub.handlers[message](9))
+
+    await waitFor(() =>
+      expect(within(select).getAllByRole('option').map(o => o.textContent)).toEqual(['All events', 'Art Fair', 'Jazz Night']))
+  })
+
+  it('goes back to all events when the chosen event is deleted', async () => {
+    const events = [makeEvent({ id: 1, title: 'Jazz Night' }), makeEvent({ id: 9, title: 'Art Fair' })]
+    const fetchMock = routeFetch({ events })
+    renderPage()
+    await screen.findByRole('table')
+    const select = screen.getByRole('combobox', { name: 'Filter by event' })
+    await userEvent.selectOptions(select, 'Art Fair')
+    await screen.findByText('No orders for this event.')
+    events.pop()
+    fetchMock.mockClear()
+
+    act(() => hub.handlers.EventDeleted(9))
+
+    await waitFor(() => expect(within(select).getAllByRole('option')).toHaveLength(2))
+    expect(select).toHaveValue('')
+    expect(fetchMock).toHaveBeenCalledWith('/api/v1/admin/orders', { credentials: 'include' })
+  })
 })
