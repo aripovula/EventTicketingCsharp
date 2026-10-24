@@ -26,6 +26,14 @@ describe('fetchEvents', () => {
     expect(fetchMock).toHaveBeenCalledWith('/api/v1/events?q=jazz+night&sort=price&after=abc123')
   })
 
+  it('asks for archived events only when told to', async () => {
+    const fetchMock = stub()
+
+    await fetchEvents({ sort: 'date', includeArchived: true })
+
+    expect(fetchMock).toHaveBeenCalledWith('/api/v1/events?sort=date&includeArchived=true')
+  })
+
   it('omits empty search and missing cursor', async () => {
     const fetchMock = stub()
 

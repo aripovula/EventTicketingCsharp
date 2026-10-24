@@ -97,6 +97,16 @@ describe('AdminOrdersPage', () => {
       expect(within(select).getAllByRole('option').map(o => o.textContent)).toEqual(['All events', 'Art Fair', 'Jazz Night']))
   })
 
+  it('includes archived events in the filter, marked as such', async () => {
+    const fetchMock = routeFetch({ events: [makeEvent({ id: 1, title: 'Jazz Night' }), makeEvent({ id: 9, title: 'Art Fair', archivedAt: '2026-10-01T10:00:00Z' })] })
+    renderPage()
+
+    const select = await screen.findByRole('combobox', { name: 'Filter by event' })
+    await waitFor(() =>
+      expect(within(select).getAllByRole('option').map(o => o.textContent)).toEqual(['All events', 'Art Fair (archived)', 'Jazz Night']))
+    expect(fetchMock).toHaveBeenCalledWith('/api/v1/events?sort=date&includeArchived=true')
+  })
+
   it('says when the chosen event has no orders', async () => {
     routeFetch({ events: [makeEvent({ id: 9, title: 'Art Fair' })] })
     renderPage()

@@ -13,7 +13,8 @@ export default function AdminOrdersPage() {
   const fetchPage = useCallback((after: string | null) => fetchAllOrders(after, eventId), [eventId])
   const { items: orders, loading, error, loadingMore, sentinelRef, reload } = useCursorPages<OrderItem>(fetchPage)
   const loadEvents = useCallback(() => {
-    fetchAllEvents()
+    // Archived events still have orders to look at.
+    fetchAllEvents({ includeArchived: true })
       .then(all => setEvents([...all].sort((a, b) => a.title.localeCompare(b.title))))
       .catch(() => {})
   }, [])
@@ -46,7 +47,7 @@ export default function AdminOrdersPage() {
             className="rounded-lg border border-gray-300 px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-cyan-400 transition"
           >
             <option value="">All events</option>
-            {events.map(ev => <option key={ev.id} value={ev.id}>{ev.title}</option>)}
+            {events.map(ev => <option key={ev.id} value={ev.id}>{ev.title}{ev.archivedAt ? ' (archived)' : ''}</option>)}
           </select>
         </div>
       )}

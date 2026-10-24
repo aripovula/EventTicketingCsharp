@@ -24,13 +24,16 @@ export interface EventListParams {
   q?: string
   sort?: EventSort
   after?: string | null
+  /** Admins only: archived events are left out otherwise. */
+  includeArchived?: boolean
 }
 
-export function fetchEvents({ q, sort, after }: EventListParams = {}) {
+export function fetchEvents({ q, sort, after, includeArchived }: EventListParams = {}) {
   const params = new URLSearchParams()
   if (q) params.set('q', q)
   if (sort) params.set('sort', sort)
   if (after) params.set('after', after)
+  if (includeArchived) params.set('includeArchived', 'true')
   const query = params.toString()
   return fetch(query ? `/api/v1/events?${query}` : '/api/v1/events')
 }
@@ -68,11 +71,11 @@ export function archiveEvent(id: number) {
 }
 
 /** Every event in date order, following the cursor through all pages (for the admin calendar). */
-export async function fetchAllEvents(): Promise<EventItem[]> {
+export async function fetchAllEvents({ includeArchived = false } = {}): Promise<EventItem[]> {
   const all: EventItem[] = []
   let after: string | null = null
   do {
-    const res = await fetchEvents({ sort: 'date', after })
+    const res = await fetchEvents({ sort: 'date', after, includeArchived })
     if (!res.ok) throw new Error(`Failed to load events (${res.status}).`)
     const body = await res.json()
     all.push(...(body.data ?? []))
