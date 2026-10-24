@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { createEvent, fetchEvent, updateEvent } from '../api/events'
 import { IMAGE_TYPES, uploadImage } from '../api/uploads'
+import { useHubEvents } from '../hooks/useHubEvents'
 import { eventToForm, toEventInput, type EventFormData } from '../utils/eventForm'
 import { EVENT_TYPES } from '../utils/eventTypes'
 import TechNote from '../components/TechNote'
@@ -9,6 +10,13 @@ import TechNote from '../components/TechNote'
 const inputClass =
   'w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-400 transition'
 const labelClass = 'block text-sm font-medium text-gray-700 mb-1'
+
+// What another admin did to the event open in this form.
+const changedElsewhere = {
+  updated: 'Someone else changed this event while you were editing it. Saving now replaces their changes.',
+  deleted: 'Someone else deleted this event, so it can no longer be saved.',
+  archived: 'Someone else archived this event: it is off sale and out of the events list. You can still save changes.',
+}
 
 const emptyForm: EventFormData = {
   title: '',
@@ -32,6 +40,9 @@ export default function AdminEventFormPage() {
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [uploading, setUploading] = useState(false)
   const [uploadError, setUploadError] = useState<string | null>(null)
+  const [changed, setChanged] = useState<keyof typeof changedElsewhere | null>(null)
+  // Our own save is pushed back to us as EventUpdated; that isn't someone else's change.
+  const saving = useRef(false)
   const navigate = useNavigate()
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
@@ -56,23 +67,35 @@ export default function AdminEventFormPage() {
     }
   }
 
-  useEffect(() => {
-    if (!isEdit) return
+  const loadEvent = useCallback(() => {
     fetchEvent(Number(id))
       .then(async res => {
         if (!res.ok) throw new Error(`Failed to load event (${res.status}).`)
         const body = await res.json()
         setForm(eventToForm(body.data))
+        setChanged(null)
       })
       .catch((err: Error) => setLoadError(err.message.startsWith('Failed to load') ? err.message : 'Could not load event.'))
       .finally(() => setLoading(false))
-  }, [id, isEdit])
+  }, [id])
+
+  useEffect(() => {
+    if (isEdit) loadEvent()
+  }, [isEdit, loadEvent])
+
+  // The form isn't overwritten while the admin types; a notice says what happened instead.
+  const noticeFor = (kind: keyof typeof changedElsewhere) => (eventId: number) => {
+    if (isEdit && eventId === Number(id) && !saving.current) setChanged(prev => (prev === 'deleted' ? prev : kind))
+  }
+  useHubEvents({ EventUpdated: noticeFor('updated'), EventDeleted: noticeFor('deleted'), EventArchived: noticeFor('archived') })
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setSubmitError(null)
     const input = toEventInput(form)
+    saving.current = true
     const res = await (isEdit ? updateEvent(Number(id), input) : createEvent(input)).catch(() => null)
+    saving.current = false
     if (res?.ok) {
       navigate('/admin')
       return
@@ -95,6 +118,17 @@ export default function AdminEventFormPage() {
         <>the image goes <strong>straight to Azure Blob Storage</strong>, bypassing our server and saving its bandwidth and compute; in a social app, this is what lets uploads scale</>,
         <>the URL can&apos;t read, list or delete, and the server picks the file name, so nothing is overwritten (JPEG, PNG, WebP or GIF, up to 5 MB)</>,
       ]} />
+
+      {changed && (
+        <div role="status" className="flex items-center justify-between gap-4 text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mb-4">
+          <span>{changedElsewhere[changed]}</span>
+          {changed === 'updated' && (
+            <button type="button" onClick={loadEvent} className="shrink-0 text-sm border border-amber-300 px-3 py-1 rounded-lg hover:bg-amber-100 transition-colors">
+              Load their changes
+            </button>
+          )}
+        </div>
+      )}
 
       <div className="bg-white rounded-xl border border-gray-200 p-6">
         <form aria-label="event form" onSubmit={handleSubmit} className="space-y-4">
@@ -178,7 +212,7 @@ export default function AdminEventFormPage() {
           )}
 
           <div className="flex gap-3 pt-2">
-            <button type="submit" disabled={uploading} className="bg-cyan-600 text-white px-5 py-2 rounded-lg text-sm font-medium hover:bg-cyan-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
+            <button type="submit" disabled={uploading || changed === 'deleted'} className="bg-cyan-600 text-white px-5 py-2 rounded-lg text-sm font-medium hover:bg-cyan-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
               {isEdit ? 'Save changes' : 'Create event'}
             </button>
             <Link to="/admin" className="border border-gray-300 text-gray-600 px-5 py-2 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors no-underline">

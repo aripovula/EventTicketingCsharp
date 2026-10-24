@@ -1,8 +1,13 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { makeEvent } from '../test/fixtures'
 import AdminEventFormPage from './AdminEventFormPage'
+
+const hub = vi.hoisted(() => ({ handlers: {} as Record<string, (eventId: number) => void> }))
+vi.mock('../hooks/useHubEvents', () => ({
+  useHubEvents: (handlers: Record<string, (eventId: number) => void>) => { hub.handlers = handlers },
+}))
 
 function renderPage() {
   render(
@@ -252,5 +257,77 @@ describe('AdminEventFormPage', () => {
     expect(await screen.findByText('Admin page')).toBeInTheDocument()
     const [, init] = fetchMock.mock.calls.find(([, i]) => i?.method === 'PUT')!
     expect(JSON.parse(init!.body as string).imageUrl).toBeNull()
+  })
+
+  describe('changes made elsewhere', () => {
+    function stubEditable() {
+      const fetchMock = vi.fn(() => Promise.resolve(new Response(JSON.stringify({ data: makeEvent({ id: 7 }), errors: [] }))))
+      vi.stubGlobal('fetch', fetchMock)
+      return fetchMock
+    }
+
+    it('keeps the admin\'s typing and offers the other changes when the event is edited elsewhere', async () => {
+      const fetchMock = stubEditable()
+      renderEdit()
+      const title = await screen.findByLabelText('Title')
+      await userEvent.type(title, ' Mine')
+
+      act(() => hub.handlers.EventUpdated(7))
+
+      expect(screen.getByRole('status')).toHaveTextContent('Someone else changed this event')
+      expect(title).toHaveValue('Jazz Night Mine')
+      fetchMock.mockResolvedValue(new Response(JSON.stringify({ data: makeEvent({ id: 7, title: 'Jazz Night Theirs' }), errors: [] })))
+      await userEvent.click(screen.getByRole('button', { name: 'Load their changes' }))
+      await waitFor(() => expect(title).toHaveValue('Jazz Night Theirs'))
+      expect(screen.queryByRole('status')).not.toBeInTheDocument()
+    })
+
+    it('stops saving when the event is deleted elsewhere', async () => {
+      stubEditable()
+      renderEdit()
+      await screen.findByLabelText('Title')
+
+      act(() => hub.handlers.EventDeleted(7))
+
+      expect(screen.getByRole('status')).toHaveTextContent('Someone else deleted this event')
+      expect(screen.getByRole('button', { name: 'Save changes' })).toBeDisabled()
+    })
+
+    it('says when the event is archived elsewhere', async () => {
+      stubEditable()
+      renderEdit()
+      await screen.findByLabelText('Title')
+
+      act(() => hub.handlers.EventArchived(7))
+
+      expect(screen.getByRole('status')).toHaveTextContent('Someone else archived this event')
+      expect(screen.getByRole('button', { name: 'Save changes' })).toBeEnabled()
+    })
+
+    it('ignores other events', async () => {
+      stubEditable()
+      renderEdit()
+      await screen.findByLabelText('Title')
+
+      act(() => hub.handlers.EventUpdated(8))
+
+      expect(screen.queryByRole('status')).not.toBeInTheDocument()
+    })
+
+    it('ignores the echo of its own save', async () => {
+      let finishSave!: (res: Response) => void
+      vi.stubGlobal('fetch', vi.fn((_url: string, init?: RequestInit) => init?.method === 'PUT'
+        ? new Promise<Response>(resolve => { finishSave = resolve })
+        : Promise.resolve(new Response(JSON.stringify({ data: makeEvent({ id: 7 }), errors: [] })))))
+      renderEdit()
+      await screen.findByLabelText('Title')
+      submitForm()
+
+      act(() => hub.handlers.EventUpdated(7))
+
+      expect(screen.queryByRole('status')).not.toBeInTheDocument()
+      finishSave(new Response(null, { status: 204 }))
+      expect(await screen.findByText('Admin page')).toBeInTheDocument()
+    })
   })
 })
