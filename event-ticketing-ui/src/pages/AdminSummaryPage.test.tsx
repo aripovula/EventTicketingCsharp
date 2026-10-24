@@ -57,4 +57,17 @@ describe('AdminSummaryPage', () => {
 
     expect(await screen.findByText('$1,825.00')).toBeInTheDocument()
   })
+
+  it.each(['EventCreated', 'EventUpdated', 'EventDeleted'])('recounts when %s arrives', async message => {
+    const summary = (title: string) => new Response(JSON.stringify({ data: [
+      { eventId: 1, title, totalSeats: 120, soldSeats: 0, remainingSeats: 120, revenueCents: 0 },
+    ], errors: [] }))
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(summary('Jazz Night')).mockResolvedValueOnce(summary('Jazz Night Deluxe')))
+    renderPage()
+    await screen.findByText('Jazz Night')
+
+    act(() => hub.handlers[message](1))
+
+    expect(await screen.findByText('Jazz Night Deluxe')).toBeInTheDocument()
+  })
 })

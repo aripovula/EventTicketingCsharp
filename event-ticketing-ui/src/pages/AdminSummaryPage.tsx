@@ -19,8 +19,9 @@ export default function AdminSummaryPage() {
   }, [])
 
   useEffect(() => { loadSummary() }, [loadSummary])
-  // Every booking changes the seat counts and revenue, so recount live.
-  useHubEvents({ BookingMade: loadSummary })
+  // Every booking changes the seat counts and revenue, and admin edits add, change or remove rows, so recount live.
+  // Archived events keep their row: their sales still count.
+  useHubEvents({ BookingMade: loadSummary, EventCreated: loadSummary, EventUpdated: loadSummary, EventDeleted: loadSummary })
 
   return (
     <div>
